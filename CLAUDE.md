@@ -110,6 +110,39 @@ markdownlint docs/docs/**/*.mdx --fix
 - Add explanatory callouts (:::tip, :::info, :::warning) for important concepts
 - Ensure all lists and code blocks have proper spacing
 
+### Vale Style Guide
+
+When working on documentation, run Vale to ensure consistent style:
+
+```bash
+# Run Vale on documentation files (as used in CI)
+vale $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) )
+
+# Or just the getting-started docs to avoid node_modules noise
+vale docs/docs/getting-started/*.mdx
+```
+
+#### Common Vale Issues to Fix
+
+1. **Sentence Case for Headings**
+   - Use sentence case for all headings (lowercase except first word and proper nouns)
+   - Example: "Understanding the workflow" not "Understanding the Workflow"
+   - Exception: Proper nouns like "Infrahub", "GitHub", "Streamlit"
+
+2. **Spelling Exceptions**
+   - Add technical terms to `.vale/styles/spelling-exceptions.txt`
+   - Common additions: `IPs`, `Gbps`, `Mbps`, `UIs`, `configs`, `auditable`, `idempotently`
+   - Keep terms alphabetically sorted in the file
+
+3. **Word Choices**
+   - Avoid "simple" and "easy" - use "straightforward" or "clear" instead
+   - Use "for example:" instead of "e.g." or "i.e."
+   - Keep "configs" as is (don't replace with "configurations")
+
+4. **GitHub Capitalization**
+   - Always capitalize as "GitHub" not "github"
+   - Note: Vale's branded-terms rule may sometimes false positive on correct usage
+
 ### Documentation Writing Guidelines
 
 **Applies to:** All MDX files (`**/*.mdx`)

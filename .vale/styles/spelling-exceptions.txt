@@ -6,6 +6,7 @@ append_git_suffix
 artifact_definitions
 artifact_name
 async
+auditable
 Authentik
 boolean
 check_definitions
@@ -16,6 +17,7 @@ codespaces
 combobox
 config
 Config
+configs
 Containerlab
 content_type
 convert_query_response
@@ -42,6 +44,7 @@ eslint
 excalidraw
 fanout
 file_path
+Gbps
 generator_definition
 generator_definitions
 github
@@ -55,6 +58,7 @@ hostname
 httpx
 human_friendly_id
 idempotency
+idempotently
 include_in_menu
 Infrahub
 Infrahub's
@@ -62,6 +66,7 @@ infrahubctl
 IP
 IPAddress
 IPAM
+IPs
 is_empty
 is_ip_within
 is_not_empty
@@ -75,6 +80,7 @@ Keycloak
 Loopbacks
 markdownlint
 max_count
+Mbps
 memgraph
 menu_placement
 min_max
@@ -92,6 +98,7 @@ openconfig
 opentelemetry
 order_by
 order_weight
+Otternet
 Prefetch
 profile_name
 PyPI
@@ -100,7 +107,6 @@ rebase
 rebased
 Redoc
 repo
-ressources
 REST
 schema_mapping
 sdk
@@ -111,6 +117,7 @@ template_path
 toml
 towncrier
 Towncrier
+UIs
 uncheck
 uniqueness_constraints
 upsert
@@ -126,7 +133,6 @@ Vitest
 VLANs
 vscode
 VSCode
+walkthrough
 Yaml
 yamllint
-walkthrough
-Otternet

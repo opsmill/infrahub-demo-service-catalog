@@ -4,7 +4,7 @@ description: Experience the complete service delivery workflow from request to p
 ---
 import ReferenceLink from "../../src/components/Card";
 
-This guide demonstrates the complete service delivery workflow through two user perspectives: requesting services through the catalog and managing them through Infrahub. You'll see how automated provisioning transforms simple requests into fully configured network services.
+This guide demonstrates the complete service delivery workflow through two user perspectives: requesting services through the catalog and managing them through Infrahub. You'll see how automated provisioning transforms service requests into fully configured network services.
 
 <ReferenceLink title="Need help or have questions? Join our Discord community for support!" url="https://discord.gg/opsmill" openInNewTab/>
 
@@ -17,7 +17,7 @@ Before starting, ensure you have:
     - Service Catalog at `http://localhost:8501`
     - Infrahub at `http://localhost:8000`
 
-## Understanding the Workflow
+## Understanding the workflow
 
 The demo simulates a typical enterprise service delivery process:
 
@@ -29,13 +29,13 @@ The demo simulates a typical enterprise service delivery process:
 
 <ReferenceLink title="Blog post" url="https://opsmill.com/blog/how-to-turn-your-source-of-truth-into-a-service-factory/" openInNewTab/>
 
-## Step 1: Request a New Service (Service Engineer Role)
+## Step 1: Request a new service (service engineer role)
 
-### Understanding the Service Catalog Interface
+### Understanding the service catalog interface
 
 The Service Catalog provides a simplified, user-friendly interface for requesting network services without requiring deep technical knowledge.
 
-### Create a Dedicated Internet Service Request
+### Create a dedicated internet service request
 
 1. **Access the Service Catalog**
    - Open your browser to `http://localhost:8501`
@@ -49,7 +49,7 @@ The Service Catalog provides a simplified, user-friendly interface for requestin
 
    The form presents user-friendly options that hide technical complexity:
 
-   - **Service Identifier**: Choose a unique name (e.g., "DI-DEMO-001")
+   - **Service Identifier**: Choose a unique name (for example: "DI-DEMO-001")
    - **Account Reference**: Customer or project identifier
    - **Location**: Select from available sites (Atlanta, Dallas, Denver, Seattle)
    - **Bandwidth**: Choose from human-readable options:
@@ -76,7 +76,7 @@ When you submit the request:
 4. A "Proposed Change" is created for review
 :::
 
-### Track Your Service Requests
+### Track your service requests
 
 1. **View All Requests**
    - Navigate to "📦 Service Requests" in the sidebar
@@ -102,9 +102,9 @@ When you submit the request:
 The Service Catalog provides a simplified view for business users, while Infrahub offers detailed technical views for network engineers. This separation allows each role to work with appropriate tools.
 :::
 
-## Step 2: Review Infrastructure State (Network Architect Role)
+## Step 2: Review infrastructure state (network architect role)
 
-### Understanding Infrahub's Role
+### Understanding Infrahub's role
 
 Infrahub serves as the "source of truth" for your network infrastructure, maintaining detailed models of:
 
@@ -113,7 +113,7 @@ Infrahub serves as the "source of truth" for your network infrastructure, mainta
 - Service allocations and dependencies
 - Change history and version control
 
-### Access the Infrahub Interface
+### Access the Infrahub interface
 
 1. **Log into Infrahub**
    - Navigate to `http://localhost:8000`
@@ -145,7 +145,7 @@ Infrahub serves as the "source of truth" for your network infrastructure, mainta
 
 3. **Examine Site Details**
    - Click `Location` > `Site` to see all sites
-   - Select a site (e.g., "Atlanta")
+   - Select a site (for example: "Atlanta")
    - Review the site's components:
      - Associated devices and their roles
      - Current VLAN assignments
@@ -163,7 +163,7 @@ By modeling infrastructure in Infrahub:
 - Changes can be tested before implementation
 :::
 
-### Review and Approve Service Implementation
+### Review and approve service implementation
 
 1. **Access Proposed Changes**
    - Navigate to `Proposed Changes` in the left sidebar
@@ -244,9 +244,9 @@ This review process provides:
 - **Rollback**: Ability to revert changes if issues arise
 :::
 
-## Step 3: Verify Service Delivery
+## Step 3: Verify service delivery
 
-### Confirm Active Service
+### Confirm active service
 
 1. **Check Service Status**
    - Return to the Service Catalog (`http://localhost:8501`)
@@ -278,23 +278,23 @@ You've successfully:
 All in minutes, with zero manual configuration errors!
 :::
 
-## Key Takeaways
+## Key takeaways
 
-### Business Benefits
+### Business benefits
 
 - **Speed**: Service delivery in minutes instead of days/weeks
 - **Consistency**: Standardized configurations eliminate human error
 - **Self-Service**: Reduces bottlenecks and improves customer satisfaction
 - **Visibility**: Complete audit trail and resource tracking
 
-### Technical Benefits
+### Technical benefits
 
 - **Resource Management**: Automatic allocation prevents conflicts
 - **Version Control**: All changes tracked and reversible
 - **Validation**: Automated checks prevent invalid configurations
 - **Integration**: API-driven architecture enables broader automation
 
-### Next Steps
+### Next steps
 
 Now that you understand the user experience:
 

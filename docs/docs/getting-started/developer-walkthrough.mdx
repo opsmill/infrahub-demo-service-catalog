@@ -12,7 +12,7 @@ In this walkthrough, we detail the key building blocks of the demo, explain how 
 
 To structure and store data, we define a schema in Infrahub. You can find the schema files in the `schemas` folder.
 
-### Schema Architecture Overview
+### Schema architecture overview
 
 The following diagram illustrates the complete schema architecture, showing how different objects relate to each other in the Service Catalog demo:
 
@@ -93,7 +93,7 @@ graph TB
     ServiceDedicatedInternet -.->|creates gateway| IpamIPAddress
 ```
 
-#### Key Concepts in the Diagram
+#### Key concepts in the diagram
 
 1. **Generic vs Concrete Objects**:
    - **Generic** (dashed boxes): Abstract base classes that define common attributes
@@ -601,14 +601,14 @@ class DedicatedInternetGenerator(InfrahubGenerator):
 
 ```
 
-### Generator Architecture Patterns
+### Generator architecture patterns
 
 1. **Resource Tracking**: Every allocation linked to the service
 2. **Relationship Integrity**: Bi-directional references maintained
 3. **Error Handling**: Fail fast with clear messages
 4. **Logging**: Detailed progress tracking for troubleshooting
 
-### Service Provisioning Flow
+### Service provisioning flow
 
 Here's a focused view of how resources flow during service provisioning:
 
@@ -648,9 +648,9 @@ flowchart LR
     GW -.->|Assigned to| SP
 ```
 
-### Summary: From Request to Reality
+### Summary: From request to reality
 
-The generator transforms a simple service request:
+The generator transforms a service request:
 
 ```yaml
 Service: DI-12345
@@ -670,9 +670,9 @@ All in seconds, consistently, and idempotently!
 
 <ReferenceLink title="Learn about Infrahub generators" url="https://docs.infrahub.app/topics/generator" openInNewTab/>
 
-## The Service Portal Architecture
+## The service portal architecture
 
-### Why Streamlit?
+### Streamlit for the user interface
 
 The demo uses [Streamlit](https://streamlit.io/) for the user interface because it:
 
@@ -681,9 +681,9 @@ The demo uses [Streamlit](https://streamlit.io/) for the user interface because 
 - Integrates seamlessly with the Infrahub Python SDK
 - Enables rapid prototyping of service catalogs
 
-### Portal Design Patterns
+### Portal design patterns
 
-#### Infrahub SDK Integration
+#### Infrahub SDK integration
 
 The portal uses several patterns to efficiently interact with Infrahub:
 
@@ -709,17 +709,17 @@ The `@st.cache_resource` decorator:
 
 <ReferenceLink title="Learn about Streamlit" url="https://streamlit.io/" openInNewTab/>
 
-## Architecture Takeaways
+## Architecture takeaways
 
-### Key Design Decisions
+### Key design decisions
 
 1. **Schema as Foundation**: Well-designed schema enables everything else
-2. **Automation through Generators**: Complex provisioning made simple
+2. **Automation through Generators**: Complex provisioning made straightforward
 3. **Resource Management**: Centralized pools prevent conflicts
 4. **Branch-Based Workflows**: Safe testing and rollback capabilities
-5. **User-Friendly Abstractions**: Hide complexity behind simple choices
+5. **User-Friendly Abstractions**: Hide complexity behind clear choices
 
-### Extending the Demo
+### Extending the demo
 
 Consider these enhancements for production use:
 
@@ -729,7 +729,7 @@ Consider these enhancements for production use:
 - Automated testing of provisioned services
 - Rollback and decommissioning automation
 
-## Next Steps
+## Next steps
 
 Now that you understand the architecture:
 

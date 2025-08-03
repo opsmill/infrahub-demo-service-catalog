@@ -8,7 +8,7 @@ This guide walks you through installing the Service Catalog demo, which demonstr
 
 <ReferenceLink title="Need help or have questions? Join our Discord community for support!" url="https://discord.gg/opsmill" openInNewTab/>
 
-## What You'll Achieve
+## What you'll achieve
 
 After completing this installation:
 
@@ -21,7 +21,7 @@ After completing this installation:
 
 Before you get started, make sure you have these tools installed:
 
-### Required Software
+### Required software
 
 - 🐳 **Docker**: Container runtime for running Infrahub and its dependencies
     - [Docker Desktop](https://docs.docker.com/desktop/) for local development
@@ -33,16 +33,16 @@ Before you get started, make sure you have these tools installed:
     - Used to manage Python packages and virtual environments
     - Version 1.2.0 or higher recommended
 
-### System Requirements
+### System requirements
 
 - **Operating System**: macOS, Linux, or Windows with WSL2
 - **Memory**: At least 8GB RAM (16GB recommended)
 - **Storage**: 10GB free disk space
 - **Network**: Internet connection for downloading dependencies
 
-## Installation Steps
+## Installation steps
 
-### Step 1: Clone the Repository
+### Step 1: Clone the repository
 
 First, download the demo code from GitHub. This repository contains all the necessary configuration files, schemas, and demo data.
 
@@ -55,12 +55,12 @@ cd infrahub-demo-service-catalog
 The repository includes:
 
 - **Infrahub schemas** defining the data models for network infrastructure
-- **Demo data** with sample locations, devices, and network resources  
+- **Demo data** with sample locations, devices, and network resources
 - **Service Catalog application** built with Streamlit
 - **Docker configuration** for running all components
 :::
 
-### Step 2: Configure Environment Variables
+### Step 2: Configure environment variables
 
 Set up the connection details for Infrahub. These variables tell the Service Catalog application how to communicate with the Infrahub API.
 
@@ -69,7 +69,7 @@ export INFRAHUB_ADDRESS="http://localhost:8000"
 export INFRAHUB_API_TOKEN="06438eb2-8019-4776-878c-0941b1f1d1ec"
 ```
 
-#### Understanding the Variables
+#### Understanding the variables
 
 - **`INFRAHUB_ADDRESS`**: The URL where Infrahub's API is accessible
     - Default uses `localhost:8000` for local development
@@ -79,7 +79,7 @@ export INFRAHUB_API_TOKEN="06438eb2-8019-4776-878c-0941b1f1d1ec"
     - The demo uses a pre-configured token for convenience
     - In production, use secure token generation and storage
 
-### Step 3: Install Python Dependencies
+### Step 3: Install Python dependencies
 
 Use Poetry to create a virtual environment and install all required Python packages.
 
@@ -98,7 +98,7 @@ This command:
 Poetry automatically manages virtual environments. All subsequent commands should be run with `poetry run` prefix to ensure they use the correct environment.
 :::
 
-### Step 4: Start the Application Stack
+### Step 4: Start the application stack
 
 Launch Infrahub and the Service Catalog using Docker Compose. This single command starts multiple services.
 
@@ -115,7 +115,7 @@ The `invoke start` command is a wrapper that:
 - Sets up networking between containers
 :::
 
-#### What Gets Started
+#### What gets started
 
 This command launches:
 
@@ -125,11 +125,11 @@ This command launches:
 - **RabbitMQ**: Task queue for asynchronous operations
 - **Service Catalog**: Streamlit web portal (port 8501)
 
-### Step 5: Initialize Infrahub with Demo Data
+### Step 5: Initialize Infrahub with demo data
 
 Now we'll load the data models (schemas) and populate Infrahub with demo network infrastructure data.
 
-#### Load the Schema Definitions
+#### Load the schema definitions
 
 First, load the schema that defines the data models:
 
@@ -143,7 +143,7 @@ This command:
 - Defines models for locations, devices, services, and network resources
 - The `--wait 10` flag ensures schemas are fully processed before continuing
 
-#### Import Demo Data
+#### Import demo data
 
 Next, populate Infrahub with sample infrastructure data:
 
@@ -167,7 +167,7 @@ The demo uses a hierarchical structure:
 - Everything is version-controlled and auditable
 :::
 
-### Step 6: Configure Git Integration
+### Step 6: Configure Git integration
 
 Connect the demo repository to Infrahub for infrastructure as code workflows.
 
@@ -175,7 +175,7 @@ Connect the demo repository to Infrahub for infrastructure as code workflows.
 poetry run infrahubctl repository add --ref main --read-only infrahub-demo https://github.com/opsmill/infrahub-demo-service-catalog.git
 ```
 
-#### Why Git Integration?
+#### Why Git integration?
 
 This connection enables:
 
@@ -194,11 +194,11 @@ The `--read-only` flag means:
 For production, you'd typically use bidirectional sync to enable full GitOps workflows.
 :::
 
-## Verify Your Installation
+## Verify your installation
 
 Confirm everything is working by accessing both interfaces:
 
-### Infrahub Web UI
+### Infrahub web UI
 
 - **URL**: [http://localhost:8000](http://localhost:8000)
 - **Username**: `admin`
@@ -208,7 +208,7 @@ Confirm everything is working by accessing both interfaces:
     - Check the Objects page to verify demo data is present
     - Confirm the repository appears under Repositories
 
-### Service Catalog Portal
+### Service catalog portal
 
 - **URL**: [http://localhost:8501](http://localhost:8501)
 - **What to Check**:
@@ -216,26 +216,26 @@ Confirm everything is working by accessing both interfaces:
     - Service request forms are accessible
     - No connection errors appear
 
-## Troubleshooting Common Issues
+## Troubleshooting common issues
 
-### Services Won't Start
+### Services won't start
 
 - Ensure Docker is running and has sufficient resources
 - Check for port conflicts (8000, 8501, 5432, 6379)
 - Run `poetry run invoke destroy` then `poetry run invoke start` to reset
 
-### Schema Load Fails
+### Schema load fails
 
 - Wait for Infrahub to fully start (check logs with `docker compose logs infrahub`)
 - Retry the schema load command after 30 seconds
 
-### Can't Access Web Interfaces
+### Can't access web interfaces
 
 - Verify environment variables are set correctly
 - Check firewall rules if running on a remote server
 - Ensure all containers are running: `docker compose ps`
 
-## Next Steps
+## Next steps
 
 Now that your environment is running:
 
