@@ -35,6 +35,7 @@ This is a Service Catalog demo built with Infrahub and Streamlit that allows use
 
 - `invoke docs` - Build documentation (requires npm in docs/ directory)
 - `markdownlint docs/docs/**/*.mdx` - Lint documentation files for formatting issues
+- Mermaid diagrams are supported in MDX files using standard ```mermaid code blocks
 
 ## Architecture Overview
 

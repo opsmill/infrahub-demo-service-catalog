@@ -26,21 +26,21 @@ graph TB
     classDef generic fill:#f0f0f0,stroke:#666,stroke-width:2px,stroke-dasharray: 5 5
 
     %% Service Layer
-    ServiceGeneric["Service Generic<br/>(Generic)"]:::generic
+    ServiceGeneric["Service Generic (Generic)"]:::generic
     ServiceDedicatedInternet["Service Dedicated Internet<br/>- status<br/>- bandwidth<br/>- ip_package"]:::service
     
     %% Location Layer
-    LocationGeneric["Location Generic<br/>(Generic)"]:::generic
-    LocationHosting["Location Hosting<br/>(Generic)"]:::generic
-    LocationSite["Location Site<br/>(Concrete)"]:::location
+    LocationGeneric["Location Generic (Generic)"]:::generic
+    LocationHosting["Location Hosting (Generic)"]:::generic
+    LocationSite["Location Site (Concrete)"]:::location
     
     %% DCIM Layer
-    DcimGenericDevice["Dcim Generic Device<br/>(Generic)"]:::generic
-    DcimPhysicalDevice["Dcim Physical Device<br/>(Generic)"]:::generic
-    DcimDevice["Dcim Device<br/>(Concrete)"]:::dcim
-    DcimInterface["Dcim Interface<br/>(Generic)"]:::generic
-    DcimInterfaceL2["Dcim Interface L2<br/>(Concrete)"]:::dcim
-    DcimInterfaceL3["Dcim Interface L3<br/>(Concrete)"]:::dcim
+    DcimGenericDevice["Dcim Generic Device (Generic)"]:::generic
+    DcimPhysicalDevice["Dcim Physical Device (Generic)"]:::generic
+    DcimDevice["Dcim Device (Concrete)"]:::dcim
+    DcimInterface["Dcim Interface (Generic)"]:::generic
+    DcimInterfaceL2["Dcim Interface L2 (Concrete)"]:::dcim
+    DcimInterfaceL3["Dcim Interface L3 (Concrete)"]:::dcim
     
     %% IPAM Layer
     IpamIPAddress["Ipam IP Address"]:::ipam
@@ -58,39 +58,39 @@ graph TB
     DcimInterface -.->|inherits| DcimInterfaceL3
     
     %% Service Relationships
-    ServiceDedicatedInternet -->|location<br/>(1:1)| LocationSite
-    ServiceDedicatedInternet -->|dedicated_interfaces<br/>(1:many)| DcimInterface
-    ServiceDedicatedInternet -->|vlan<br/>(1:1)| IpamVLAN
-    ServiceDedicatedInternet -->|gateway_ip_address<br/>(1:1)| IpamIPAddress
-    ServiceDedicatedInternet -->|prefix<br/>(1:1)| IpamPrefix
+    ServiceDedicatedInternet -->|"location (1:1)"| LocationSite
+    ServiceDedicatedInternet -->|"dedicated_interfaces (1:many)"| DcimInterface
+    ServiceDedicatedInternet -->|"vlan (1:1)"| IpamVLAN
+    ServiceDedicatedInternet -->|"gateway_ip_address (1:1)"| IpamIPAddress
+    ServiceDedicatedInternet -->|"prefix (1:1)"| IpamPrefix
     
     %% Location Relationships
-    LocationSite -->|services<br/>(1:many)| ServiceGeneric
-    LocationHosting -->|devices<br/>(1:many)| DcimPhysicalDevice
-    LocationHosting -->|prefixes<br/>(1:many)| IpamPrefix
-    LocationHosting -->|vlans<br/>(1:many)| IpamVLAN
+    LocationSite -->|"services (1:many)"| ServiceGeneric
+    LocationHosting -->|"devices (1:many)"| DcimPhysicalDevice
+    LocationHosting -->|"prefixes (1:many)"| IpamPrefix
+    LocationHosting -->|"vlans (1:many)"| IpamVLAN
     
     %% Device Relationships
-    DcimDevice -->|location<br/>(1:1)| LocationHosting
-    DcimGenericDevice -->|interfaces<br/>(1:many)| DcimInterface
-    DcimGenericDevice -->|primary_address<br/>(1:1)| IpamIPAddress
+    DcimDevice -->|"location (1:1)"| LocationHosting
+    DcimGenericDevice -->|"interfaces (1:many)"| DcimInterface
+    DcimGenericDevice -->|"primary_address (1:1)"| IpamIPAddress
     
     %% Interface Relationships
-    DcimInterfaceL2 -->|untagged_vlan<br/>(1:1)| IpamVLAN
-    DcimInterfaceL2 -->|tagged_vlan<br/>(1:many)| IpamVLAN
-    DcimInterfaceL3 -->|ip_addresses<br/>(1:many)| IpamIPAddress
+    DcimInterfaceL2 -->|"untagged_vlan (1:1)"| IpamVLAN
+    DcimInterfaceL2 -->|"tagged_vlan (1:many)"| IpamVLAN
+    DcimInterfaceL3 -->|"ip_addresses (1:many)"| IpamIPAddress
     
     %% IPAM Relationships
-    IpamIPAddress -->|interface<br/>(1:1)| DcimInterfaceL3
-    IpamPrefix -->|vlan<br/>(1:1)| IpamVLAN
-    IpamVLAN -->|l2domain<br/>(1:1)| IpamL2Domain
-    IpamL2Domain -->|vlans<br/>(1:many)| IpamVLAN
+    IpamIPAddress -->|"interface (1:1)"| DcimInterfaceL3
+    IpamPrefix -->|"vlan (1:1)"| IpamVLAN
+    IpamVLAN -->|"l2domain (1:1)"| IpamL2Domain
+    IpamL2Domain -->|"vlans (1:many)"| IpamVLAN
     
     %% Highlight key service flow
-    ServiceDedicatedInternet -.->|allocates from pool| IpamVLAN
-    ServiceDedicatedInternet -.->|allocates from pool| IpamPrefix
-    ServiceDedicatedInternet -.->|finds available| DcimInterface
-    ServiceDedicatedInternet -.->|creates gateway| IpamIPAddress
+    ServiceDedicatedInternet -.->|"allocates from pool"| IpamVLAN
+    ServiceDedicatedInternet -.->|"allocates from pool"| IpamPrefix
+    ServiceDedicatedInternet -.->|"finds available"| DcimInterface
+    ServiceDedicatedInternet -.->|"creates gateway"| IpamIPAddress
 ```
 
 #### Key concepts in the diagram
@@ -624,28 +624,28 @@ flowchart LR
     SR[Service Request]:::request
     SP[Service Object]:::service
     
-    VP[VLAN Pool<br/>100-199]:::pool
-    PP[Prefix Pool<br/>10.0.0.0/16]:::pool
+    VP["VLAN Pool<br/>100-199"]:::pool
+    PP["Prefix Pool<br/>10.0.0.0/16"]:::pool
     
     V[VLAN 142]:::resource
-    P[Prefix 10.0.42.0/28]:::resource
-    SW[Switch Port<br/>ge-0/0/5]:::resource
-    GW[Gateway IP<br/>10.0.42.1/28]:::resource
+    P["Prefix 10.0.42.0/28"]:::resource
+    SW["Switch Port<br/>ge-0/0/5"]:::resource
+    GW["Gateway IP<br/>10.0.42.1/28"]:::resource
     
     %% Flow
     SR -->|Creates| SP
-    SP -->|Allocates from| VP
-    SP -->|Allocates from| PP
+    SP -->|"Allocates from"| VP
+    SP -->|"Allocates from"| PP
     VP -->|Provides| V
     PP -->|Provides| P
-    SP -->|Finds available| SW
-    P -->|First IP becomes| GW
+    SP -->|"Finds available"| SW
+    P -->|"First IP becomes"| GW
     
     %% Assignments
-    V -.->|Assigned to| SP
-    P -.->|Assigned to| SP
-    SW -.->|Assigned to| SP
-    GW -.->|Assigned to| SP
+    V -.->|"Assigned to"| SP
+    P -.->|"Assigned to"| SP
+    SW -.->|"Assigned to"| SP
+    GW -.->|"Assigned to"| SP
 ```
 
 ### Summary: From request to reality
