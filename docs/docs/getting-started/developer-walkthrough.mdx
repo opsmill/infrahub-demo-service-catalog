@@ -240,6 +240,7 @@ The generator is a powerful feature of Infrahub that allows you to codify the ru
 We want to build the generator with the concept of **idempotency** in mind, meaning it should be repeatable: it assigns resources the first time it runs, and if run again, it changes nothing if the desired state is already achieved. This approach ensures the code is robust and predictable.
 
 Infrahub provides a set of features to help:
+
 - Resource manager: It allows users to create pools and allocate resources from them, such as prefixes, IP addresses, or even numbers. We will use this feature to allocate our prefixes/vlan in a branch-agnostic and idempotent way. Learn more about [resource managers](https://docs.infrahub.app/topics/resource-manager).
 - `allow_upsert=True`: This parameter is provided when saving the node, allowing it to be created if it doesn't exist or updated if it does. This is useful for ensuring that the generator can run multiple times without creating duplicates or errors.
 
@@ -502,10 +503,101 @@ class DedicatedInternetGenerator(InfrahubGenerator):
 
 ```
 
-:::success
+### Generator Architecture Patterns
 
-At this stage, we have a generator that transforms a high-level service request into a complete service, sourcing resources from predefined pools with consistency and in just seconds.
+1. **Resource Tracking**: Every allocation linked to the service
+2. **Relationship Integrity**: Bi-directional references maintained
+3. **Error Handling**: Fail fast with clear messages
+4. **Logging**: Detailed progress tracking for troubleshooting
 
-:::
+### Summary: From Request to Reality
+
+The generator transforms a simple service request:
+
+```yaml
+Service: DI-12345
+Location: Atlanta 
+Bandwidth: 1 Gbps
+IP Package: Medium
+```
+
+Into fully provisioned infrastructure:
+
+- VLAN 142 allocated and configured
+- IP prefix 10.0.42.0/28 assigned
+- Switch port ge-0/0/5 configured
+- Router interface vlan_142 with IP 10.0.42.1/28
+
+All in seconds, consistently, and idempotently!
 
 <ReferenceLink title="Learn about Infrahub generators" url="https://docs.infrahub.app/topics/generator" openInNewTab/>
+
+## The Service Portal Architecture
+
+### Why Streamlit?
+
+The demo uses [Streamlit](https://streamlit.io/) for the user interface because it:
+
+- Builds web UIs with pure Python (no JavaScript required)
+- Provides ready-made components for forms and data display
+- Integrates seamlessly with the Infrahub Python SDK
+- Enables rapid prototyping of service catalogs
+
+### Portal Design Patterns
+
+#### Infrahub SDK Integration
+
+The portal uses several patterns to efficiently interact with Infrahub:
+
+```python title="Client Caching Pattern"
+@st.cache_resource
+def get_client(branch: str = "main") -> InfrahubClientSync:
+    """Create and cache Infrahub client."""
+    address = get_instance_address()
+    return InfrahubClientSync(
+        address=address,
+        config=Config(default_branch=branch)
+    )
+```
+
+:::tip Why Cache the Client?
+The `@st.cache_resource` decorator:
+
+- Creates client once and reuses it
+- Reduces connection overhead
+- Maintains consistent state
+- Improves page load performance
+:::
+
+<ReferenceLink title="Learn about Streamlit" url="https://streamlit.io/" openInNewTab/>
+
+## Architecture Takeaways
+
+### Key Design Decisions
+
+1. **Schema as Foundation**: Well-designed schema enables everything else
+2. **Automation through Generators**: Complex provisioning made simple
+3. **Resource Management**: Centralized pools prevent conflicts
+4. **Branch-Based Workflows**: Safe testing and rollback capabilities
+5. **User-Friendly Abstractions**: Hide complexity behind simple choices
+
+### Extending the Demo
+
+Consider these enhancements for production use:
+
+- Additional service types (MPLS, Cloud Connect, etc.)
+- Approval workflows with human checkpoints
+- Integration with ITSM platforms
+- Automated testing of provisioned services
+- Rollback and decommissioning automation
+
+## Next Steps
+
+Now that you understand the architecture:
+
+1. **Run the Demo**: Follow the [installation guide](installation) to set up locally
+2. **Try the Portal**: Walk through the [user experience](user-walkthrough)
+3. **Explore Further**: Modify the schema or create new service types
+4. **Build Your Own**: Apply these patterns to your infrastructure needs
+
+The combination of Infrahub's flexible schema, powerful generators, and Python-based portals enables you to build sophisticated service automation tailored to your organization's needs.
