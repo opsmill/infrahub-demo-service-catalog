@@ -12,6 +12,104 @@ In this walkthrough, we detail the key building blocks of the demo, explain how 
 
 To structure and store data, we define a schema in Infrahub. You can find the schema files in the `schemas` folder.
 
+### Schema Architecture Overview
+
+The following diagram illustrates the complete schema architecture, showing how different objects relate to each other in the Service Catalog demo:
+
+```mermaid
+graph TB
+    %% Style definitions
+    classDef service fill:#e6f3ff,stroke:#4a90e2,stroke-width:3px
+    classDef dcim fill:#fff2e6,stroke:#ff9800,stroke-width:2px
+    classDef ipam fill:#e6ffe6,stroke:#4caf50,stroke-width:2px
+    classDef location fill:#ffe6f2,stroke:#e91e63,stroke-width:2px
+    classDef generic fill:#f0f0f0,stroke:#666,stroke-width:2px,stroke-dasharray: 5 5
+
+    %% Service Layer
+    ServiceGeneric["Service Generic<br/>(Generic)"]:::generic
+    ServiceDedicatedInternet["Service Dedicated Internet<br/>- status<br/>- bandwidth<br/>- ip_package"]:::service
+    
+    %% Location Layer
+    LocationGeneric["Location Generic<br/>(Generic)"]:::generic
+    LocationHosting["Location Hosting<br/>(Generic)"]:::generic
+    LocationSite["Location Site<br/>(Concrete)"]:::location
+    
+    %% DCIM Layer
+    DcimGenericDevice["Dcim Generic Device<br/>(Generic)"]:::generic
+    DcimPhysicalDevice["Dcim Physical Device<br/>(Generic)"]:::generic
+    DcimDevice["Dcim Device<br/>(Concrete)"]:::dcim
+    DcimInterface["Dcim Interface<br/>(Generic)"]:::generic
+    DcimInterfaceL2["Dcim Interface L2<br/>(Concrete)"]:::dcim
+    DcimInterfaceL3["Dcim Interface L3<br/>(Concrete)"]:::dcim
+    
+    %% IPAM Layer
+    IpamIPAddress["Ipam IP Address"]:::ipam
+    IpamPrefix["Ipam Prefix<br/>- status<br/>- role"]:::ipam
+    IpamVLAN["Ipam VLAN<br/>- vlan_id<br/>- status<br/>- role"]:::ipam
+    IpamL2Domain["Ipam L2 Domain"]:::ipam
+    
+    %% Inheritance relationships
+    ServiceGeneric -.->|inherits| ServiceDedicatedInternet
+    LocationGeneric -.->|inherits| LocationHosting
+    LocationHosting -.->|inherits| LocationSite
+    DcimGenericDevice -.->|inherits| DcimPhysicalDevice
+    DcimPhysicalDevice -.->|inherits| DcimDevice
+    DcimInterface -.->|inherits| DcimInterfaceL2
+    DcimInterface -.->|inherits| DcimInterfaceL3
+    
+    %% Service Relationships
+    ServiceDedicatedInternet -->|location<br/>(1:1)| LocationSite
+    ServiceDedicatedInternet -->|dedicated_interfaces<br/>(1:many)| DcimInterface
+    ServiceDedicatedInternet -->|vlan<br/>(1:1)| IpamVLAN
+    ServiceDedicatedInternet -->|gateway_ip_address<br/>(1:1)| IpamIPAddress
+    ServiceDedicatedInternet -->|prefix<br/>(1:1)| IpamPrefix
+    
+    %% Location Relationships
+    LocationSite -->|services<br/>(1:many)| ServiceGeneric
+    LocationHosting -->|devices<br/>(1:many)| DcimPhysicalDevice
+    LocationHosting -->|prefixes<br/>(1:many)| IpamPrefix
+    LocationHosting -->|vlans<br/>(1:many)| IpamVLAN
+    
+    %% Device Relationships
+    DcimDevice -->|location<br/>(1:1)| LocationHosting
+    DcimGenericDevice -->|interfaces<br/>(1:many)| DcimInterface
+    DcimGenericDevice -->|primary_address<br/>(1:1)| IpamIPAddress
+    
+    %% Interface Relationships
+    DcimInterfaceL2 -->|untagged_vlan<br/>(1:1)| IpamVLAN
+    DcimInterfaceL2 -->|tagged_vlan<br/>(1:many)| IpamVLAN
+    DcimInterfaceL3 -->|ip_addresses<br/>(1:many)| IpamIPAddress
+    
+    %% IPAM Relationships
+    IpamIPAddress -->|interface<br/>(1:1)| DcimInterfaceL3
+    IpamPrefix -->|vlan<br/>(1:1)| IpamVLAN
+    IpamVLAN -->|l2domain<br/>(1:1)| IpamL2Domain
+    IpamL2Domain -->|vlans<br/>(1:many)| IpamVLAN
+    
+    %% Highlight key service flow
+    ServiceDedicatedInternet -.->|allocates from pool| IpamVLAN
+    ServiceDedicatedInternet -.->|allocates from pool| IpamPrefix
+    ServiceDedicatedInternet -.->|finds available| DcimInterface
+    ServiceDedicatedInternet -.->|creates gateway| IpamIPAddress
+```
+
+#### Key Concepts in the Diagram
+
+1. **Generic vs Concrete Objects**:
+   - **Generic** (dashed boxes): Abstract base classes that define common attributes
+   - **Concrete** (solid boxes): Actual objects that can be instantiated
+
+2. **Object Categories**:
+   - **Service Layer** (blue): Service definitions and instances
+   - **Location Layer** (pink): Geographic hierarchy and hosting locations
+   - **DCIM Layer** (orange): Physical devices and interfaces
+   - **IPAM Layer** (green): Network resources (IPs, VLANs, prefixes)
+
+3. **Relationship Types**:
+   - **Inheritance** (dashed arrows): Shows class hierarchy
+   - **Associations** (solid arrows): Shows data relationships with cardinality
+   - **Resource Allocation** (dotted arrows): Shows dynamic provisioning flow
+
 ### Consuming the schema library
 
 Much of the schema is based on the [Infrahub schema library](https://github.com/opsmill/schema-library), which provides reusable schema components for quickly scaffolding a schema.
@@ -509,6 +607,46 @@ class DedicatedInternetGenerator(InfrahubGenerator):
 2. **Relationship Integrity**: Bi-directional references maintained
 3. **Error Handling**: Fail fast with clear messages
 4. **Logging**: Detailed progress tracking for troubleshooting
+
+### Service Provisioning Flow
+
+Here's a focused view of how resources flow during service provisioning:
+
+```mermaid
+flowchart LR
+    %% Style definitions
+    classDef request fill:#ffd700,stroke:#333,stroke-width:2px
+    classDef pool fill:#87ceeb,stroke:#333,stroke-width:2px
+    classDef resource fill:#98fb98,stroke:#333,stroke-width:2px
+    classDef service fill:#ffb6c1,stroke:#333,stroke-width:2px
+
+    %% Nodes
+    SR[Service Request]:::request
+    SP[Service Object]:::service
+    
+    VP[VLAN Pool<br/>100-199]:::pool
+    PP[Prefix Pool<br/>10.0.0.0/16]:::pool
+    
+    V[VLAN 142]:::resource
+    P[Prefix 10.0.42.0/28]:::resource
+    SW[Switch Port<br/>ge-0/0/5]:::resource
+    GW[Gateway IP<br/>10.0.42.1/28]:::resource
+    
+    %% Flow
+    SR -->|Creates| SP
+    SP -->|Allocates from| VP
+    SP -->|Allocates from| PP
+    VP -->|Provides| V
+    PP -->|Provides| P
+    SP -->|Finds available| SW
+    P -->|First IP becomes| GW
+    
+    %% Assignments
+    V -.->|Assigned to| SP
+    P -.->|Assigned to| SP
+    SW -.->|Assigned to| SP
+    GW -.->|Assigned to| SP
+```
 
 ### Summary: From Request to Reality
 
