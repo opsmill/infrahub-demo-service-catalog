@@ -39,6 +39,12 @@ const config: Config = {
     ],
   ],
 
+  themes: ['@docusaurus/theme-mermaid'],
+  
+  markdown: {
+    mermaid: true,
+  },
+
   themeConfig: {
     navbar: {
       logo: {
@@ -67,6 +73,9 @@ const config: Config = {
     prism: {
       theme: prismThemes.oneDark,
       additionalLanguages: ["bash", "python", "markup-templating", "django", "json", "toml", "yaml"],
+    },
+    mermaid: {
+      theme: {light: 'neutral', dark: 'dark'},
     },
   } satisfies Preset.ThemeConfig,
 };
