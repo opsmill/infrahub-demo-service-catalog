@@ -24,7 +24,7 @@ ruff = "^0.11.2"
 mypy = "^1.15.0"
 invoke = "^2.2.0"
 yamllint = "^1.37.0"
-infrahub-testcontainers = "^1.2.5"
+infrahub-testcontainers = "^1.4.0"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
