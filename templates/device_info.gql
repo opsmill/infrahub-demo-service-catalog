@@ -6,6 +6,22 @@ query device_info($device_name: String!) {
         name {
           value
         }
+        location {
+          node {
+            vlans {
+              edges {
+                node {
+                  name {
+                    value
+                  }
+                  vlan_id {
+                    value
+                  }
+                }
+              }
+            }
+          }
+        }
         interfaces {
           edges {
             node {
@@ -56,24 +72,6 @@ query device_info($device_name: String!) {
                     }
                   }
                 }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  IpamL2Domain(name__value: "default") {
-    edges {
-      node {
-        vlans {
-          edges {
-            node {
-              vlan_id {
-                value
-              }
-              name {
-                value
               }
             }
           }

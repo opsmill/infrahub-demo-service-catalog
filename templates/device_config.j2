@@ -4,14 +4,10 @@
 !
 {% set device = data.DcimDevice.edges[0].node %}
 ! VLAN Configuration
-{% if data.IpamL2Domain.edges %}
-{% for l2domain in data.IpamL2Domain.edges %}
-{% if l2domain.node.vlans and l2domain.node.vlans.edges %}
-{% for vlan in l2domain.node.vlans.edges %}
+{% if device.location and device.location.node and device.location.node.vlans and device.location.node.vlans.edges %}
+{% for vlan in device.location.node.vlans.edges %}
 vlan {{ vlan.node.vlan_id.value }}
   name {{ vlan.node.name.value }}
-{% endfor %}
-{% endif %}
 {% endfor %}
 {% endif %}
 !

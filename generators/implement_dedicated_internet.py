@@ -80,6 +80,7 @@ class DedicatedInternetGenerator(InfrahubGenerator):
             role="customer",
             l2domain=["default"],
             service=self.customer_service,
+            location=[self.customer_service.location.id],
         )
 
         # And save it to Infrahub
