@@ -18,11 +18,11 @@ queries:
     file_path: "templates/device_info.gql"
 
 # SCHEMAS
-schemas:
-  - schemas/base
-  - schemas/location_minimal
-  - schemas/vlan
-  - schemas/service
+# schemas:
+#   - schemas/base
+#   - schemas/location_minimal
+#   - schemas/vlan
+#   - schemas/service
 
 # TRANSFORMS
 jinja2_transforms:
