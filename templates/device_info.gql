@@ -2,15 +2,19 @@ query device_info($device_name: String!) {
   DcimDevice(name__value: $device_name) {
     edges {
       node {
+        __typename
         id
         name {
           value
         }
         location {
           node {
+            __typename
+            id
             vlans {
               edges {
                 node {
+                  __typename
                   name {
                     value
                   }
