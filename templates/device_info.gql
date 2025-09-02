@@ -1,0 +1,84 @@
+query device_info($device_name: String!) {
+  DcimDevice(name__value: $device_name) {
+    edges {
+      node {
+        id
+        name {
+          value
+        }
+        interfaces {
+          edges {
+            node {
+              __typename
+              name {
+                value
+              }
+              description {
+                value
+              }
+              speed {
+                value
+              }
+              description {
+                value
+              }
+              enabled {
+                value
+              }
+              ... on DcimInterfaceL2 {
+                l2_mode {
+                  value
+                }
+                tagged_vlan {
+                  edges {
+                    node {
+                      vlan_id {
+                        value
+                      }
+                    }
+                  }
+                }
+                untagged_vlan {
+                  node {
+                    vlan_id {
+                      value
+                    }
+                  }
+                }
+              }
+              ... on DcimInterfaceL3 {
+                ip_addresses {
+                  edges {
+                    node {
+                      address {
+                        ip
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  IpamL2Domain(name__value: "default") {
+    edges {
+      node {
+        vlans {
+          edges {
+            node {
+              vlan_id {
+                value
+              }
+              name {
+                value
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
