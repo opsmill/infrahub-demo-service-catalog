@@ -83,4 +83,12 @@ query device_info($device_name: String!) {
       }
     }
   }
+  ServiceGeneric {
+    edges {
+      node {
+        __typename
+        id
+      }
+    }
+  }
 }
