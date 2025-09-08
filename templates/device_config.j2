@@ -1,0 +1,65 @@
+! Generic Configuration
+! /!\ This is pseudo config for illustrative purposes /!\
+! Generated for {{ data.DcimDevice.edges[0].node.name.value }}
+!
+{% set device = data.DcimDevice.edges[0].node %}
+! VLAN Configuration
+{% if device.location and device.location.node and device.location.node.vlans and device.location.node.vlans.edges %}
+{% for vlan in device.location.node.vlans.edges %}
+vlan {{ vlan.node.vlan_id.value }}
+  name {{ vlan.node.name.value }}
+{% endfor %}
+{% endif %}
+!
+! Interface Configuration
+{% for interface in device.interfaces.edges -%}
+{% set intf = interface.node %}
+interface {{ intf.name.value }}
+{% if intf.description.value %}
+  description "{{ intf.description.value }}"
+{% endif %}
+{% if intf.speed.value %}
+  speed {{ intf.speed.value }}
+{% endif %}
+{% if intf.enabled.value %}
+  no shutdown
+{% else %}
+  shutdown
+{% endif %}
+{# Handle Layer 2 interfaces #}
+{% if intf.__typename == "DcimInterfaceL2" %}
+  {% if intf.l2_mode and intf.l2_mode.value %}
+    {% if intf.l2_mode.value == "Access" %}
+  switchport mode access
+      {% if intf.untagged_vlan and intf.untagged_vlan.node %}
+  switchport access vlan {{ intf.untagged_vlan.node.vlan_id.value }}
+      {% endif %}
+    {% elif intf.l2_mode.value == "Trunk" %}
+  switchport mode trunk
+      {% if intf.untagged_vlan and intf.untagged_vlan.node %}
+  switchport trunk native vlan {{ intf.untagged_vlan.node.vlan_id.value }}
+      {% endif %}
+      {% if intf.tagged_vlan and intf.tagged_vlan.edges %}
+  switchport trunk allowed vlan {{ intf.tagged_vlan.edges | map(attribute='node.vlan_id.value') | join(',') }}
+      {% endif %}
+    {% endif %}
+  {% else %}
+  no switchport
+  {% endif %}
+{# Handle Layer 3 interfaces #}
+{% elif intf.__typename == "DcimInterfaceL3" %}
+  no switchport
+  {% if intf.ip_addresses and intf.ip_addresses.edges %}
+    {% for ip_addr in intf.ip_addresses.edges %}
+      {% if ip_addr.node and ip_addr.node.address and ip_addr.node.address.ip %}
+  ip address {{ ip_addr.node.address.ip }}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+{# Default case for unknown interface types #}
+{% else %}
+  no switchport
+{% endif %}
+!
+{% endfor %}
+! End of configuration

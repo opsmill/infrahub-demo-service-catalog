@@ -5,6 +5,7 @@ spec:
   kind: CoreStandardGroup
   data:
     - name: "automated_dedicated_internet"
+    - name: "generic_devices"
 ---
 apiVersion: infrahub.app/v1
 kind: Object

@@ -4,74 +4,82 @@ kind: Object
 spec:
   kind: DcimDevice
   data:
-# ------------------------------------------------------------
-# Core devices / L2
-# ------------------------------------------------------------
+    # ------------------------------------------------------------
+    # Core devices / L2
+    # ------------------------------------------------------------
     - name: sw01-bru01
       location: bru01
       status: active
       object_template: "Generic switch"
+      member_of_groups: ["generic_devices"]
       index: 1
     - name: sw02-bru01
       location: bru01
       status: active
       object_template: "Generic switch"
+      member_of_groups: ["generic_devices"]
       index: 2
-
     - name: sw01-lyn01
       location: lyn01
       status: active
       object_template: "Generic switch"
+      member_of_groups: ["generic_devices"]
       index: 1
     - name: sw02-lyn01
       location: lyn01
       status: active
       object_template: "Generic switch"
+      member_of_groups: ["generic_devices"]
       index: 2
-
     - name: sw01-par01
       location: par01
       status: active
       object_template: "Generic switch"
+      member_of_groups: ["generic_devices"]
       index: 1
     - name: sw02-par01
       location: par01
       status: active
       object_template: "Generic switch"
+      member_of_groups: ["generic_devices"]
       index: 2
 
-# ------------------------------------------------------------
-# Edge devices / L3
-# ------------------------------------------------------------
+    # ------------------------------------------------------------
+    # Edge devices / L3
+    # ------------------------------------------------------------
     - name: rb01-lyn01
       location: lyn01
       status: active
       index: 1
       object_template: "Generic router"
+      member_of_groups: ["generic_devices"]
     - name: rb02-lyn01
       location: lyn01
       status: active
       index: 2
       object_template: "Generic router"
-
+      member_of_groups: ["generic_devices"]
     - name: rb01-bru01
       location: bru01
       status: active
       index: 1
       object_template: "Generic router"
+      member_of_groups: ["generic_devices"]
     - name: rb02-bru01
       location: bru01
       status: active
       index: 2
       object_template: "Generic router"
-
+      member_of_groups: ["generic_devices"]
     - name: rb01-par01
       location: par01
       status: active
       index: 1
       object_template: "Generic router"
+      member_of_groups: ["generic_devices"]
     - name: rb02-par01
       location: par01
       status: active
       index: 2
       object_template: "Generic router"
+      member_of_groups: ["generic_devices"]
