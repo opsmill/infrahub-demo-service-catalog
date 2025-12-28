@@ -1,6 +1,8 @@
 import logging
+from typing import Any
 
 from infrahub_sdk import InfrahubClient
+from infrahub_sdk.node import InfrahubNode
 
 DEVICE_TYPES = ["Generic router", "Generic switch"]
 PREFIXES = ["172.16.1.0/24", "203.0.113.0/24"]
@@ -119,7 +121,7 @@ INTERFACE_TEMPLATES = {
 }
 
 
-LOCATIONS = [
+LOCATIONS: list[dict[str, Any]] = [
     {
         "name": "France",
         "shortname": "FR",
@@ -304,7 +306,9 @@ async def create_prefixes(client: InfrahubClient, log: logging.Logger, branch: s
     await customer_vlan_pool.save(allow_upsert=True)
 
 
-async def create_interfaces(client: InfrahubClient, device_obj, interface_list: list) -> None:
+async def create_interfaces(
+    client: InfrahubClient, device_obj: InfrahubNode, interface_list: list[dict[str, Any]]
+) -> None:
     # Prepare the batch object for interfaces
     interface_batch = await client.create_batch()
 

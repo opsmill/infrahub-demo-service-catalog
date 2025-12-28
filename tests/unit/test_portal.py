@@ -7,7 +7,7 @@ from service_catalog.infrahub import get_client
 
 
 @pytest.mark.skip(reason="Not working yet")
-def test_portal(provider: Provider, schema_01_client: InfrahubClientSync):
+def test_portal(provider: Provider, schema_01_client: InfrahubClientSync) -> None:
     def get_test_client(branch: str = "main") -> InfrahubClientSync:
         return schema_01_client
 
