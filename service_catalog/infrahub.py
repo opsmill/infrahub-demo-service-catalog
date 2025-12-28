@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from typing import Any
 
 import streamlit as st
 from fast_depends import Depends, inject
@@ -30,7 +31,8 @@ def get_client(branch: str = "main") -> InfrahubClientSync:
 def get_all_branches(
     client: InfrahubClientSync = Depends(get_client),
 ) -> dict[str, BranchData]:
-    return client.branch.all()
+    result: dict[str, BranchData] = client.branch.all()
+    return result
 
 
 @inject
@@ -41,7 +43,7 @@ def create_branch(branch_name: str, client: InfrahubClientSync = Depends(get_cli
 @inject(cast=False)  # type: ignore[call-overload]
 def create_and_save(
     kind: type[SchemaTypeSync],
-    data: dict,
+    data: dict[str, Any],
     branch: str = "main",
     client: InfrahubClientSync = Depends(get_client),
 ) -> SchemaTypeSync:
@@ -57,20 +59,21 @@ def create_and_save(
 @inject(cast=False)  # type: ignore[call-overload]
 def filter_nodes(
     kind: type[SchemaTypeSync],
-    filters: dict | None = None,
+    filters: dict[str, Any] | None = None,
     include: list[str] | None = None,
     branch: str = "main",
     client: InfrahubClientSync = Depends(get_client),
 ) -> list[SchemaTypeSync]:
     """Filter nodes by kind, branch, include and filters."""
     filters = filters or {}
-    return client.filters(
+    result: list[SchemaTypeSync] = client.filters(
         kind=kind,
         branch=branch,
         include=include,
         prefetch_relationships=True,
         **filters,
     )
+    return result
 
 
 @inject(cast=False)  # type: ignore[call-overload]

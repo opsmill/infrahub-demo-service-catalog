@@ -1,4 +1,5 @@
 __pycache__
-.envrc
 .DS_Store
 .env
+.envrc
+infrahub_demo_service_catalog.egg-info

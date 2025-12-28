@@ -1,41 +1,47 @@
-[tool.poetry]
+[project]
 name = "infrahub-demo-service-catalog"
 version = "0.1.1"
-description = ""
-authors = ["OpsMill <info@opsmill.com>"]
+description = "Service Catalog demo built with Infrahub and Streamlit for requesting and managing network services"
+authors = [{name = "OpsMill", email = "info@opsmill.com"}]
 readme = "README.md"
+requires-python = ">=3.10,<3.13"
 
-packages = [
-    { include = "service_catalog" },
+dependencies = [
+    "infrahub-sdk[all]>=1.17.0,<2.0.0",
+    "streamlit>=1.51.0,<2.0.0",
+    "watchdog>=6.0.0,<7.0.0",
+    "fast-depends>=2.4.12,<3.0.0",
+    "invoke>=2.2.1,<3.0.0",
 ]
 
-[tool.poetry.dependencies]
-python = "^3.10, <3.14"
-infrahub-sdk = {git = "https://github.com/opsmill/infrahub-sdk-python.git", rev = "v1.14.0", extras = ["all"]}
-streamlit = "^1.51.0"
-watchdog = "^6.0.0"
-fast-depends = "^2.4.12"
-
-[tool.poetry.group.dev.dependencies]
-pytest-httpx = "^0.35.0"
-pytest-clarity = "^1.0.1"
-pytest-asyncio = "^0.26.0"
-ruff = "^0.11.2"
-mypy = "^1.15.0"
-invoke = "^2.2.0"
-yamllint = "^1.37.0"
-infrahub-testcontainers = "^1.4.5"
+[dependency-groups]
+dev = [
+    "mypy>=1.19.1",
+    "pytest>=9.0.0",
+    "pytest-asyncio>=1.3.0",
+    "pytest-httpx>=0.35.0",
+    "pytest-clarity>=1.0.1",
+    "ruff>=0.14.0",
+    "types-pyyaml>=6.0.12",
+    "types-requests>=2.32.0",
+    "yamllint>=1.37.1",
+    "infrahub-testcontainers>=1.4.5",
+]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-filterwarnings = []
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
 addopts = "-vs"
 
 [tool.mypy]
 pretty = true
 ignore_missing_imports = true
 disallow_untyped_defs = true
+warn_return_any = true
+warn_unused_ignores = true
 
 [tool.ruff]
 line-length = 120
@@ -66,7 +72,6 @@ ignore = [
     "ISC",    # flake8-implicit-str-concat
     "COM812", # missing-trailing-comma
     "N999",   # Invalid module name
-    "PD901",  # Avoid using the generic variable name `df` for DataFrames
     "TD",
     "FIX",    # TODO
     "TRY",
@@ -124,5 +129,8 @@ max-complexity = 17
 ]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["service_catalog*"]
