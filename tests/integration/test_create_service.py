@@ -6,7 +6,7 @@ from fast_depends import Provider, dependency_provider
 from streamlit.testing.v1 import AppTest
 
 from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
-from infrahub_sdk.protocols import CoreGenericRepository
+from infrahub_sdk.protocols import CoreGenericRepository, CoreProposedChange
 from infrahub_sdk.spec.object import ObjectFile
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo
@@ -93,15 +93,35 @@ class TestServiceCatalog(TestInfrahubDockerClient):
     async def test_portal(self, override_client: None, client: InfrahubClient, default_branch: str) -> None:
         """
         Test the streamlit app on top of a running infrahub instance.
+
+        Verifies that submitting the form:
+        1. Creates a new branch
+        2. Creates a service object on that branch
+        3. Creates a proposed change targeting main
         """
+        service_identifier = "test-12345"
+        expected_branch_name = f"implement_{service_identifier.lower()}"
+
         app = AppTest.from_file("service_catalog/pages/1_🔌_Dedicated_Internet.py").run()
 
-        app.text_input("input-service-identifier").set_value("test-12345").run()
-        app.text_input("input-account-reference").set_value("test-12345").run()
+        app.text_input("input-service-identifier").set_value(service_identifier).run()
+        app.text_input("input-account-reference").set_value("acct-12345").run()
         app.selectbox("select-location").select("bru01").run()
         app.selectbox("select-bandwidth").set_value(100).run()
         app.select_slider("select-ip-package").set_value("small").run()
         app.button("FormSubmitter:new_dedicated_internet_form-Submit").click().run(timeout=15)
 
-        services = await client.all(kind=ServiceDedicatedInternet, branch=default_branch)
-        assert len(services) == 1
+        # Verify the branch was created
+        branches = await client.branch.all()
+        assert expected_branch_name in branches, f"Branch '{expected_branch_name}' was not created"
+
+        # Verify the service was created on the new branch
+        services = await client.all(kind=ServiceDedicatedInternet, branch=expected_branch_name)
+        assert len(services) == 1, "Service was not created on the new branch"
+        assert services[0].service_identifier.value == service_identifier
+
+        # Verify the proposed change was created
+        proposed_changes = await client.all(kind=CoreProposedChange)
+        assert len(proposed_changes) == 1, "Proposed change was not created"
+        assert proposed_changes[0].source_branch.value == expected_branch_name
+        assert proposed_changes[0].destination_branch.value == default_branch
