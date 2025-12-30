@@ -41,7 +41,7 @@ jobs:
       BRANCH_NAME: ${{ matrix.branch-name }}-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.version || github.event.inputs.version }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v6
