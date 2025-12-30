@@ -5,7 +5,7 @@ from service_catalog.infrahub import get_client, get_dropdown_options
 from service_catalog.protocols_sync import ServiceDedicatedInternet
 
 
-def test_get_dropdown_options_txt(provider: Provider, schema_01_client):
+def test_get_dropdown_options_txt(provider: Provider, schema_01_client: InfrahubClientSync) -> None:
     def get_test_client(branch: str = "main") -> InfrahubClientSync:
         return schema_01_client
 
@@ -21,7 +21,7 @@ def test_get_dropdown_options_txt(provider: Provider, schema_01_client):
     ]
 
 
-def test_get_dropdown_options_protocols(provider: Provider, schema_01_client):
+def test_get_dropdown_options_protocols(provider: Provider, schema_01_client: InfrahubClientSync) -> None:
     def get_test_client(branch: str = "main") -> InfrahubClientSync:
         return schema_01_client
 

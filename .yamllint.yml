@@ -4,6 +4,7 @@ extends: default
 ignore: |
   /.git
   /.github
+  /.venv
 
 rules:
   new-lines: disable

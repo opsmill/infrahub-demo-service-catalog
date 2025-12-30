@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from fast_depends import dependency_provider
+from fast_depends import Provider, dependency_provider
 from pytest_httpx import HTTPXMock
 
 from infrahub_sdk import Config, InfrahubClientSync
@@ -25,12 +25,12 @@ def fixtures_dir() -> Path:
 
 
 @pytest.fixture(scope="session")
-def schema_dir(root_dir) -> Path:
+def schema_dir(root_dir: Path) -> Path:
     return root_dir / "schemas"
 
 
 @pytest.fixture(scope="session")
-def data_dir(root_dir) -> Path:
+def data_dir(root_dir: Path) -> Path:
     return root_dir / "data"
 
 
@@ -46,7 +46,7 @@ def client() -> InfrahubClientSync:
 
 
 @pytest.fixture
-def provider():
+def provider() -> Provider:  # type: ignore[misc]
     yield dependency_provider
     dependency_provider.clear()
 
@@ -59,7 +59,7 @@ def repository_config(root_dir: Path) -> InfrahubRepositoryConfig:
 @pytest.fixture
 def schema_01(fixtures_dir: Path) -> dict[str, Any]:
     response_text = (fixtures_dir / "schemas" / "schema01.json").read_text(encoding="UTF-8")
-    return json.loads(response_text)
+    return dict(json.loads(response_text))
 
 
 @pytest.fixture

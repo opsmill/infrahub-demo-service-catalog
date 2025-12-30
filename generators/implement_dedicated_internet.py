@@ -23,10 +23,10 @@ IP_PACKAGE_TO_PREFIX_SIZE: dict[str, int] = {"small": 29, "medium": 28, "large":
 
 
 class DedicatedInternetGenerator(InfrahubGenerator):
-    customer_service: ServiceDedicatedInternet | None = None
-    allocated_vlan: IpamVLAN | None = None
-    allocated_prefix: IpamPrefix | None = None
-    gateway_ip: IpamIPAddress | None = None
+    customer_service: ServiceDedicatedInternet
+    allocated_vlan: IpamVLAN
+    allocated_prefix: IpamPrefix
+    gateway_ip: IpamIPAddress
 
     log = logging.getLogger("infrahub.tasks")
 
@@ -34,7 +34,7 @@ class DedicatedInternetGenerator(InfrahubGenerator):
         service_dict: dict = data["ServiceDedicatedInternet"]["edges"][0]["node"]
 
         # Translate the dict to proper object
-        self.customer_service: ServiceDedicatedInternet = await InfrahubNode.from_graphql(
+        self.customer_service = await InfrahubNode.from_graphql(
             client=self.client,
             data=service_dict,
             branch=self.branch,
@@ -216,7 +216,7 @@ class DedicatedInternetGenerator(InfrahubGenerator):
         if isinstance(self.allocated_vlan.vlan_id.value, int):
             vlan_id: int = self.allocated_vlan.vlan_id.value
         else:
-            vlan_id: int = self.allocated_vlan.vlan_id.value["value"]
+            vlan_id = self.allocated_vlan.vlan_id.value["value"]
 
         # Create interface
         gateway_interface = await self.client.create(

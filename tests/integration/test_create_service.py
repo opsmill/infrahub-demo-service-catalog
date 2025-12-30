@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 class TestServiceCatalog(TestInfrahubDockerClient):
     @pytest.fixture(scope="class")
-    def provider(self):
+    def provider(self) -> Provider:  # type: ignore[misc]
         yield dependency_provider
         dependency_provider.clear()
 
@@ -31,7 +31,7 @@ class TestServiceCatalog(TestInfrahubDockerClient):
 
     @pytest.fixture(scope="class")
     def schema_definition(self, schema_dir: Path) -> list[SchemaFile]:
-        return SchemaFile.load_from_disk(paths=[schema_dir])
+        return list(SchemaFile.load_from_disk(paths=[schema_dir]))
 
     @pytest.fixture(scope="class")
     def override_client(self, provider: Provider, client_sync: InfrahubClientSync) -> None:
@@ -46,7 +46,7 @@ class TestServiceCatalog(TestInfrahubDockerClient):
 
     def test_schema_load(
         self, client_sync: InfrahubClientSync, schema_definition: list[SchemaFile], default_branch: str
-    ):
+    ) -> None:
         """
         Load the schema from the schema directory into the infrahub instance.
         """
@@ -55,7 +55,7 @@ class TestServiceCatalog(TestInfrahubDockerClient):
         client_sync.schema.load(schemas=[item.content for item in schema_definition])
         client_sync.schema.wait_until_converged(branch=default_branch)
 
-    async def test_data_load(self, client: InfrahubClient, data_dir: Path, default_branch: str):
+    async def test_data_load(self, client: InfrahubClient, data_dir: Path, default_branch: str) -> None:
         """
         Load the data from the data directory into the infrahub instance.
         """
@@ -90,7 +90,7 @@ class TestServiceCatalog(TestInfrahubDockerClient):
         repos = await client.all(kind=CoreGenericRepository)
         assert repos
 
-    async def test_portal(self, override_client, client: InfrahubClient, default_branch: str):
+    async def test_portal(self, override_client: None, client: InfrahubClient, default_branch: str) -> None:
         """
         Test the streamlit app on top of a running infrahub instance.
         """
