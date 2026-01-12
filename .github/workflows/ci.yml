@@ -113,6 +113,8 @@ jobs:
       INFRAHUB_TESTING_TASK_WORKER_COUNT: '1'
       INFRAHUB_TESTING_API_SERVER_COUNT: '1'
       INFRAHUB_TESTING_WEB_CONCURRENCY: '1'
+      # Override entrypoint to use single gunicorn worker (env var above is read at import time)
+      INFRAHUB_TESTING_DOCKER_ENTRYPOINT: 'gunicorn --config backend/infrahub/serve/gunicorn_config.py -w 1 --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app'
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v6"
