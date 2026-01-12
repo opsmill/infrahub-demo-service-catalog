@@ -1,5 +1,8 @@
 import logging
+import warnings
+from collections.abc import Generator
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from fast_depends import Provider, dependency_provider
@@ -14,14 +17,59 @@ from infrahub_sdk.yaml import SchemaFile
 from service_catalog.infrahub import get_client
 from service_catalog.protocols_async import LocationSite, ServiceDedicatedInternet
 
+if TYPE_CHECKING:
+    from infrahub_testcontainers.container import InfrahubDockerCompose
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 logger = logging.getLogger(__name__)
 
+# Essential services for integration tests (excludes scraper and cadvisor which are optional metrics services)
+ESSENTIAL_SERVICES = [
+    "database",
+    "message-queue",
+    "cache",
+    "task-manager",
+    "task-manager-db",
+    "infrahub-server",
+    "infrahub-server-lb",
+    "task-worker",
+]
+
 
 class TestServiceCatalog(TestInfrahubDockerClient):
     @pytest.fixture(scope="class")
-    def provider(self) -> Provider:  # type: ignore[misc]
+    def infrahub_app(
+        self, request: pytest.FixtureRequest, infrahub_compose: "InfrahubDockerCompose"
+    ) -> Generator[dict[str, int], None, None]:
+        """Override to start only essential services, excluding scraper and cadvisor."""
+        tests_failed_before_class = request.session.testsfailed
+
+        # Only start essential services to avoid scraper/cadvisor failures
+        infrahub_compose.services = ESSENTIAL_SERVICES
+
+        try:
+            infrahub_compose.start()
+        except Exception as exc:
+            stdout, stderr = infrahub_compose.get_logs()
+            raise Exception(
+                f"Failed to start docker compose:\nStdout:\n{stdout}\nStderr:\n{stderr}"
+            ) from exc
+
+        yield infrahub_compose.get_services_port()
+
+        # Cleanup
+        tests_failed_during_class = request.session.testsfailed - tests_failed_before_class
+        if tests_failed_during_class > 0:
+            stdout, stderr = infrahub_compose.get_logs("infrahub-server", "task-worker")
+            warnings.warn(
+                f"Container logs:\nStdout:\n{stdout}\nStderr:\n{stderr}",
+                stacklevel=2,
+            )
+        infrahub_compose.stop()
+
+    @pytest.fixture(scope="class")
+    def provider(self) -> Generator[Provider, None, None]:
         yield dependency_provider
         dependency_provider.clear()
 
@@ -35,9 +83,7 @@ class TestServiceCatalog(TestInfrahubDockerClient):
 
     @pytest.fixture(scope="class")
     def override_client(self, provider: Provider, client_sync: InfrahubClientSync) -> None:
-        """
-        Override the client that will be returned by FastDepends.
-        """
+        """Override the client that will be returned by FastDepends."""
 
         def get_test_client(branch: str = "main") -> InfrahubClientSync:
             return client_sync
@@ -47,18 +93,14 @@ class TestServiceCatalog(TestInfrahubDockerClient):
     def test_schema_load(
         self, client_sync: InfrahubClientSync, schema_definition: list[SchemaFile], default_branch: str
     ) -> None:
-        """
-        Load the schema from the schema directory into the infrahub instance.
-        """
+        """Load the schema from the schema directory into the infrahub instance."""
         logger.info("Starting test: test_schema_load")
 
         client_sync.schema.load(schemas=[item.content for item in schema_definition])
         client_sync.schema.wait_until_converged(branch=default_branch)
 
     async def test_data_load(self, client: InfrahubClient, data_dir: Path, default_branch: str) -> None:
-        """
-        Load the data from the data directory into the infrahub instance.
-        """
+        """Load the data from the data directory into the infrahub instance."""
         logger.info("Starting test: test_data_load")
 
         await client.schema.all()
@@ -78,9 +120,9 @@ class TestServiceCatalog(TestInfrahubDockerClient):
     async def test_add_repository(
         self, client: InfrahubClient, root_dir: Path, default_branch: str, remote_repos_dir: Path
     ) -> None:
-        """
-        Add the local directory as a repository in the infrahub instance in order to validate the import of the repository
-        and have the generator operational in infrahub.
+        """Add the local directory as a repository in the infrahub instance.
+
+        This validates the import of the repository and ensures the generator is operational.
         """
         repo = GitRepo(name="infrahub-demo-service-catalog", src_directory=root_dir, dst_directory=remote_repos_dir)
         await repo.add_to_infrahub(client=client)
@@ -91,8 +133,7 @@ class TestServiceCatalog(TestInfrahubDockerClient):
         assert repos
 
     async def test_portal(self, override_client: None, client: InfrahubClient, default_branch: str) -> None:
-        """
-        Test the streamlit app on top of a running infrahub instance.
+        """Test the streamlit app on top of a running infrahub instance.
 
         Verifies that submitting the form:
         1. Creates a new branch
