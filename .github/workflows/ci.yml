@@ -112,6 +112,7 @@ jobs:
       # Use single instances to avoid race condition in work pool initialization
       INFRAHUB_TESTING_TASK_WORKER_COUNT: '1'
       INFRAHUB_TESTING_API_SERVER_COUNT: '1'
+      INFRAHUB_TESTING_WEB_CONCURRENCY: '1'
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v6"
