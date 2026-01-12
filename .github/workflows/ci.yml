@@ -109,8 +109,9 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
       INFRAHUB_API_TOKEN: '06438eb2-8019-4776-878c-0941b1f1d1ec'
       INFRAHUB_TIMEOUT: 600
-      # Use single task worker to avoid race condition in work pool initialization
+      # Use single instances to avoid race condition in work pool initialization
       INFRAHUB_TESTING_TASK_WORKER_COUNT: '1'
+      INFRAHUB_TESTING_API_SERVER_COUNT: '1'
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v6"
