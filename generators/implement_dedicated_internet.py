@@ -6,14 +6,27 @@ import random
 from infrahub_sdk.generator import InfrahubGenerator
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import CoreIPPrefixPool, CoreNumberPool
-from service_catalog.protocols_async import (
-    DcimDevice,
-    DcimInterfaceL3,
-    IpamIPAddress,
-    IpamPrefix,
-    IpamVLAN,
-    ServiceDedicatedInternet,
-)
+
+try:
+    # When imported as part of a package (e.g., within Infrahub)
+    from .protocols import (
+        DcimDevice,
+        DcimInterfaceL3,
+        IpamIPAddress,
+        IpamPrefix,
+        IpamVLAN,
+        ServiceDedicatedInternet,
+    )
+except ImportError:
+    # When imported directly (e.g., in unit tests)
+    from protocols import (  # type: ignore[no-redef]
+        DcimDevice,
+        DcimInterfaceL3,
+        IpamIPAddress,
+        IpamPrefix,
+        IpamVLAN,
+        ServiceDedicatedInternet,
+    )
 
 ACTIVE_STATUS = "active"
 SERVICE_VLAN_POOL: str = "Customer vlan pool"

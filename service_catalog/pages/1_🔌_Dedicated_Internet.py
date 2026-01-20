@@ -83,7 +83,7 @@ if submitted:
             "member_of_groups": ["automated_dedicated_internet"],
             "location": [location],
         }
-        service_obj = create_and_save(
+        service_obj: ServiceDedicatedInternet = create_and_save(
             kind=ServiceDedicatedInternet,
             data=service,
             branch=branch_name,
@@ -98,7 +98,7 @@ if submitted:
             "tags": ["service_request"],
         }
 
-        proposed_change_obj = create_and_save(
+        proposed_change_obj: CoreProposedChange = create_and_save(
             kind=CoreProposedChange,
             data=proposed_change,
         )

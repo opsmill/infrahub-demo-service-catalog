@@ -40,7 +40,7 @@ def create_branch(branch_name: str, client: InfrahubClientSync = Depends(get_cli
     return client.branch.create(branch_name=branch_name, sync_with_git=False)
 
 
-@inject(cast=False)  # type: ignore[call-overload]
+@inject(cast=False)  # type: ignore[arg-type]
 def create_and_save(
     kind: type[SchemaTypeSync],
     data: dict[str, Any],
@@ -56,7 +56,7 @@ def create_and_save(
     return infrahub_node
 
 
-@inject(cast=False)  # type: ignore[call-overload]
+@inject(cast=False)  # type: ignore[arg-type]
 def filter_nodes(
     kind: type[SchemaTypeSync],
     filters: dict[str, Any] | None = None,
@@ -76,7 +76,7 @@ def filter_nodes(
     return result
 
 
-@inject(cast=False)  # type: ignore[call-overload]
+@inject(cast=False)  # type: ignore[arg-type]
 def get_dropdown_options(
     kind: str | type[SchemaTypeSync],
     attribute_name: str,

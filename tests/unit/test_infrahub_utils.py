@@ -11,7 +11,7 @@ def test_get_dropdown_options_txt(provider: Provider, schema_01_client: Infrahub
 
     provider.override(get_client, get_test_client)
 
-    options = get_dropdown_options(kind="ServiceDedicatedInternet", attribute_name="status")
+    options: list[str] = get_dropdown_options(kind="ServiceDedicatedInternet", attribute_name="status")
     assert options == [
         "in-delivery",
         "in-decomissioning",
@@ -27,7 +27,7 @@ def test_get_dropdown_options_protocols(provider: Provider, schema_01_client: In
 
     provider.override(get_client, get_test_client)
 
-    options = get_dropdown_options(kind=ServiceDedicatedInternet, attribute_name="status")
+    options: list[str] = get_dropdown_options(kind=ServiceDedicatedInternet, attribute_name="status")
     assert options == [
         "in-delivery",
         "in-decomissioning",

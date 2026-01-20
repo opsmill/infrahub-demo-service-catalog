@@ -29,7 +29,7 @@ jobs:
       markdown: ${{ steps.changes.outputs.markdown_all }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
       - name: Check for file changes
         uses: opsmill/paths-filter@v3.0.2
         id: changes
@@ -44,7 +44,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -66,7 +66,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -82,7 +82,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
       - uses: actions/setup-node@v6
         with:
           node-version: 20
@@ -91,32 +91,42 @@ jobs:
       - name: "Run markdownlint"
         run: markdownlint "**/*.{md,mdx}"
 
-  # integration-test:
-  #   needs: ["python-lint", "yaml-lint", "markdown-lint"]
-  #   runs-on:
-  #     group: "huge-runners"
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       include:
-  #         - os: ubuntu-latest
-  #   timeout-minutes: 60
-  #   env:
-  #     INFRAHUB_DB_TYPE: neo4j
-  #     INFRAHUB_API_TOKEN: '06438eb2-8019-4776-878c-0941b1f1d1ec'
-  #     INFRAHUB_TIMEOUT: 600
-  #   steps:
-  #     - name: "Check out repository code"
-  #       uses: "actions/checkout@v5"
-  #     - name: Install uv
-  #       uses: astral-sh/setup-uv@v7
-  #       with:
-  #         version: "0.9.18"
-  #     - run: uv sync
-  #     - name: "Run tests"
-  #       run: uv run pytest tests/
-  #       env:
-  #         REPOSITORY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  integration-test:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    needs: ["files-changed", "python-lint", "yaml-lint", "markdown-lint"]
+    runs-on:
+      group: "huge-runners"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      INFRAHUB_DB_TYPE: neo4j
+      INFRAHUB_API_TOKEN: '06438eb2-8019-4776-878c-0941b1f1d1ec'
+      INFRAHUB_TIMEOUT: 600
+      # Use single instances to avoid race condition in work pool initialization
+      INFRAHUB_TESTING_TASK_WORKER_COUNT: '1'
+      INFRAHUB_TESTING_API_SERVER_COUNT: '1'
+      INFRAHUB_TESTING_WEB_CONCURRENCY: '1'
+      # Override entrypoint to use single gunicorn worker (env var above is read at import time)
+      INFRAHUB_TESTING_DOCKER_ENTRYPOINT: 'gunicorn --config backend/infrahub/serve/gunicorn_config.py -w 1 --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app'
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.9.18"
+      - run: uv sync
+      - name: "Run tests"
+        run: uv run pytest tests/ -v
+        env:
+          REPOSITORY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   documentation:
     defaults:
@@ -132,7 +142,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
       - name: Install NodeJS
@@ -162,7 +172,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v5"
+        uses: "actions/checkout@v6"
         with:
           submodules: true
 
