@@ -12,8 +12,7 @@ generics:
       - name__value
     order_by:
       - name__value
-    display_labels:
-      - name__value
+    display_label: name__value
     attributes:
       - name: name
         kind: Text
@@ -108,8 +107,7 @@ generics:
     human_friendly_id:
       - device__name__value
       - name__value
-    display_labels:
-      - name__value
+    display_label: name__value
     order_by:
       - device__name__value
       - name__value
@@ -180,8 +178,7 @@ nodes:
     icon: mdi:poll
     human_friendly_id:
       - name__value
-    display_labels:
-      - name__value
+    display_label: name__value
     order_by:
       - manufacturer__name__value
       - name__value
@@ -243,8 +240,7 @@ nodes:
     icon: mdi:application-cog-outline
     human_friendly_id:
       - name__value
-    display_labels:
-      - name__value
+    display_label: name__value
     order_by:
       - manufacturer__name__value
       - name__value
@@ -364,8 +360,7 @@ nodes:
     label: Interface L3
     icon: mdi:ethernet
     menu_placement: DcimInterface
-    display_labels:
-      - name__value
+    display_label: name__value
     order_by:
       - name__value
     inherit_from:
@@ -459,8 +454,7 @@ nodes:
     label: Interface L2
     icon: mdi:ethernet
     menu_placement: DcimInterface
-    display_labels:
-      - name__value
+    display_label: name__value
     order_by:
       - name__value
     inherit_from:

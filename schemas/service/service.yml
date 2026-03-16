@@ -13,8 +13,7 @@ generics:
       - service_identifier__value
     order_by:
       - service_identifier__value
-    display_labels:
-      - service_identifier__value
+    display_label: service_identifier__value
     attributes:
       - name: service_identifier
         kind: Text
