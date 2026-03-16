@@ -5,14 +5,14 @@ generator_definitions:
   - name: dedicated_internet_generator
     file_path: "generators/implement_dedicated_internet.py"
     targets: automated_dedicated_internet
-    query: dedicated-internet-info
+    query: dedicated_internet_info
     class_name: DedicatedInternetGenerator
     parameters:
       service_identifier: "service_identifier__value"
 
 # QUERIES
 queries:
-  - name: dedicated-internet-info
+  - name: dedicated_internet_info
     file_path: "generators/dedicated_internet.gql"
   - name: device_info
     file_path: "templates/device_info.gql"

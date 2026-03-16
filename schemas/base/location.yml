@@ -53,8 +53,10 @@ generics:
         peer: IpamPrefix
         cardinality: many
         optional: true
+        identifier: location__prefixes
       - name: devices
         label: Devices
         peer: DcimPhysicalDevice
         cardinality: many
         optional: true
+        identifier: location__devices

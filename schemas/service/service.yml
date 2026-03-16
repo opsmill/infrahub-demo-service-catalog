@@ -58,11 +58,11 @@ nodes:
           - name: active
             label: Active
             color: "#66CC66"
-          - name: in-decomissioning
-            label: In Decomissioning
+          - name: in-decommissioning
+            label: In Decommissioning
             color: "#FFAB59"
-          - name: decomissioned
-            label: Decomissioned
+          - name: decommissioned
+            label: Decommissioned
             color: "#FF6B6B"
       - name: bandwidth
         kind: Dropdown

@@ -193,8 +193,8 @@ class DedicatedInternetGenerator(InfrahubGenerator):
             # If we don't have any interface available
             if selected_interface is None:
                 msg: str = f"There is no physical port to allocate to customer on {switch}"
-                self.log.exception(msg)
-                raise Exception(msg)
+                self.log.error(msg)
+                raise RuntimeError(msg)
             self.log.info(f"Found port {selected_interface.peer.display_label} to allocate to the service.")
             allocated_port = selected_interface
 
