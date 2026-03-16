@@ -2,7 +2,7 @@
 apiVersion: infrahub.app/v1
 kind: Object
 spec:
-  kind: CoreReadOnlyRepository
+  kind: CoreRepository
   data:
-    - name: "infrahub-demo-service-catalog"
-      location: "https://github.com/opsmill/infrahub-demo-service-catalog.git"
+    - name: local-repository
+      location: "/upstream"
