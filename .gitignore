@@ -67,3 +67,6 @@ docs/build/
 *.key
 credentials.json
 secrets.yaml
+
+# Ansible/Semaphore cache
+ansible/*.md5
