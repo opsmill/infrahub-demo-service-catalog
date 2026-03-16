@@ -55,3 +55,13 @@ invoke lint
 ```bash
 uv run pytest
 ```
+
+### Validate Schemas
+
+```bash
+uv run infrahubctl schema check schemas/
+```
+
+### Running CLI Tools
+
+All Python CLI tools (e.g., `infrahubctl`, `pytest`, `invoke`) must be run via `uv run` to ensure they use the project's virtual environment. Never call them directly.
