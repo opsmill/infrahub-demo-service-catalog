@@ -64,38 +64,32 @@ spec:
                   icon: "mdi:ethernet"
                   kind: DcimInterface
 
-          - namespace: Infra
-            name: MlagMenu
-            label: MLAG
-            icon: "eos-icons:cluster-management"
-            children:
-              data:
-                - name: MlagDomain
-                  namespace: Infra
-                  label: "MLAG Domain"
-                  icon: "eos-icons:cluster-management"
-                  kind: InfraMlagDomain
+          - namespace: Dcim
+            name: DeviceType
+            label: Device Type
+            kind: DcimDeviceType
+            icon: "mdi:poll"
 
-                - name: MlagInterface
-                  namespace: Infra
-                  label: "MLAG Interface"
-                  icon: "mdi:ethernet"
-                  kind: InfraMlagInterface
-
-          - namespace: Infra
+          - namespace: Dcim
             name: Platform
             label: Platform
-            kind: InfraPlatform
+            kind: DcimPlatform
             icon: "mdi:application-cog-outline"
 
-    - namespace: Infra
+    - namespace: Service
       name: Service
       label: Services
       icon: "carbon:container-services"
       children:
         data:
-          - namespace: Infra
-            name: BackBoneService
-            label: "Backbone Service"
-            kind: InfraBackBoneService
-            icon: "carbon:container-services"
+          - namespace: Service
+            name: Generic
+            label: "All Services"
+            kind: ServiceGeneric
+            icon: "mdi:package-variant"
+
+          - namespace: Service
+            name: DedicatedInternet
+            label: "Dedicated Internet"
+            kind: ServiceDedicatedInternet
+            icon: "mdi:ethernet"
