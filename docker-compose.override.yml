@@ -20,5 +20,32 @@ services:
     <<: *infrahub_custom_build
   task-worker:
     <<: *infrahub_custom_build
+    volumes:
+      - ./:/upstream
   task-manager:
     <<: *infrahub_custom_build
+
+  semaphore:
+    build:
+      context: ./semaphore
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      SEMAPHORE_DB_DIALECT: sqlite
+      SEMAPHORE_ADMIN: admin
+      SEMAPHORE_ADMIN_PASSWORD: changeme
+      SEMAPHORE_ADMIN_NAME: Admin
+      SEMAPHORE_ADMIN_EMAIL: admin@localhost
+      SEMAPHORE_FORWARDED_ENV_VARS: '["INFRAHUB_ADDRESS","INFRAHUB_API_TOKEN"]'
+      INFRAHUB_ADDRESS: http://infrahub-server:8000
+      INFRAHUB_API_TOKEN: ${INFRAHUB_API_TOKEN:-44af444d-3b26-410d-9546-b758657e026c}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./ansible:/opt/semaphore/playbooks
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
