@@ -1,0 +1,25 @@
+---
+plugin: opsmill.infrahub.inventory
+api_endpoint: "http://infrahub-server:8000"
+token: "44af444d-3b26-410d-9546-b758657e026c"
+
+timeout: 30
+strict: false
+
+nodes:
+  DcimDevice:
+    include:
+      - name
+      - location.name
+      - role
+      - device_type.name
+      - device_type.platform.ansible_network_os
+      - primary_address.address
+      - status
+
+compose:
+  hostname: name
+  ansible_host: primary_address.address | ansible.utils.ipaddr('address')
+  device_type: device_type.name
+  platform: device_type.platform.ansible_network_os
+  location: location.name
