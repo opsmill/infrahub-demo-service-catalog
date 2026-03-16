@@ -5,13 +5,13 @@
   gather_facts: false
 
   tasks:
-    - name: "{{ inventory_hostname }} — Connecting to device"
-      ansible.builtin.debug:
-        msg: |
-          ──────────────────────────────────────────────────────────────
-          Connecting to {{ inventory_hostname }} ({{ platform | default('generic') }})
-          Role: {{ role | default('unknown') }} | Status: {{ status | default('unknown') }}
-          ──────────────────────────────────────────────────────────────
+    # - name: "{{ inventory_hostname }} — Connecting to device"
+    #   ansible.builtin.debug:
+    #     msg: |
+    #       ──────────────────────────────────────────────────────────────
+    #       Connecting to {{ inventory_hostname }} ({{ platform | default('generic') }})
+    #       Role: {{ role | default('unknown') }} | Status: {{ status | default('unknown') }}
+    #       ──────────────────────────────────────────────────────────────
 
     - name: "Fetch configuration artifact from Infrahub"
       opsmill.infrahub.artifact_fetch:
@@ -24,11 +24,4 @@
         content: "{{ artifact.text }}"
         dest: "/tmp/{{ inventory_hostname }}_startup_config.txt"
 
-
-    # - name: "Fetch configuration artifact from Infrahub for {{ inventory_hostname }}"
-    #   opsmill.infrahub.artifact_fetch:
-    #     artifact_name: "Startup Config for {{ inventory_hostname }}"
-    #     target_id: "{{ id }}"
-    #   register: device_config
-    #   ignore_errors: true
 
