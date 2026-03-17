@@ -5,7 +5,7 @@ endpoints in order to pre-configure the project at startup.
 
 ## Authentication
 
-```
+```text
 POST /api/auth/login
 Content-Type: application/json
 
@@ -21,7 +21,7 @@ All subsequent calls use `Authorization: Bearer <bearer_token>`.
 
 ## 1. Create Project
 
-```
+```text
 POST /api/projects
 {
   "name": "Service Catalog Deployment",
@@ -34,7 +34,7 @@ Response: { "id": 1, "name": "Service Catalog Deployment", ... }
 
 ## 2. Create Key Store Entry
 
-```
+```text
 POST /api/project/1/keys
 {
   "name": "Local Access",
@@ -47,7 +47,7 @@ Response: { "id": 1, ... }
 
 ## 3. Create Repository
 
-```
+```text
 POST /api/project/1/repositories
 {
   "name": "Local Playbooks",
@@ -62,7 +62,7 @@ Response: { "id": 1, ... }
 
 ## 4. Create Inventory
 
-```
+```text
 POST /api/project/1/inventory
 {
   "name": "Infrahub Devices",
@@ -77,7 +77,7 @@ Response: { "id": 1, ... }
 
 ## 5. Create Task Template
 
-```
+```text
 POST /api/project/1/templates
 {
   "name": "Deploy Configuration",

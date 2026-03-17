@@ -23,5 +23,3 @@
       ansible.builtin.copy:
         content: "{{ artifact.text }}"
         dest: "/tmp/{{ inventory_hostname }}_startup_config.txt"
-
-

@@ -128,7 +128,7 @@
 
 ## Parallel Example: User Story 1
 
-```
+```text
 # Launch role and playbook creation together:
 Task: T009 "Create simulate_deploy role in ansible/roles/simulate_deploy/tasks/main.yml"
 Task: T010 "Create deployment playbook in ansible/deploy.yml"

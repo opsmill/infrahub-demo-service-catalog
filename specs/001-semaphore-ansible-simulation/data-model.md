@@ -55,6 +55,7 @@ nodes:
 ### Deployment Playbook (`deploy.yml`)
 
 High-level structure:
+
 1. Gather inventory from Infrahub (automatic via inventory plugin)
 2. For each device, fetch generated configuration artifact from Infrahub
 3. Simulate configuration push (print config, emit simulated device response)
@@ -62,7 +63,7 @@ High-level structure:
 
 ## Relationships
 
-```
+```text
 Semaphore Project
 ├── Key Store Entry (credentials)
 ├── Repository (local playbook path)
