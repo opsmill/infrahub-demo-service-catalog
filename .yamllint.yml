@@ -5,6 +5,7 @@ ignore: |
   /.git
   /.github
   /.venv
+  /dev/skills/developing-with-streamlit
 
 rules:
   new-lines: disable

@@ -55,6 +55,7 @@ exclude = [
     "build",
     "dist",
     "examples",
+    "dev/skills/developing-with-streamlit",
 ]
 
 
@@ -130,6 +131,7 @@ max-complexity = 17
 ]
 
 [tool.rumdl]
+exclude = ["dev/skills/developing-with-streamlit"]
 disable = [
     "MD013",
     "MD014",
