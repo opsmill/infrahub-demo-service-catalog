@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "skills": {
+    "infrahub-analyst": {
+      "source": "opsmill/infrahub-skills",
+      "sourceType": "github",
+      "computedHash": "bd95c916e144001782ac55c30b30150c3fcd645acbcb9af0612a3aa9cbd0414a"
+    },
+    "infrahub-check-creator": {
+      "source": "opsmill/infrahub-skills",
+      "sourceType": "github",
+      "computedHash": "f73dc3b6c73962154ce6ce7a22988975ba139b42dad33dbfd9af092019d93788"
+    },
+    "infrahub-generator-creator": {
+      "source": "opsmill/infrahub-skills",
+      "sourceType": "github",
+      "computedHash": "1b03a145faab5a1dd53deaf93501baa700b92321213708769f917900adcba7f1"
+    },
+    "infrahub-menu-creator": {
+      "source": "opsmill/infrahub-skills",
+      "sourceType": "github",
+      "computedHash": "141dd5df05891cdbc93f39277df011f0608543ac608ab8a18ec6a79326414feb"
+    },
+    "infrahub-object-creator": {
+      "source": "opsmill/infrahub-skills",
+      "sourceType": "github",
+      "computedHash": "dfb96c1c9ed996ca77243eda3d2d8d737702774b7d133835bd76146a2ecc49fe"
+    },
+    "infrahub-repo-auditor": {
+      "source": "opsmill/infrahub-skills",
+      "sourceType": "github",
+      "computedHash": "bc0ed1f377fd0377588f6eda0ead355f52e3e55a192ad30d05c894336b56db48"
+    },
+    "infrahub-schema-creator": {
+      "source": "opsmill/infrahub-skills",
+      "sourceType": "github",
+      "computedHash": "ef82e3ffc1fabd289a4ea3e8a895dac57ce6c3995e3adb749001abfecab8b3f0"
+    },
+    "infrahub-transform-creator": {
+      "source": "opsmill/infrahub-skills",
+      "sourceType": "github",
+      "computedHash": "60b72346ec5d037b3e31a2acf67512f05a72a8e4cca6b8bb762014ebaa149700"
+    }
+  }
+}
