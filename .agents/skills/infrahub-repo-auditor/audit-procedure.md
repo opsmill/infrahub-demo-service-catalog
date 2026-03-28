@@ -99,11 +99,11 @@ convention).
 ### 2.5 Hierarchy checks
 
 - If any node/generic has `hierarchical: true`, verify:
-  - A generic exists with `hierarchical: true`
-  - Nodes specify `parent` and `children` fields
-  - Root nodes have `parent: null`
-  - Leaf nodes have `children: null`
-  - Full kind used in `parent` and `children` values
+    - A generic exists with `hierarchical: true`
+    - Nodes specify `parent` and `children` fields
+    - Root nodes have `parent: null`
+    - Leaf nodes have `children: null`
+    - Full kind used in `parent` and `children` values
 
 ### 2.6 Display settings
 
@@ -133,15 +133,15 @@ convention).
 - Severity: **HIGH** — deprecated since Infrahub v1.5,
   will be removed in a future release
 - For each occurrence, output:
-  - The file path and node/generic name
-  - The current `display_labels` value (the list)
-  - The exact `display_label` replacement (Jinja2
+    - The file path and node/generic name
+    - The current `display_labels` value (the list)
+    - The exact `display_label` replacement (Jinja2
     template string)
 - Conversion: wrap each list item in `{{ }}`, join
   with spaces into a single string
-  - Example: `display_labels: ["name__value"]` →
+    - Example: `display_labels: ["name__value"]` →
     `display_label: "{{ name__value }}"`
-  - Example: `display_labels: ["form_factor__value",
+    - Example: `display_labels: ["form_factor__value",
     "sfp_type__value"]` →
     `display_label: "{{ form_factor__value }} {{ sfp_type__value }}"`
 - See
