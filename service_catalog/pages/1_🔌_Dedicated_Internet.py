@@ -39,6 +39,17 @@ with st.form("new_dedicated_internet_form"):
         key="select-location",
     )
 
+    # Interface Mode
+    interface_mode_options: list = get_dropdown_options(
+        kind=ServiceDedicatedInternet,
+        attribute_name="interface_mode",
+    )
+    interface_mode = st.selectbox(
+        "Interface Mode",
+        options=interface_mode_options,
+        key="select-interface-mode",
+    )
+
     # Bandwidth
     bandwidth_options: list = get_dropdown_options(
         kind=ServiceDedicatedInternet,
@@ -80,6 +91,7 @@ if submitted:
             "status": "draft",
             "bandwidth": bandwidth,
             "ip_package": ip_package,
+            "interface_mode": interface_mode,
             "member_of_groups": ["automated_dedicated_internet"],
             "location": [location],
         }

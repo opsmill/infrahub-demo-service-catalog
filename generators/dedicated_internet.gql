@@ -16,6 +16,9 @@ query DedicatedInternetQuery($service_identifier: String!) {
         ip_package {
           value
         }
+        interface_mode {
+          value
+        }
         location {
           node {
             __typename

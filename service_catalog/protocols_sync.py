@@ -156,6 +156,7 @@ class LocationCountry(LocationGeneric):
 class ServiceDedicatedInternet(ServiceGeneric):
     account_reference: String
     bandwidth: Dropdown
+    interface_mode: Dropdown
     ip_package: Dropdown
     service_identifier: String
     status: DropdownOptional

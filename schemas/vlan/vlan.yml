@@ -127,6 +127,14 @@ extensions:
           cardinality: many
           kind: Component
           identifier: interface_l2__tagged_vlan
+    - kind: IpamVLAN
+      relationships:
+        - name: ip_addresses
+          label: IP Addresses
+          peer: IpamIPAddress
+          optional: true
+          cardinality: many
+          identifier: vlan__ip_addresses
     - kind: LocationHosting
       relationships:
         - name: vlans

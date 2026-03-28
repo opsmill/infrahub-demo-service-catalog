@@ -158,6 +158,7 @@ class IpamIPAddress(BuiltinIPAddress):
     profiles: RelationshipManager
     service: RelatedNode
     subscriber_of_groups: RelationshipManager
+    vlan: RelatedNode
 
 
 class IpamPrefix(BuiltinIPPrefix):
@@ -206,6 +207,7 @@ class IpamVLAN(CoreNode):
 class ServiceDedicatedInternet(ServiceGeneric):
     account_reference: String
     bandwidth: Dropdown
+    interface_mode: Dropdown
     ip_package: Dropdown
     service_identifier: String
     status: DropdownOptional

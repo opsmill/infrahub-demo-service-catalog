@@ -1,6 +1,6 @@
 ---
 plugin: opsmill.infrahub.inventory
-api_endpoint: "http://infrahub-server:8000"
+api_endpoint: "http://infrahub-web:8000"
 token: "44af444d-3b26-410d-9546-b758657e026c"
 
 timeout: 30

@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Infrahub Service Factory — Project Overview</title>
+<style>
+  :root {
+    --primary: #1a2332;
+    --accent: #3b82f6;
+    --accent-light: #60a5fa;
+    --surface: #f8fafc;
+    --surface-alt: #ffffff;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --gradient-start: #1a2332;
+    --gradient-end: #1e3a5f;
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --purple: #8b5cf6;
+    --rose: #f43f5e;
+    --teal: #14b8a6;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    color: var(--text);
+    background: var(--surface);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Hero ── */
+  .hero {
+    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+    color: #fff;
+    padding: 80px 0 60px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(59,130,246,.12) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .hero .container { position: relative; z-index: 1; }
+  .hero .badge {
+    display: inline-block;
+    background: rgba(59,130,246,.2);
+    border: 1px solid rgba(59,130,246,.35);
+    color: var(--accent-light);
+    padding: 6px 16px;
+    border-radius: 100px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  .hero h1 { font-size: 2.8rem; font-weight: 700; margin-bottom: 16px; line-height: 1.15; }
+  .hero h1 span { color: var(--accent-light); }
+  .hero p { font-size: 1.15rem; color: rgba(255,255,255,.75); max-width: 640px; margin-bottom: 32px; }
+  .hero-stats { display: flex; gap: 48px; margin-top: 12px; }
+  .hero-stat strong { display: block; font-size: 1.6rem; color: #fff; }
+  .hero-stat span { font-size: .82rem; color: rgba(255,255,255,.55); text-transform: uppercase; letter-spacing: .04em; }
+
+  /* ── Layout ── */
+  .container { max-width: 1120px; margin: 0 auto; padding: 0 32px; }
+
+  section { padding: 64px 0; }
+  section + section { border-top: 1px solid var(--border); }
+
+  .section-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .section-title { font-size: 1.75rem; font-weight: 700; margin-bottom: 12px; color: var(--primary); }
+  .section-subtitle { font-size: 1rem; color: var(--text-muted); max-width: 620px; margin-bottom: 40px; }
+
+  /* ── Architecture Diagram ── */
+  .arch-diagram {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 48px 36px;
+    margin-top: 8px;
+  }
+  .arch-row {
+    display: flex;
+    align-items: stretch;
+    gap: 24px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .arch-box {
+    flex: 1;
+    min-width: 200px;
+    max-width: 280px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    transition: box-shadow .2s, transform .2s;
+  }
+  .arch-box:hover { box-shadow: 0 8px 24px rgba(0,0,0,.07); transform: translateY(-2px); }
+  .arch-icon {
+    width: 52px; height: 52px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 14px; font-size: 1.5rem;
+  }
+  .arch-box h4 { font-size: .95rem; font-weight: 700; margin-bottom: 6px; color: var(--primary); }
+  .arch-box p { font-size: .82rem; color: var(--text-muted); line-height: 1.5; }
+  .icon-blue { background: rgba(59,130,246,.1); color: var(--accent); }
+  .icon-green { background: rgba(34,197,94,.1); color: var(--green); }
+  .icon-purple { background: rgba(139,92,246,.1); color: var(--purple); }
+  .icon-amber { background: rgba(245,158,11,.1); color: var(--amber); }
+  .icon-teal { background: rgba(20,184,166,.1); color: var(--teal); }
+  .icon-rose { background: rgba(244,63,94,.1); color: var(--rose); }
+
+  .arch-connector {
+    display: flex;
+    justify-content: center;
+    padding: 14px 0;
+    color: var(--text-muted);
+    font-size: .75rem;
+    letter-spacing: .04em;
+  }
+  .arch-connector .arrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .arch-connector .arrow::before,
+  .arch-connector .arrow::after {
+    content: '';
+    width: 40px;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Schema Cards ── */
+  .schema-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 20px;
+  }
+  .schema-card {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    transition: box-shadow .2s;
+  }
+  .schema-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.06); }
+  .schema-card h4 { font-size: .92rem; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .schema-card .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .schema-card ul { list-style: none; padding: 0; }
+  .schema-card li {
+    font-size: .8rem;
+    color: var(--text-muted);
+    padding: 3px 0;
+    padding-left: 16px;
+    position: relative;
+  }
+  .schema-card li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 6px;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Workflow Timeline ── */
+  .workflow-timeline { position: relative; padding-left: 40px; }
+  .workflow-timeline::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--accent), var(--green));
+    border-radius: 2px;
+  }
+  .wf-step {
+    position: relative;
+    margin-bottom: 36px;
+    padding: 20px 24px;
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  .wf-step:last-child { margin-bottom: 0; }
+  .wf-step::before {
+    content: attr(data-step);
+    position: absolute;
+    left: -40px;
+    top: 20px;
+    width: 30px;
+    height: 30px;
+    background: var(--accent);
+    color: #fff;
+    font-size: .75rem;
+    font-weight: 700;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .wf-step h4 { font-size: .95rem; font-weight: 700; margin-bottom: 4px; }
+  .wf-step p { font-size: .85rem; color: var(--text-muted); }
+  .wf-step .tag {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: .7rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 100px;
+    letter-spacing: .03em;
+  }
+  .tag-blue { background: rgba(59,130,246,.1); color: var(--accent); }
+  .tag-green { background: rgba(34,197,94,.1); color: var(--green); }
+  .tag-purple { background: rgba(139,92,246,.1); color: var(--purple); }
+  .tag-amber { background: rgba(245,158,11,.1); color: var(--amber); }
+  .tag-teal { background: rgba(20,184,166,.1); color: var(--teal); }
+
+  /* ── Features Grid ── */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+  }
+  .feature-card {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    transition: box-shadow .2s;
+  }
+  .feature-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.06); }
+  .feature-icon {
+    width: 42px; height: 42px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.15rem; flex-shrink: 0;
+  }
+  .feature-card h4 { font-size: .92rem; font-weight: 700; margin-bottom: 4px; }
+  .feature-card p { font-size: .82rem; color: var(--text-muted); line-height: 1.5; }
+
+  /* ── Benefits ── */
+  .benefits-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 24px;
+  }
+  .benefit-card {
+    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+    border-radius: 12px;
+    padding: 28px;
+    color: #fff;
+  }
+  .benefit-card h4 { font-size: .95rem; font-weight: 700; margin-bottom: 6px; }
+  .benefit-card p { font-size: .82rem; color: rgba(255,255,255,.7); line-height: 1.5; }
+  .benefit-card .b-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: rgba(255,255,255,.12);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+    margin-bottom: 14px;
+  }
+
+  /* ── Code Snippet ── */
+  .code-block {
+    background: #0f172a;
+    border-radius: 12px;
+    padding: 24px 28px;
+    overflow-x: auto;
+    margin-top: 20px;
+  }
+  .code-block pre {
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: .78rem;
+    line-height: 1.7;
+    color: #cbd5e1;
+  }
+  .code-block .kw { color: #c084fc; }
+  .code-block .str { color: #86efac; }
+  .code-block .cmt { color: #475569; }
+  .code-block .attr { color: #60a5fa; }
+  .code-block .val { color: #fbbf24; }
+
+  /* ── Footer ── */
+  footer {
+    background: var(--primary);
+    color: rgba(255,255,255,.5);
+    text-align: center;
+    padding: 32px;
+    font-size: .82rem;
+  }
+  footer strong { color: rgba(255,255,255,.8); }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .hero h1 { font-size: 2rem; }
+    .hero-stats { flex-direction: column; gap: 16px; }
+    .arch-row { flex-direction: column; align-items: center; }
+    .arch-box { max-width: 100%; }
+    section { padding: 48px 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ HERO ═══════════════════════ -->
+<section class="hero">
+  <div class="container">
+    <div class="badge">Infrahub Project Demo</div>
+    <h1>Network Service Factory<br>powered by <span>Infrahub</span></h1>
+    <p>A complete demonstration of how Infrahub serves as the backbone of automated network service delivery — from data modeling and resource allocation to configuration rendering and deployment.</p>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <strong>6</strong>
+        <span>Schema Domains</span>
+      </div>
+      <div class="hero-stat">
+        <strong>20+</strong>
+        <span>Object Models</span>
+      </div>
+      <div class="hero-stat">
+        <strong>End-to-end</strong>
+        <span>Automated Lifecycle</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ HIGH-LEVEL ARCHITECTURE ═══════════════════════ -->
+<section>
+  <div class="container">
+    <div class="section-label">Architecture</div>
+    <div class="section-title">High-Level System Overview</div>
+    <div class="section-subtitle">Four integrated components work together, with Infrahub as the single source of truth at the center of the stack.</div>
+
+    <div class="arch-diagram">
+      <!-- Top row: external facing -->
+      <div class="arch-row">
+        <div class="arch-box">
+          <div class="arch-icon icon-blue">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+          </div>
+          <h4>Streamlit Frontend</h4>
+          <p>Self-service portal where users request and track network services like Dedicated Internet and Wireless.</p>
+        </div>
+        <div class="arch-box">
+          <div class="arch-icon icon-purple">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9l2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9l2.83-2.83"/></svg>
+          </div>
+          <h4>Infrahub (SoT)</h4>
+          <p>Source of Truth for all infrastructure data. Manages schemas, branches, generators, resources pools, and GraphQL API.</p>
+        </div>
+        <div class="arch-box">
+          <div class="arch-icon icon-green">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+          </div>
+          <h4>Git Repository</h4>
+          <p>Version-controlled repository integrated with Infrahub for schemas, generators, Jinja2 templates, and GraphQL queries.</p>
+        </div>
+      </div>
+
+      <div class="arch-connector">
+        <div class="arrow">GraphQL API &amp; SDK &bull; Branch-based workflows &bull; Webhooks</div>
+      </div>
+
+      <!-- Bottom row: backend / automation -->
+      <div class="arch-row">
+        <div class="arch-box">
+          <div class="arch-icon icon-amber">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+          </div>
+          <h4>Ansible + Semaphore</h4>
+          <p>Ansible playbooks fetch rendered configs from Infrahub artifacts and deploy to devices. Semaphore provides a UI to trigger and track runs.</p>
+        </div>
+        <div class="arch-box">
+          <div class="arch-icon icon-teal">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </div>
+          <h4>Generators</h4>
+          <p>Python-based Infrahub generators that run server-side to auto-allocate VLANs, IP prefixes, ports, and gateways when a service is requested.</p>
+        </div>
+        <div class="arch-box">
+          <div class="arch-icon icon-rose">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          </div>
+          <h4>Jinja2 Templates</h4>
+          <p>Jinja2 config templates combined with GraphQL queries to render device-specific configurations as Infrahub artifacts.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SCHEMA OVERVIEW ═══════════════════════ -->
+<section>
+  <div class="container">
+    <div class="section-label">Data Model</div>
+    <div class="section-title">Schema Domains Loaded into Infrahub</div>
+    <div class="section-subtitle">The project uses a modular, layered schema covering network infrastructure, IP address management, locations, VLANs, and service definitions.</div>
+
+    <div class="schema-grid">
+      <div class="schema-card">
+        <h4><span class="dot" style="background:var(--accent)"></span> DCIM</h4>
+        <ul>
+          <li>Device, DeviceType, Platform</li>
+          <li>InterfaceL2, InterfaceL3</li>
+          <li>Endpoint, Connector</li>
+          <li>Roles: core, edge, spine, leaf, cpe</li>
+        </ul>
+      </div>
+      <div class="schema-card">
+        <h4><span class="dot" style="background:var(--green)"></span> IPAM</h4>
+        <ul>
+          <li>IPAddress (with FQDN)</li>
+          <li>Prefix (with status, role, gateway)</li>
+          <li>Inherits from BuiltinIPAddress/IPPrefix</li>
+          <li>Resource Pool support</li>
+        </ul>
+      </div>
+      <div class="schema-card">
+        <h4><span class="dot" style="background:var(--purple)"></span> VLAN</h4>
+        <ul>
+          <li>VLAN (ID from Number Pool)</li>
+          <li>L2 Domain</li>
+          <li>Relationships to prefixes &amp; interfaces</li>
+          <li>Location-aware VLAN assignment</li>
+        </ul>
+      </div>
+      <div class="schema-card">
+        <h4><span class="dot" style="background:var(--amber)"></span> Location</h4>
+        <ul>
+          <li>Country &rarr; Metro &rarr; Site &rarr; Rack</li>
+          <li>Hierarchical parent/children</li>
+          <li>LocationHosting for devices &amp; VLANs</li>
+          <li>Facility IDs, physical addresses</li>
+        </ul>
+      </div>
+      <div class="schema-card">
+        <h4><span class="dot" style="background:var(--rose)"></span> Organization</h4>
+        <ul>
+          <li>Manufacturer (linked to DeviceType)</li>
+          <li>Provider (circuits &amp; locations)</li>
+          <li>Generic base with tags</li>
+        </ul>
+      </div>
+      <div class="schema-card">
+        <h4><span class="dot" style="background:var(--teal)"></span> Service</h4>
+        <ul>
+          <li>ServiceGeneric base (identifier, account)</li>
+          <li>DedicatedInternet (bandwidth, IP package)</li>
+          <li>Status lifecycle: draft &rarr; active</li>
+          <li>Links to interface, VLAN, prefix, gateway</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Schema snippet -->
+    <div class="code-block">
+<pre><span class="cmt"># Example: Service Schema (service.yml)</span>
+<span class="attr">nodes</span>:
+  - <span class="attr">name</span>: <span class="str">DedicatedInternet</span>
+    <span class="attr">namespace</span>: <span class="str">Service</span>
+    <span class="attr">inherit_from</span>: [<span class="str">ServiceGeneric</span>]
+    <span class="attr">attributes</span>:
+      - <span class="attr">name</span>: <span class="str">status</span>       <span class="cmt"># draft → in-delivery → active → decommissioned</span>
+        <span class="attr">kind</span>: <span class="val">Dropdown</span>
+      - <span class="attr">name</span>: <span class="str">bandwidth</span>    <span class="cmt"># 100 Mbps, 1 Gbps, 10 Gbps</span>
+        <span class="attr">kind</span>: <span class="val">Dropdown</span>
+      - <span class="attr">name</span>: <span class="str">ip_package</span>   <span class="cmt"># small (6 IPs), medium (14), large (30)</span>
+        <span class="attr">kind</span>: <span class="val">Dropdown</span>
+      - <span class="attr">name</span>: <span class="str">interface_mode</span> <span class="cmt"># Layer 2 or Layer 3</span>
+        <span class="attr">kind</span>: <span class="val">Dropdown</span>
+    <span class="attr">relationships</span>:
+      - <span class="attr">name</span>: <span class="str">location</span>             <span class="cmt"># → LocationSite</span>
+      - <span class="attr">name</span>: <span class="str">dedicated_interfaces</span>  <span class="cmt"># → DcimInterface (many)</span>
+      - <span class="attr">name</span>: <span class="str">vlan</span>                 <span class="cmt"># → IpamVLAN</span>
+      - <span class="attr">name</span>: <span class="str">prefix</span>               <span class="cmt"># → IpamPrefix</span>
+      - <span class="attr">name</span>: <span class="str">gateway_ip_address</span>   <span class="cmt"># → IpamIPAddress</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SERVICE WORKFLOW ═══════════════════════ -->
+<section>
+  <div class="container">
+    <div class="section-label">Workflow</div>
+    <div class="section-title">Service Delivery Lifecycle</div>
+    <div class="section-subtitle">From a user clicking "Request Service" to configuration deployed on network devices — this is the end-to-end flow powered by Infrahub generators and branch-based change management.</div>
+
+    <div class="workflow-timeline">
+      <div class="wf-step" data-step="1">
+        <h4>Service Request via Portal</h4>
+        <p>A user selects a site, bandwidth, IP package, and interface mode through the Streamlit self-service portal. The request is submitted to Infrahub via its Python SDK.</p>
+        <span class="tag tag-blue">Streamlit + Infrahub SDK</span>
+      </div>
+      <div class="wf-step" data-step="2">
+        <h4>Service Object Created in a Branch</h4>
+        <p>A <code>ServiceDedicatedInternet</code> object is created in an Infrahub branch with status <em>draft</em>. This isolates changes from production data until they are reviewed and merged.</p>
+        <span class="tag tag-purple">Infrahub Branch</span>
+      </div>
+      <div class="wf-step" data-step="3">
+        <h4>Generator Executes Automatically</h4>
+        <p>The <code>DedicatedInternetGenerator</code> runs server-side, performing automated resource allocation: a VLAN from the number pool, an IP prefix from the prefix pool, a free physical port on the site's core switch, and a gateway IP on the edge router.</p>
+        <span class="tag tag-green">Infrahub Generator</span>
+      </div>
+      <div class="wf-step" data-step="4">
+        <h4>Proposed Change &amp; Review</h4>
+        <p>A Proposed Change (similar to a pull request) is created in Infrahub, letting the team review all allocated resources, data integrity checks, and rendered configs before merging to main.</p>
+        <span class="tag tag-amber">Infrahub Proposed Change</span>
+      </div>
+      <div class="wf-step" data-step="5">
+        <h4>Configuration Rendering</h4>
+        <p>Jinja2 templates combined with GraphQL queries render device-specific configs (VLANs, SVIs, interface settings) as Infrahub artifacts, ready to be consumed downstream.</p>
+        <span class="tag tag-teal">Jinja2 + GraphQL</span>
+      </div>
+      <div class="wf-step" data-step="6">
+        <h4>Deployment via Ansible &amp; Semaphore</h4>
+        <p>Ansible playbooks fetch the rendered configuration artifacts from Infrahub using the <code>opsmill.infrahub</code> collection, then push configs to devices. Semaphore provides a web UI to trigger and monitor deployment runs.</p>
+        <span class="tag tag-amber">Ansible + Semaphore</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ KEY INFRAHUB FEATURES ═══════════════════════ -->
+<section>
+  <div class="container">
+    <div class="section-label">Infrahub Features Used</div>
+    <div class="section-title">Key Platform Capabilities</div>
+    <div class="section-subtitle">This project exercises many of Infrahub's core features, demonstrating the platform's value as a unified infrastructure management system.</div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon icon-purple">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        </div>
+        <div>
+          <h4>Extensible Schema System</h4>
+          <p>YAML-based schemas with generics, inheritance, extensions, and relationships. Models are versioned alongside code in Git.</p>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon icon-green">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3v12"/><path d="M18 9a3 3 0 0 1-3 3H9"/><circle cx="6" cy="18" r="3"/><circle cx="6" cy="3" r="3"/><circle cx="18" cy="6" r="3"/></svg>
+        </div>
+        <div>
+          <h4>Branch-Based Change Management</h4>
+          <p>Git-like branching for infrastructure data. Proposed Changes provide review and validation before merging — no accidental changes in production.</p>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon icon-teal">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        </div>
+        <div>
+          <h4>Generators</h4>
+          <p>Server-side Python scripts that react to data changes and automate complex multi-step provisioning workflows like resource allocation.</p>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon icon-blue">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        </div>
+        <div>
+          <h4>GraphQL API</h4>
+          <p>Full-featured GraphQL API for querying and mutating data. Used by the frontend, generators, and Jinja2 templates alike.</p>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon icon-amber">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg>
+        </div>
+        <div>
+          <h4>Resource Pools</h4>
+          <p>Number pools (VLANs) and IP prefix pools provide deterministic, conflict-free allocation of network resources across concurrent requests.</p>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon icon-rose">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div>
+          <h4>Artifact Rendering</h4>
+          <p>Jinja2 templates + GraphQL queries produce device configurations stored as versioned artifacts, bridging the SoT with network automation tools.</p>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon icon-green">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+        </div>
+        <div>
+          <h4>Git Integration</h4>
+          <p>The repository is integrated as a <code>CoreRepository</code> in Infrahub. Schema changes, generators, templates, and transforms are all version-controlled.</p>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon icon-purple">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        </div>
+        <div>
+          <h4>Python SDK</h4>
+          <p>The <code>infrahub-sdk</code> provides a typed, async Python API for creating, querying, and managing objects — used in both the portal and the generators.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ CUSTOMER BENEFITS ═══════════════════════ -->
+<section>
+  <div class="container">
+    <div class="section-label">Value Proposition</div>
+    <div class="section-title">What This Means for Your Organization</div>
+    <div class="section-subtitle">Adopting Infrahub as your infrastructure source of truth delivers tangible operational improvements.</div>
+
+    <div class="benefits-grid">
+      <div class="benefit-card">
+        <div class="b-icon">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <h4>Service delivery in minutes, not weeks</h4>
+        <p>Automated resource allocation and config rendering eliminate manual steps and reduce provisioning time from days to minutes.</p>
+      </div>
+      <div class="benefit-card">
+        <div class="b-icon">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h4>Eliminate configuration drift</h4>
+        <p>A single source of truth ensures that network state in Infrahub matches what's deployed. Branch reviews catch errors before they reach production.</p>
+      </div>
+      <div class="benefit-card">
+        <div class="b-icon">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <h4>Self-service empowers teams</h4>
+        <p>Non-network engineers can request services through a portal with guardrails — freeing network teams from routine ticket handling.</p>
+      </div>
+      <div class="benefit-card">
+        <div class="b-icon">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        </div>
+        <h4>Built-in audit trail &amp; compliance</h4>
+        <p>Every change is tracked via branches and proposed changes, providing a full audit trail of who changed what, when, and why.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ FOOTER ═══════════════════════ -->
+<footer>
+  <strong>OpsMill</strong> &mdash; Infrahub Service Factory Demo &bull; Built for customer presentation
+</footer>
+
+</body>
+</html>

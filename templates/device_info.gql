@@ -21,6 +21,15 @@ query device_info($device_name: String!) {
                   vlan_id {
                     value
                   }
+                  ip_addresses {
+                    edges {
+                      node {
+                        address {
+                          ip
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }

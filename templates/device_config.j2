@@ -11,6 +11,20 @@ vlan {{ vlan.node.vlan_id.value }}
 {% endfor %}
 {% endif %}
 !
+! VLAN Interface (SVI) Configuration
+{% if device.location and device.location.node and device.location.node.vlans and device.location.node.vlans.edges %}
+{% for vlan in device.location.node.vlans.edges %}
+{% if vlan.node.ip_addresses and vlan.node.ip_addresses.edges %}
+interface vlan {{ vlan.node.vlan_id.value }}
+{% for ip_addr in vlan.node.ip_addresses.edges %}
+{% if ip_addr.node and ip_addr.node.address and ip_addr.node.address.ip %}
+  ip address {{ ip_addr.node.address.ip }}
+{% endif %}
+{% endfor %}
+!
+{% endif %}
+{% endfor %}
+{% endif %}
 ! Interface Configuration
 {% for interface in device.interfaces.edges -%}
 {% set intf = interface.node %}

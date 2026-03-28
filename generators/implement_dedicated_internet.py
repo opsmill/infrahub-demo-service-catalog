@@ -70,8 +70,11 @@ class DedicatedInternetGenerator(InfrahubGenerator):
         # Allocate port
         await self.allocate_port()
 
-        # Create L3 interface for gateway
-        await self.allocate_gateway()
+        # Create gateway based on interface mode
+        if self.customer_service.interface_mode.value == "l3":
+            await self.allocate_gateway()
+        else:
+            await self.allocate_gateway_l2()
 
     async def allocate_vlan(self) -> None:
         """Create a VLAN with ID coming from the pool provided and assign this VLAN to the service."""
@@ -212,6 +215,30 @@ class DedicatedInternetGenerator(InfrahubGenerator):
 
         # Finally save
         await allocated_port.save(allow_upsert=True)
+
+    async def allocate_gateway_l2(self) -> None:
+        """Allocate a gateway IP linked to the VLAN for L2 mode (no dedicated L3 interface)."""
+        self.log.info("Allocating L2 gateway IP to this service...")
+
+        # Compute the gateway ip
+        address: str = f"{next(self.allocated_prefix.prefix.value.hosts())!s}/{self.prefix_length!s}"
+
+        # Create IP object linked to VLAN instead of an interface
+        self.gateway_ip = await self.client.create(
+            kind=IpamIPAddress,
+            address=address,
+            service=self.customer_service,
+            vlan=self.allocated_vlan,
+        )
+        await self.gateway_ip.save(allow_upsert=True)
+
+        self.log.info(f"Gateway `{self.gateway_ip.address.value}` assigned (L2 mode)!")
+
+        # Add gateway to prefix
+        self.allocated_prefix.gateway = self.gateway_ip
+
+        # Save prefix
+        await self.allocated_prefix.save(allow_upsert=True)
 
     async def allocate_gateway(self) -> None:
         """Allocate a gateway to the service."""

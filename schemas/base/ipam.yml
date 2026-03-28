@@ -32,6 +32,12 @@ nodes:
         peer: DcimInterfaceL3
         optional: true
         cardinality: one
+      - name: vlan
+        peer: IpamVLAN
+        optional: true
+        cardinality: one
+        kind: Attribute
+        identifier: vlan__ip_addresses
 
   - name: Prefix
     namespace: Ipam
