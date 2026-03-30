@@ -23,6 +23,7 @@ schemas:
   - schemas/location_minimal
   - schemas/vlan
   - schemas/service
+  - schemas/circuit
 
 # OBJECTS
 objects:
