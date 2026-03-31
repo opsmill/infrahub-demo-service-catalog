@@ -7,6 +7,9 @@ query device_info($device_name: String!) {
         name {
           value
         }
+        serial {
+          value
+        }
         location {
           node {
             __typename

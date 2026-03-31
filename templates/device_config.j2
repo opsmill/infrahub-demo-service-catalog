@@ -3,6 +3,10 @@
 ! Generated for {{ data.DcimDevice.edges[0].node.name.value }}
 !
 {% set device = data.DcimDevice.edges[0].node %}
+{% if device.serial and device.serial.value %}
+license udi pid {{ device.name.value }} sn {{ device.serial.value }}
+{% endif %}
+!
 ! VLAN Configuration
 {% if device.location and device.location.node and device.location.node.vlans and device.location.node.vlans.edges %}
 {% for vlan in device.location.node.vlans.edges %}
