@@ -27,7 +27,7 @@ dev = [
     "types-requests>=2.32.0",
     "yamllint>=1.37.1",
     "infrahub-testcontainers>=1.8.2",
-    "rumdl>=0.1.0",
+    "rumdl>=0.1.71",
 ]
 
 [tool.pytest.ini_options]
