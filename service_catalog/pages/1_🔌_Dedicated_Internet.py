@@ -7,6 +7,7 @@ from service_catalog.infrahub import (
     create_and_save,
     create_branch,
     filter_nodes,
+    get_dropdown_label_mapping,
     get_dropdown_options,
 )
 from service_catalog.protocols_sync import LocationSite, ServiceDedicatedInternet
@@ -17,13 +18,14 @@ st.markdown("# Dedicated Internet")
 st.write("This form will allow you to request the implementation of a new dedicated internet service.")
 
 
-def get_locations_options() -> list[str]:
+def get_location_label_mapping() -> dict[str, str]:
+    """Return a mapping of shortname -> display name for locations."""
     site_list: list[LocationSite] = filter_nodes(
         kind=LocationSite,
         filters={},
     )
 
-    return [site.shortname.value for site in site_list]
+    return {site.shortname.value: site.name.value for site in site_list}
 
 
 with st.form("new_dedicated_internet_form"):
@@ -32,10 +34,11 @@ with st.form("new_dedicated_internet_form"):
     account_reference = st.text_input("Account Reference", key="input-account-reference")
 
     # Location
-    location_options: list = get_locations_options()
+    location_label_mapping: dict[str, str] = get_location_label_mapping()
     location = st.selectbox(
         "Location",
-        location_options,
+        options=list(location_label_mapping.keys()),
+        format_func=lambda x: location_label_mapping[x],
         key="select-location",
     )
 
@@ -44,9 +47,14 @@ with st.form("new_dedicated_internet_form"):
         kind=ServiceDedicatedInternet,
         attribute_name="bandwidth",
     )
+    bandwidth_label_mapping: dict[str, str] = get_dropdown_label_mapping(
+        kind=ServiceDedicatedInternet,
+        attribute_name="bandwidth",
+    )
     bandwidth = st.selectbox(
         "Bandwidth",
         options=bandwidth_options,
+        format_func=lambda x: bandwidth_label_mapping.get(x, x),
         key="select-bandwidth",
     )
 
@@ -55,10 +63,15 @@ with st.form("new_dedicated_internet_form"):
         kind=ServiceDedicatedInternet,
         attribute_name="ip_package",
     )
+    ip_package_label_mapping: dict[str, str] = get_dropdown_label_mapping(
+        kind=ServiceDedicatedInternet,
+        attribute_name="ip_package",
+    )
 
     ip_package = st.select_slider(
         "IP Package",
         options=ip_package_options,
+        format_func=lambda x: ip_package_label_mapping.get(x, x),
         key="select-ip-package",
     )
 

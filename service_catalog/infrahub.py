@@ -94,3 +94,20 @@ def get_dropdown_options(
     if matched_attribute is None:
         raise Exception(f"Can't find attribute `{attribute_name}` for kind `{kind}`")
     return [choice["name"] for choice in matched_attribute.choices]
+
+
+@inject(cast=False)  # type: ignore[arg-type]
+def get_dropdown_label_mapping(
+    kind: str | type[SchemaTypeSync],
+    attribute_name: str,
+    branch: str = "main",
+    client: InfrahubClientSync = Depends(get_client),
+) -> dict[str, str]:
+    """Get a mapping of name -> label for dropdown choices."""
+    schema = client.schema.get(kind=kind, branch=branch)
+
+    matched_attribute = next((att for att in schema.attributes if att.name == attribute_name), None)
+
+    if matched_attribute is None:
+        raise Exception(f"Can't find attribute `{attribute_name}` for kind `{kind}`")
+    return {choice["name"]: choice["label"] for choice in matched_attribute.choices}
