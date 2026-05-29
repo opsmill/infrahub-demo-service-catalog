@@ -12,7 +12,8 @@ nodes:
     uniqueness_constraints:
       - [l2domain, vlan_id__value]
     human_friendly_id:
-      - name__value
+      - l2domain__name__value
+      - vlan_id__value
     order_by:
       - name__value
     display_label: name__value
