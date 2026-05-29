@@ -30,6 +30,10 @@ dev = [
     "rumdl>=0.1.71",
 ]
 
+[tool.uv]
+# numpy 2.4.0 was yanked upstream (backward-compatibility bug); avoid it.
+constraint-dependencies = ["numpy!=2.4.0"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
