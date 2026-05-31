@@ -21,6 +21,7 @@ SEMAPHORE_PLAYBOOK_PATH = "/opt/semaphore/playbooks"
 
 @task
 def build(context: Context, cache: bool = True) -> None:
+    """Build the Docker Compose images for the service catalog stack."""
     compose_cmd = base_compose_cmd + " build"
     if not cache:
         compose_cmd += " --no-cache"
@@ -30,6 +31,7 @@ def build(context: Context, cache: bool = True) -> None:
 
 @task
 def start(context: Context, build: bool = False) -> None:
+    """Start the service catalog stack in the background via Docker Compose."""
     compose_cmd = base_compose_cmd + " up -d"
     if build:
         compose_cmd += " --build"
@@ -39,6 +41,7 @@ def start(context: Context, build: bool = False) -> None:
 
 @task
 def stop(context: Context) -> None:
+    """Stop the service catalog stack and remove containers."""
     compose_cmd = base_compose_cmd + " down"
     with context.cd(MAIN_DIRECTORY_PATH):
         context.run(compose_cmd, pty=True)
@@ -46,6 +49,7 @@ def stop(context: Context) -> None:
 
 @task
 def destroy(context: Context) -> None:
+    """Stop the stack and delete all associated volumes (irreversible)."""
     compose_cmd = base_compose_cmd + " down -v"
     with context.cd(MAIN_DIRECTORY_PATH):
         context.run(compose_cmd, pty=True)
@@ -53,6 +57,7 @@ def destroy(context: Context) -> None:
 
 @task
 def restart(context: Context) -> None:
+    """Restart all running containers in the service catalog stack."""
     compose_cmd = base_compose_cmd + " restart"
     with context.cd(MAIN_DIRECTORY_PATH):
         context.run(compose_cmd, pty=True)
@@ -77,14 +82,14 @@ def format_markdown(context: Context) -> None:
 
 @task(name="format")
 def format_all(context: Context) -> None:
-    """Run all formatters."""
+    """Run all code formatters (ruff for Python, rumdl for Markdown)."""
     format_python(context)
     format_markdown(context)
 
 
 @task
 def lint_yaml(context: Context) -> None:
-    """Run Linter to check all Python files."""
+    """Lint all YAML files with yamllint."""
     print(" - Check code with yamllint")
     exec_cmd = "yamllint ."
     with context.cd(MAIN_DIRECTORY_PATH):
@@ -93,7 +98,7 @@ def lint_yaml(context: Context) -> None:
 
 @task
 def lint_mypy(context: Context) -> None:
-    """Run Linter to check all Python files."""
+    """Type-check the service_catalog package with mypy."""
     print(" - Check code with mypy")
     exec_cmd = "mypy --show-error-codes service_catalog"
     with context.cd(MAIN_DIRECTORY_PATH):
@@ -102,7 +107,7 @@ def lint_mypy(context: Context) -> None:
 
 @task
 def lint_ruff(context: Context) -> None:
-    """Run Linter to check all Python files."""
+    """Lint all Python files with ruff."""
     print(" - Check code with ruff")
     exec_cmd = "ruff check ."
     with context.cd(MAIN_DIRECTORY_PATH):
@@ -111,7 +116,7 @@ def lint_ruff(context: Context) -> None:
 
 @task
 def lint_rumdl(context: Context) -> None:
-    """Run rumdl to check all Markdown files."""
+    """Lint all Markdown files with rumdl."""
     print(" - Check code with rumdl")
     exec_cmd = "rumdl check ."
     with context.cd(MAIN_DIRECTORY_PATH):
@@ -120,7 +125,7 @@ def lint_rumdl(context: Context) -> None:
 
 @task(name="lint")
 def lint_all(context: Context) -> None:
-    """Run all linters."""
+    """Run all linters (yamllint, ruff, mypy, rumdl)."""
     lint_yaml(context)
     lint_ruff(context)
     lint_mypy(context)
@@ -129,7 +134,7 @@ def lint_all(context: Context) -> None:
 
 @task(name="docs")
 def docs_build(context: Context) -> None:
-    """Build documentation website."""
+    """Build the documentation website with Docusaurus (npm run build)."""
     exec_cmd = "npm run build"
 
     with context.cd(DOCUMENTATION_DIRECTORY):
@@ -280,7 +285,7 @@ def init_semaphore(
 
 @task(name="init", pre=[init_semaphore])
 def init(context: Context) -> None:
-    """Initialize the demo."""
+    """Initialize the demo: seed Semaphore, then load the repository and permissions into Infrahub."""
     exec_cmd = ["uv run infrahubctl object load repository.yaml", "uv run infrahubctl object load permissions.yml"]
     with context.cd(MAIN_DIRECTORY_PATH):
         for cmd in exec_cmd:
