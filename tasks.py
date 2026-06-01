@@ -11,7 +11,60 @@ DOCUMENTATION_DIRECTORY = CURRENT_DIRECTORY.parent / "docs"
 MAIN_DIRECTORY_PATH = Path(__file__).parent
 
 infrahub_address = os.getenv("INFRAHUB_ADDRESS")
-base_compose_cmd: str = "docker compose"
+
+INFRAHUB_VERSION = os.getenv("INFRAHUB_VERSION", "stable")
+INFRAHUB_ENTERPRISE = os.getenv("INFRAHUB_ENTERPRISE", "false").lower() == "true"
+INFRAHUB_PROJECT_NAME = os.getenv("INFRAHUB_PROJECT_NAME", MAIN_DIRECTORY_PATH.name)
+
+
+def get_compose_command() -> str:
+    """Build the ``docker compose`` command with layered compose-file support.
+
+    Resolution order for the base stack definition:
+    1. Local ``docker-compose.yml`` (committed) when it exists.
+    2. Otherwise a fresh base stack is downloaded from infrahub.opsmill.io and
+       piped to ``docker compose`` over stdin.
+
+    ``docker-compose.override.yml`` is always layered on top when present; in
+    this repo it wires every service to the custom image built from the local
+    ``Dockerfile``. The Compose project name is controlled by
+    ``INFRAHUB_PROJECT_NAME`` and defaults to the directory name.
+
+    Returns:
+        The ``docker compose`` command prefix, ready for a subcommand suffix.
+    """
+    local_compose_file = MAIN_DIRECTORY_PATH / "docker-compose.yml"
+    override_file = MAIN_DIRECTORY_PATH / "docker-compose.override.yml"
+
+    base_cmd = f"docker compose -p {INFRAHUB_PROJECT_NAME}"
+
+    if local_compose_file.exists():
+        cmd = f"{base_cmd} -f {local_compose_file}"
+    else:
+        edition = "enterprise/" if INFRAHUB_ENTERPRISE else ""
+        base_url = f"https://infrahub.opsmill.io/{edition}{INFRAHUB_VERSION}"
+        cmd = f"curl -s {base_url} | {base_cmd} -f -"
+
+    if override_file.exists():
+        cmd += f" -f {override_file}"
+    return cmd
+
+
+def get_compose_source() -> str:
+    """Describe where the base compose definition comes from.
+
+    Returns:
+        A short human-readable description of the compose source.
+    """
+    if (MAIN_DIRECTORY_PATH / "docker-compose.yml").exists():
+        return "Local (docker-compose.yml)"
+
+    edition = "Enterprise" if INFRAHUB_ENTERPRISE else "Community"
+    return f"infrahub.opsmill.io ({edition} {INFRAHUB_VERSION})"
+
+
+COMPOSE_COMMAND = get_compose_command()
+COMPOSE_SOURCE = get_compose_source()
 
 SEMAPHORE_URL = "http://localhost:3000"
 SEMAPHORE_ADMIN = "admin"
@@ -22,7 +75,7 @@ SEMAPHORE_PLAYBOOK_PATH = "/opt/semaphore/playbooks"
 @task
 def build(context: Context, cache: bool = True) -> None:
     """Build the Docker Compose images for the service catalog stack."""
-    compose_cmd = base_compose_cmd + " build"
+    compose_cmd = COMPOSE_COMMAND + " build"
     if not cache:
         compose_cmd += " --no-cache"
     with context.cd(MAIN_DIRECTORY_PATH):
@@ -32,7 +85,8 @@ def build(context: Context, cache: bool = True) -> None:
 @task
 def start(context: Context, build: bool = False) -> None:
     """Start the service catalog stack in the background via Docker Compose."""
-    compose_cmd = base_compose_cmd + " up -d"
+    print(f"Compose source: {COMPOSE_SOURCE}")
+    compose_cmd = COMPOSE_COMMAND + " up -d"
     if build:
         compose_cmd += " --build"
     with context.cd(MAIN_DIRECTORY_PATH):
@@ -42,7 +96,7 @@ def start(context: Context, build: bool = False) -> None:
 @task
 def stop(context: Context) -> None:
     """Stop the service catalog stack and remove containers."""
-    compose_cmd = base_compose_cmd + " down"
+    compose_cmd = COMPOSE_COMMAND + " down"
     with context.cd(MAIN_DIRECTORY_PATH):
         context.run(compose_cmd, pty=True)
 
@@ -50,7 +104,7 @@ def stop(context: Context) -> None:
 @task
 def destroy(context: Context) -> None:
     """Stop the stack and delete all associated volumes (irreversible)."""
-    compose_cmd = base_compose_cmd + " down -v"
+    compose_cmd = COMPOSE_COMMAND + " down -v"
     with context.cd(MAIN_DIRECTORY_PATH):
         context.run(compose_cmd, pty=True)
 
@@ -58,7 +112,7 @@ def destroy(context: Context) -> None:
 @task
 def restart(context: Context) -> None:
     """Restart all running containers in the service catalog stack."""
-    compose_cmd = base_compose_cmd + " restart"
+    compose_cmd = COMPOSE_COMMAND + " restart"
     with context.cd(MAIN_DIRECTORY_PATH):
         context.run(compose_cmd, pty=True)
 
