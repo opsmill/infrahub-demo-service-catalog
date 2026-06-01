@@ -10,7 +10,7 @@ CURRENT_DIRECTORY = Path(__file__).resolve()
 DOCUMENTATION_DIRECTORY = CURRENT_DIRECTORY.parent / "docs"
 MAIN_DIRECTORY_PATH = Path(__file__).parent
 
-infrahub_address = os.getenv("INFRAHUB_ADDRESS")
+infrahub_address = os.getenv("INFRAHUB_ADDRESS", "http://localhost:8000")
 base_compose_cmd: str = "docker compose"
 
 SEMAPHORE_URL = "http://localhost:3000"
@@ -283,9 +283,34 @@ def init_semaphore(
     print("=== Semaphore init complete ===")
 
 
+def wait_for_infrahub(url: str = infrahub_address) -> None:
+    """Block until the Infrahub server can serve its schema, with exponential backoff.
+
+    The server reports ``Started`` to Docker before it can answer schema queries, so a
+    fresh ``invoke init`` may hit it too early. Polling ``/api/schema`` here guarantees the
+    subsequent ``infrahubctl object load`` calls have a server ready on the same read path.
+    """
+    delay = 2
+    with httpx.Client(base_url=url, timeout=10) as client:
+        for attempt in range(1, 9):
+            try:
+                resp = client.get("/api/schema?branch=main")
+                if resp.status_code == httpx.codes.OK:
+                    print("Infrahub is reachable.")
+                    return
+                print(f"Waiting for Infrahub (attempt {attempt}/8, status={resp.status_code}, retry in {delay}s)...")
+            except httpx.HTTPError:
+                print(f"Waiting for Infrahub (attempt {attempt}/8, retry in {delay}s)...")
+            time.sleep(delay)
+            delay = min(delay * 2, 60)
+    print("ERROR: Infrahub not reachable after 8 attempts.")
+    sys.exit(1)
+
+
 @task(name="init", pre=[init_semaphore])
 def init(context: Context) -> None:
     """Initialize the demo: seed Semaphore, then load the repository and permissions into Infrahub."""
+    wait_for_infrahub()
     exec_cmd = ["uv run infrahubctl object load repository.yaml", "uv run infrahubctl object load permissions.yml"]
     with context.cd(MAIN_DIRECTORY_PATH):
         for cmd in exec_cmd:
