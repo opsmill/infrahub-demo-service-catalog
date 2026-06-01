@@ -19,7 +19,7 @@ dependencies = [
 dev = [
     "mypy>=1.20.1",
     "pytest>=8.0.0,<10",
-    "pytest-asyncio>=0.23.0,<1",
+    "pytest-asyncio>=0.23.0,<2",
     "pytest-httpx>=0.30.0,<0.37",
     "pytest-clarity>=1.0.1",
     "ruff>=0.14.4",
@@ -159,7 +159,7 @@ indent = 4
 front-matter-title = ""
 
 [build-system]
-requires = ["setuptools>=45", "wheel"]
+requires = ["setuptools>=82.0.1", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
