@@ -136,14 +136,14 @@ convention).
     - The file path and node/generic name
     - The current `display_labels` value (the list)
     - The exact `display_label` replacement (Jinja2
-    template string)
+  template string)
 - Conversion: wrap each list item in `{{ }}`, join
   with spaces into a single string
     - Example: `display_labels: ["name__value"]` →
-    `display_label: "{{ name__value }}"`
+  `display_label: "{{ name__value }}"`
     - Example: `display_labels: ["form_factor__value",
-    "sfp_type__value"]` →
-    `display_label: "{{ form_factor__value }} {{ sfp_type__value }}"`
+  "sfp_type__value"]` →
+  `display_label: "{{ form_factor__value }} {{ sfp_type__value }}"`
 - See
   [rules/schema-display-labels-deprecated.md](rules/schema-display-labels-deprecated.md)
   for full migration patterns

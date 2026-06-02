@@ -117,9 +117,9 @@ export INFRAHUB_API_TOKEN="your-api-token"
     - YAML linting and structure checks
     - Python syntax verification (`python -m py_compile`)
     - File and directory structure review against
-    `.infrahub.yml`
+  `.infrahub.yml`
     - Schema YAML format checks (correct keys, naming
-    conventions)
+  conventions)
 - Set `INFRAHUB_ADDRESS` and `INFRAHUB_API_TOKEN` in your
   shell profile or `.env` file for consistent config
 

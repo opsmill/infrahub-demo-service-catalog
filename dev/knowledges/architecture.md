@@ -20,7 +20,8 @@
    - `schemas/` - Infrahub schema definitions (DCIM, IPAM, services, and optional circuit schema)
    - `protocols_*.py` - Type definitions for Infrahub objects
    - Initial data in `data/` - YAML fixtures for demo environment (locations, devices, providers, profiles, resource pools)
-   - `permissions.yml` - RBAC configuration (operator role/group, `john` user account)
+   - `bootstrap/permissions.yml` - RBAC configuration (operator role/group, `john` user account)
+   - `bootstrap/repository.yaml` - `CoreRepository` definition loaded by `invoke init`
    - `menu.yml` - Custom Infrahub menu structure for locations, devices, and services
 
 5. **Semaphore (Ansible Automation)** (`ansible/`, `semaphore/`)

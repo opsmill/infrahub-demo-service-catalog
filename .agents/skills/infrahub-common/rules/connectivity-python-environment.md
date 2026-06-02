@@ -76,7 +76,7 @@ example, if `uv run` works, always use
   commands:
     - `[tool.uv]` section present -- try `uv run` first
     - `[tool.poetry]` section present -- try `poetry run`
-    first
+  first
 - Reuse the detected prefix consistently throughout
   the session
 
