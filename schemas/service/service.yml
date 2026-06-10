@@ -39,6 +39,8 @@ nodes:
     include_in_menu: true
     branch: agnostic
     attributes:
+      - name: hello
+        kind: Text
       - name: status
         kind: Dropdown
         optional: false
