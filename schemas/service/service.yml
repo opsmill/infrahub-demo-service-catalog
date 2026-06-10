@@ -40,7 +40,8 @@ nodes:
     branch: agnostic
     attributes:
       - name: hello
-        kind: Text
+        kind: 
+        optional: false
       - name: status
         kind: Dropdown
         optional: false
