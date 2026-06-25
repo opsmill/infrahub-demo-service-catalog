@@ -77,6 +77,20 @@ class DedicatedInternetGenerator(InfrahubGenerator):
         """Create a VLAN with ID coming from the pool provided and assign this VLAN to the service."""
         self.log.info("Allocating VLAN to this service...")
 
+        # Identity here is "one VLAN per service", not the VLAN's human-friendly identifier.
+        # `vlan_id` is allocated from a CoreNumberPool and is part of the HFID, so it has no
+        # concrete value until creation; `allow_upsert=True` therefore cannot resolve the HFID
+        # (infrahub-sdk >= 1.10 raises a ValidationError). Reuse the existing VLAN on re-runs and
+        # create with a plain save otherwise. See opsmill/infrahub-sdk-python#339 and #396.
+        existing_vlans = await self.client.filters(
+            kind=IpamVLAN,
+            service__ids=[self.customer_service.id],
+        )
+        if existing_vlans:
+            self.allocated_vlan = existing_vlans[0]
+            self.log.info(f"VLAN `{self.allocated_vlan.name.value}` already allocated to this service; reusing.")
+            return
+
         # Get resource pool
         resource_pool = await self.client.get(
             kind=CoreNumberPool,
@@ -96,8 +110,9 @@ class DedicatedInternetGenerator(InfrahubGenerator):
             location=[self.customer_service.location.id],
         )
 
-        # And save it to Infrahub
-        await self.allocated_vlan.save(allow_upsert=True)
+        # Plain create (not an upsert): the pool allocates a concrete vlan_id at creation time, and
+        # idempotency on re-runs is handled by the lookup above.
+        await self.allocated_vlan.save()
 
         self.log.info(f"VLAN `{self.allocated_vlan.name.value}` assigned!")
 
