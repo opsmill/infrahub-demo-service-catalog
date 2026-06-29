@@ -29,7 +29,7 @@ jobs:
       markdown: ${{ steps.changes.outputs.markdown_all }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
       - name: Check for file changes
         uses: opsmill/paths-filter@v3.0.2
         id: changes
@@ -44,7 +44,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -66,7 +66,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -82,7 +82,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -117,7 +117,7 @@ jobs:
       INFRAHUB_TESTING_DOCKER_ENTRYPOINT: 'gunicorn --config backend/infrahub/serve/gunicorn_config.py -w 1 --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app'
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -142,7 +142,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
       - name: Install NodeJS
@@ -172,7 +172,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v6"
+        uses: "actions/checkout@v7"
         with:
           submodules: true
 
