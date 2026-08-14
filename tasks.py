@@ -186,6 +186,29 @@ def lint_all(context: Context) -> None:
     lint_rumdl(context)
 
 
+@task(name="test-unit")
+def test_unit(context: Context) -> None:
+    """Run the unit test suite (no Docker required)."""
+    exec_cmd = "pytest tests/unit"
+    with context.cd(MAIN_DIRECTORY_PATH):
+        context.run(exec_cmd, pty=True)
+
+
+@task(name="test-integration")
+def test_integration(context: Context) -> None:
+    """Run the integration test suite against a Dockerized Infrahub instance."""
+    exec_cmd = "pytest tests/integration"
+    with context.cd(MAIN_DIRECTORY_PATH):
+        context.run(exec_cmd, pty=True)
+
+
+@task(name="test")
+def test_all(context: Context) -> None:
+    """Run the full test suite (unit and integration)."""
+    test_unit(context)
+    test_integration(context)
+
+
 @task(name="docs")
 def docs_build(context: Context) -> None:
     """Build the documentation website with Docusaurus (npm run build)."""

@@ -14,9 +14,9 @@ def test_get_dropdown_options_txt(provider: Provider, schema_01_client: Infrahub
     options: list[str] = get_dropdown_options(kind="ServiceDedicatedInternet", attribute_name="status")
     assert options == [
         "in-delivery",
-        "in-decomissioning",
+        "in-decommissioning",
         "draft",
-        "decomissioned",
+        "decommissioned",
         "active",
     ]
 
@@ -30,8 +30,8 @@ def test_get_dropdown_options_protocols(provider: Provider, schema_01_client: In
     options: list[str] = get_dropdown_options(kind=ServiceDedicatedInternet, attribute_name="status")
     assert options == [
         "in-delivery",
-        "in-decomissioning",
+        "in-decommissioning",
         "draft",
-        "decomissioned",
+        "decommissioned",
         "active",
     ]

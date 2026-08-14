@@ -53,7 +53,9 @@ invoke lint
 ### Run Tests
 
 ```bash
-uv run pytest
+uv run invoke test          # unit + integration
+uv run invoke test-unit     # unit only, no Docker required
+uv run invoke test-integration  # integration, requires Docker
 ```
 
 ### Validate Schemas
