@@ -1,0 +1,131 @@
+---
+# yamllint disable rule:truthy rule:line-length
+name: "QA and update Infrahub version"
+
+on:
+  workflow_dispatch:
+    inputs:
+      infrahub_version:
+        description: "Infrahub version to test against and bump the demo to (testcontainers image, docker-compose.yml, Dockerfile/docker-compose.override.yml defaults)"
+        required: true
+        default: "1.10.0"
+      infrahub_sdk_version:
+        description: "Optional: also bump infrahub-sdk to this version"
+        required: false
+        default: ""
+      infrahub_testcontainers_version:
+        description: "Optional: also bump infrahub-testcontainers to this version"
+        required: false
+        default: ""
+
+  repository_dispatch:
+    types: [trigger-infrahub-update]
+
+env:
+  INFRAHUB_API_TOKEN: "06438eb2-8019-4776-878c-0941b1f1d1ec"
+  INFRAHUB_TIMEOUT: 600
+  # Use single instances to avoid race condition in work pool initialization
+  INFRAHUB_TESTING_TASK_WORKER_COUNT: "1"
+  INFRAHUB_TESTING_API_SERVER_COUNT: "1"
+  INFRAHUB_TESTING_WEB_CONCURRENCY: "1"
+  INFRAHUB_TESTING_DOCKER_ENTRYPOINT: "gunicorn --config backend/infrahub/serve/gunicorn_config.py -w 1 --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app"
+
+jobs:
+  update-and-qa:
+    runs-on:
+      group: "huge-runners"
+    timeout-minutes: 60
+    env:
+      INFRAHUB_VERSION: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.infrahub_version || github.event.inputs.infrahub_version }}
+      SDK_VERSION: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.infrahub_sdk_version || github.event.inputs.infrahub_sdk_version }}
+      TESTCONTAINERS_VERSION: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.infrahub_testcontainers_version || github.event.inputs.infrahub_testcontainers_version }}
+      BRANCH_NAME: update-infrahub-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.infrahub_version || github.event.inputs.infrahub_version }}
+    concurrency:
+      group: qa-infrahub-version-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.infrahub_version || github.event.inputs.infrahub_version }}
+      cancel-in-progress: false
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v7"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.9.18"
+
+      - run: uv sync
+
+      - name: "Pull the reference docker-compose.yml for Infrahub ${{ env.INFRAHUB_VERSION }}"
+        # docker-compose.yml is a checked-in copy of the reference file Infrahub publishes per
+        # version (https://docs.infrahub.app/deploy-manage/maintain-upgrade/upgrade/community);
+        # pulling it picks up new/changed env vars and defaults, not just the version tag.
+        # Superseded patch versions aren't served (200 with an empty body) — only the latest of
+        # each supported minor and beta builds are, matching the N-1 upgrade support policy.
+        run: |
+          curl -fsSL "https://infrahub.opsmill.io/${INFRAHUB_VERSION}" -o docker-compose.yml.new
+          if ! grep -q '^services:' docker-compose.yml.new; then
+            echo "::error::No reference docker-compose.yml is published for Infrahub ${INFRAHUB_VERSION} at https://infrahub.opsmill.io/${INFRAHUB_VERSION} (empty response). Only the latest patch of each supported minor and beta builds are served -- pick one of those."
+            exit 1
+          fi
+          mv docker-compose.yml.new docker-compose.yml
+
+      - name: "Bump the demo's Infrahub base version (Dockerfile / docker-compose.override.yml)"
+        # Dockerfile/docker-compose.override.yml build the demo's own custom image on top of the
+        # Infrahub base image; INFRAHUB_BASE_VERSION is a demo-specific convention, not part of
+        # the upstream reference file pulled above.
+        run: |
+          perl -pi -e "s/ARG INFRAHUB_BASE_VERSION=\S+/ARG INFRAHUB_BASE_VERSION=${INFRAHUB_VERSION}/" Dockerfile
+          perl -pi -e "s/INFRAHUB_BASE_VERSION:-[^}]+\}/INFRAHUB_BASE_VERSION:-${INFRAHUB_VERSION}}/g" docker-compose.override.yml
+
+      - name: "Bump infrahub-sdk to the requested version"
+        if: env.SDK_VERSION != ''
+        run: uv add "infrahub-sdk[all]==${SDK_VERSION}"
+
+      - name: "Bump infrahub-testcontainers to the requested version"
+        if: env.TESTCONTAINERS_VERSION != ''
+        run: uv add "infrahub-testcontainers==${TESTCONTAINERS_VERSION}"
+
+      - name: "Run test suite against Infrahub ${{ env.INFRAHUB_VERSION }}"
+        run: uv run pytest tests/ -v
+        env:
+          INFRAHUB_TESTING_IMAGE_VER: ${{ env.INFRAHUB_VERSION }}
+          REPOSITORY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Prepare the branch for the update"
+        run: |
+          echo "Checking if branch ${{ env.BRANCH_NAME }} exists..."
+          BRANCH_EXISTS=$(git ls-remote --heads origin ${{ env.BRANCH_NAME }} | wc -l)
+          echo "BRANCH_EXISTS=$BRANCH_EXISTS" >> "$GITHUB_ENV"
+
+      - name: "Commit the version bump"
+        uses: github-actions-x/commit@v2.9
+        with:
+          github-token: ${{ secrets.GH_UPDATE_PACKAGE_OTTO }}
+          push-branch: ${{ env.BRANCH_NAME }}
+          commit-message: "chore: update to Infrahub ${{ env.INFRAHUB_VERSION }} after passing QA"
+          files: |
+            Dockerfile
+            docker-compose.yml
+            docker-compose.override.yml
+            pyproject.toml
+            uv.lock
+          name: opsmill-bot
+          email: github-bot@opsmill.com
+          rebase: ${{ env.BRANCH_EXISTS == 1 }}
+
+      - name: "Open a pull request with the version bump"
+        run: |
+          BODY="The test suite passed against Infrahub ${INFRAHUB_VERSION}."
+          if [ -n "${SDK_VERSION}" ]; then
+            BODY="${BODY} Also bumped infrahub-sdk to ${SDK_VERSION}."
+          fi
+          if [ -n "${TESTCONTAINERS_VERSION}" ]; then
+            BODY="${BODY} Also bumped infrahub-testcontainers to ${TESTCONTAINERS_VERSION}."
+          fi
+          echo ${{ secrets.GH_UPDATE_PACKAGE_OTTO }} | gh auth login --with-token
+          gh pr create \
+            --title "chore: update to Infrahub ${INFRAHUB_VERSION}" \
+            --body "${BODY}" \
+            --base main \
+            --head "${BRANCH_NAME}"
+        env:
+          GH_TOKEN: ${{ secrets.GH_UPDATE_PACKAGE_OTTO }}
