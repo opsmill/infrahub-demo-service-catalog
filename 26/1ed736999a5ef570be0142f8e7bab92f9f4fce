@@ -1,0 +1,26 @@
+docker-compose.yml
+  s_a619f072115ce5::t_5f71c526003992 43,57,247,280,326
+docker-compose.override.yml
+  s_a619f072115ce5::t_dcef55c7c88895 3
+  s_a619f072115ce5::t_2e0122c945d3f8 8
+Dockerfile
+  s_a619f072115ce5::t_9fd552de36dbdc 4
+.github/workflows/update-infrahub.yml
+  s_a619f072115ce5::t_4b5d1f20ff88f9 146-149,153-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "261ed736999a5ef570be0142f8e7bab92f9f4fce",
+  "prompts": {},
+  "sessions": {
+    "s_a619f072115ce5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c696d180-50c5-480d-8a53-b03140ccd8d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
