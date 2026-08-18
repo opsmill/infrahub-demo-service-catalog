@@ -1,0 +1,23 @@
+tests/integration/stack_config.py
+  s_a619f072115ce5::t_1b3c3ad9fc554d 1-170
+tests/integration/conftest.py
+  s_a619f072115ce5::t_5a1f0113b5b572 1-44
+tests/integration/test_stack_config.py
+  s_a619f072115ce5::t_1b3c3ad9fc554d 1-136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "bff8772f7e1b10138718ab61daa57a755bd29f0d",
+  "prompts": {},
+  "sessions": {
+    "s_a619f072115ce5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c696d180-50c5-480d-8a53-b03140ccd8d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
