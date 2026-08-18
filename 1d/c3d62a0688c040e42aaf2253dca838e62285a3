@@ -1,0 +1,23 @@
+.github/workflows/ci.yml
+  s_a619f072115ce5::t_e2235afd4740a4 45-54,62,105-123,150-153
+.github/file-filters.yml
+  s_a619f072115ce5::t_eb4a736b50f4b0 17-22,32-34
+uv.lock
+  s_a619f072115ce5::t_e53aeb169429be 706-707,1075-1207,1305-1306,1821-1822,2463-2464
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "1dc3d62a0688c040e42aaf2253dca838e62285a3",
+  "prompts": {},
+  "sessions": {
+    "s_a619f072115ce5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c696d180-50c5-480d-8a53-b03140ccd8d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
