@@ -1,0 +1,20 @@
+tests/conftest.py
+  s_a619f072115ce5::t_ab9669c83e794b 2,6,18-61
+  s_a619f072115ce5::t_cd2585b9b91487 62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "33dc3eda9b73b61d3c4c7ca1a8750985045654d0",
+  "prompts": {},
+  "sessions": {
+    "s_a619f072115ce5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c696d180-50c5-480d-8a53-b03140ccd8d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
