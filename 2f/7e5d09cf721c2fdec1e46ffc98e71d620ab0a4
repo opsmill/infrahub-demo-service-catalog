@@ -1,0 +1,20 @@
+.github/workflows/update-infrahub.yml
+  s_c61e7f2a6f8b30::t_306fa41027d9e2 3-5,8-10,17-20,27,30-31,33-35,47-51,56-59,61-70,72-113,115,118-134,145,147-148,156,160-161,165-166,173-179,181-189,191-196,198-206,208-214,216-226,228,235,262-264,266,268-271,273-274,276,278-281,283,285-298,300-302,304,320,322,326-332,337-340,342
+  s_c61e7f2a6f8b30::t_d51c45b6edb877 334-336
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2f7e5d09cf721c2fdec1e46ffc98e71d620ab0a4",
+  "prompts": {},
+  "sessions": {
+    "s_c61e7f2a6f8b30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f96e34cf-79d1-45f1-ade3-89a74eb5ed2e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
