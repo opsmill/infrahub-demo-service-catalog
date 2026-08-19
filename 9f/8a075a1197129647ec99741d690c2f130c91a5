@@ -1,0 +1,38 @@
+tasks.py
+  s_c61e7f2a6f8b30::t_caf721f7482e07 7
+  s_c61e7f2a6f8b30::t_9e5ce2d38bda5d 197-201,203-204,207-211,213-217,219,225-226
+  s_c61e7f2a6f8b30::t_5649fe2430d291 176-181
+pyproject.toml
+  s_c61e7f2a6f8b30::t_8721d5c0ff313c 33-37
+  s_c61e7f2a6f8b30::t_5e179be3d8604b 169-172
+  s_c61e7f2a6f8b30::t_85ddfff1f5d103 10-14
+  s_c61e7f2a6f8b30::t_663b555a302cd7 175-178
+  s_c61e7f2a6f8b30::t_8608fefc2fe432 191-211
+  s_c61e7f2a6f8b30::t_ae367370bd4ef2 88-98
+uv.lock
+  s_a56d0dbf67780a::t_0b57cae9b17027 661,669
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "9f8a075a1197129647ec99741d690c2f130c91a5",
+  "prompts": {},
+  "sessions": {
+    "s_a56d0dbf67780a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-arefresh-svc-catalog-95112c0074bf9807",
+        "model": "unknown"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    },
+    "s_c61e7f2a6f8b30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f96e34cf-79d1-45f1-ade3-89a74eb5ed2e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
