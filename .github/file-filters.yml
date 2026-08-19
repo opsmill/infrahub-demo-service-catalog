@@ -14,6 +14,12 @@ doc_files: &doc_files
 python_all: &python_all
   - "**/*.py"
 
+# A change here moves the Infrahub version, the SDK version or the testcontainers version the whole
+# demo is built against, which is exactly when the extended integration tier earns its runtime.
+dependencies: &dependencies
+  - "pyproject.toml"
+  - "uv.lock"
+
 yaml_all: &yaml_all
   - "**/*.{yml,yaml}"
 
@@ -23,3 +29,6 @@ markdown_all: &markdown_all
 documentation_all:
   - *doc_files
   - *markdown_all
+
+dependencies_all:
+  - *dependencies

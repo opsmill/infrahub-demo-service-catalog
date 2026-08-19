@@ -1,11 +1,25 @@
 ---
 name: CI
 # yamllint disable rule:truthy rule:line-length
+
+env:
+  UV_VERSION: "0.9.18"
+
 on:
   pull_request:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      tier:
+        description: "Integration tier to run"
+        required: false
+        default: "core"
+        type: choice
+        options:
+          - core
+          - full
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -13,9 +27,7 @@ concurrency:
 
 permissions:
   contents: read
-
-env:
-  VALE_VERSION: "3.13.0"
+  pull-requests: read
 
 jobs:
   files-changed:
@@ -27,6 +39,9 @@ jobs:
       python: ${{ steps.changes.outputs.python_all }}
       yaml: ${{ steps.changes.outputs.yaml_all }}
       markdown: ${{ steps.changes.outputs.markdown_all }}
+      dependencies: ${{ steps.changes.outputs.dependencies_all }}
+      integration_scope: ${{ steps.scope.outputs.scope }}
+      run_full: ${{ steps.scope.outputs.run_full }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v7"
@@ -36,97 +51,149 @@ jobs:
         with:
           token: ${{ github.token }}
           filters: .github/file-filters.yml
+      - name: Decide how much of the integration suite to run
+        id: scope
+        # `update-infrahub-sdk-` is tested first: an SDK branch also matches the broader Infrahub prefix.
+        env:
+          DISPATCH_TIER: ${{ github.event.inputs.tier }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          SCOPE="core"
+          if [ -n "${DISPATCH_TIER}" ]; then
+            SCOPE="${DISPATCH_TIER}"
+          elif [ "${HEAD_REF#update-infrahub-sdk-}" = "${HEAD_REF}" ] && [ "${HEAD_REF#update-infrahub-}" != "${HEAD_REF}" ]; then
+            SCOPE="full"
+          fi
+          {
+            echo "scope=${SCOPE}"
+            echo "run_full=$([ "${SCOPE}" = "full" ] && echo true || echo false)"
+          } >> "$GITHUB_OUTPUT"
+          echo "Integration scope selected -> ${SCOPE}"
 
   python-lint:
-    if: needs.files-changed.outputs.python == 'true'
+    if: needs.files-changed.outputs.python == 'true' || needs.files-changed.outputs.dependencies == 'true'
     needs: ["files-changed"]
-    runs-on: "ubuntu-latest"
+    runs-on: ubuntu-latest
     timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.14"]
     steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v7"
+      - uses: actions/checkout@v7
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
-          version: "0.9.18"
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ matrix.python-version }}
       - run: uv sync
-      - name: "Check code formatting"
-        run: |
-          uv run ruff format --check --diff
-          uv run ruff check --select I .
-      - name: "Run linters"
-        run: uv run ruff check
-      - name: "Run type checks"
-        run: uv run mypy .
+      - name: Run linters
+        run: uv run invoke lint-ruff
+      - name: Run type checks
+        run: uv run invoke lint-mypy
 
   yaml-lint:
     if: needs.files-changed.outputs.yaml == 'true'
     needs: ["files-changed"]
-    runs-on: "ubuntu-latest"
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v7"
+      - uses: actions/checkout@v7
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
-          version: "0.9.18"
+          version: ${{ env.UV_VERSION }}
       - run: uv sync
-      - name: "Run yamllint"
-        run: uv run yamllint -s .
+      - name: Run yamllint
+        run: uv run invoke lint-yaml
 
   markdown-lint:
     if: needs.files-changed.outputs.markdown == 'true'
     needs: ["files-changed"]
-    runs-on: "ubuntu-latest"
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v7"
+      - uses: actions/checkout@v7
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
-          version: "0.9.18"
+          version: ${{ env.UV_VERSION }}
       - run: uv sync
-      - name: "Run rumdl"
-        run: uv run rumdl check .
+      - name: Run rumdl
+        run: uv run invoke lint-markdown
+
+  unit-test:
+    if: needs.files-changed.outputs.python == 'true' || needs.files-changed.outputs.dependencies == 'true'
+    needs: ["files-changed"]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.UV_VERSION }}
+      - run: uv sync
+      - name: Run the tests that need no deployment
+        run: uv run invoke test-unit
 
   integration-test:
+    name: "integration-test (${{ needs.files-changed.outputs.integration_scope }})"
     if: |
       always() && !cancelled() &&
+      needs.files-changed.result == 'success' &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
-    needs: ["files-changed", "python-lint", "yaml-lint", "markdown-lint"]
+    needs: ["files-changed", "python-lint", "yaml-lint", "markdown-lint", "unit-test"]
     runs-on:
       group: "huge-runners"
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: ${{ needs.files-changed.outputs.run_full == 'true' && 180 || 75 }}
     env:
       INFRAHUB_DB_TYPE: neo4j
-      INFRAHUB_API_TOKEN: '06438eb2-8019-4776-878c-0941b1f1d1ec'
       INFRAHUB_TIMEOUT: 600
-      # Use single instances to avoid race condition in work pool initialization
-      INFRAHUB_TESTING_TASK_WORKER_COUNT: '1'
-      INFRAHUB_TESTING_API_SERVER_COUNT: '1'
-      INFRAHUB_TESTING_WEB_CONCURRENCY: '1'
-      # Override entrypoint to use single gunicorn worker (env var above is read at import time)
-      INFRAHUB_TESTING_DOCKER_ENTRYPOINT: 'gunicorn --config backend/infrahub/serve/gunicorn_config.py -w 1 --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app'
     steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v7"
+      - uses: actions/checkout@v7
+      - name: Install tini
+        run: "apt-get update && apt-get install -y tini"
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
-          version: "0.9.18"
+          version: ${{ env.UV_VERSION }}
       - run: uv sync
-      - name: "Run tests"
-        run: uv run pytest tests/ -v
+      - name: Set environment variables
         env:
-          REPOSITORY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUNNER_LABEL: ${{ runner.name }}
+        run: |
+          if ! RUNNER_NAME=$(echo "${RUNNER_LABEL}" | grep -o 'ghrunner[0-9]\+'); then
+            echo "::error::Runner name '${RUNNER_LABEL}' does not match ghrunner<N>; cannot derive PYTEST_DEBUG_TEMPROOT."
+            exit 1
+          fi
+          echo "PYTEST_DEBUG_TEMPROOT=/var/lib/github/${RUNNER_NAME/ghrunner/ghrunner_}/_temp" >> "$GITHUB_ENV"
+      - name: "Run the core integration tier (blocking)"
+        run: exec tini -s -g -- uv run invoke test-integration --tier=core
+      - name: "Run the full integration tier (advisory)"
+        id: full
+        # Advisory until the upstream HTTP 500 fault is fixed: then drop `continue-on-error` and re-merge the two steps.
+        if: needs.files-changed.outputs.run_full == 'true'
+        continue-on-error: true
+        run: exec tini -s -g -- uv run invoke test-integration --tier=full
+      - name: "Report what the advisory full tier did"
+        if: always() && needs.files-changed.outputs.run_full == 'true'
+        env:
+          OUTCOME: ${{ steps.full.outcome }}
+        run: |
+          {
+            echo "### Integration tiers"
+            echo ""
+            echo "- **core** (blocking): this job's own conclusion is the merge gate."
+            echo "- **full** (advisory, non-blocking): \`${OUTCOME}\`"
+            if [ "${OUTCOME}" = "failure" ]; then
+              echo ""
+              echo "**The advisory full tier FAILED.** It does not block this merge -- see the"
+              echo "upstream CoreGeneratorGroup / CoreGraphQLQueryGroup resolution fault -- but read"
+              echo "the log before assuming that fault is what happened."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
   documentation:
     defaults:
@@ -134,6 +201,7 @@ jobs:
         working-directory: ./docs
     if: |
       always() && !cancelled() &&
+      needs.files-changed.result == 'success' &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.documentation == 'true'
@@ -156,7 +224,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
-          version: "0.9.18"
+          version: ${{ env.UV_VERSION }}
       - run: uv sync
         working-directory: ./
       - name: "Build docs website"
@@ -165,11 +233,14 @@ jobs:
   validate-documentation-style:
     if: |
       always() && !cancelled() &&
+      needs.files-changed.result == 'success' &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
     needs: ["files-changed", "yaml-lint", "python-lint", "markdown-lint"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 5
+    env:
+      VALE_VERSION: "3.13.0"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v7"
@@ -182,7 +253,5 @@ jobs:
         run: |
           curl -sL "https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz" -o vale.tar.gz
           tar -xzf vale.tar.gz
-        env:
-          VALE_VERSION: ${{ env.VALE_VERSION }}
       - name: "Validate documentation style"
         run: ./vale $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) )

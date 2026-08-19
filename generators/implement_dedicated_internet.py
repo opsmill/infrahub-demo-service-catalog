@@ -126,13 +126,13 @@ class DedicatedInternetGenerator(InfrahubGenerator):
             name__value=SERVICE_PREFIX_POOL,
         )
 
-        # Craft the data dict for prefix
+        # Craft the data dict for prefix. Relationship fields (`service`, `vlan`) are set below via
+        # attribute assignment instead: the pool-allocation mutation's `data` input does not reliably
+        # persist relationships, only plain attributes.
         prefix_data: dict = {
             "status": "active",
             "description": f"Prefix allocated to service {self.customer_service.service_identifier.value}",
-            "service": [self.customer_service.id],
             "role": "customer",
-            "vlan": [self.allocated_vlan.id],
         }
 
         # Create resource from the pool
@@ -143,6 +143,10 @@ class DedicatedInternetGenerator(InfrahubGenerator):
             prefix_length=self.prefix_length,
             identifier=self.customer_service.service_identifier.value,
         )
+
+        # Set the relationships explicitly; see comment above.
+        self.allocated_prefix.service = self.customer_service
+        self.allocated_prefix.vlan = self.allocated_vlan
 
         self.log.info(f"Prefix `{self.allocated_prefix}` assigned!")
 

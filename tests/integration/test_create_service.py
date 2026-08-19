@@ -1,5 +1,5 @@
+import ipaddress
 import logging
-import os
 from collections.abc import Generator
 from pathlib import Path
 
@@ -14,21 +14,21 @@ from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo
 from infrahub_sdk.yaml import SchemaFile
 from service_catalog.infrahub import get_client
-from service_catalog.protocols_async import LocationSite, ServiceDedicatedInternet
+from service_catalog.protocols_async import (
+    DcimInterfaceL2,
+    IpamPrefix,
+    IpamVLAN,
+    LocationSite,
+    ServiceDedicatedInternet,
+)
+
+GENERATOR_SERVICE_IDENTIFIER = "test-generator-1"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 logger = logging.getLogger(__name__)
 
 
-# Skip integration tests in GitHub Actions CI due to infrahub-testcontainers issues:
-# - prometheus.yml file mount fails (mounted as directory instead of file)
-# - Prefect work pool race conditions with multiple workers
-# These tests work locally but have infrastructure issues in CI.
-@pytest.mark.skipif(
-    os.environ.get("GITHUB_ACTIONS") == "true",
-    reason="Integration tests skipped in CI due to infrahub-testcontainers infrastructure issues",
-)
 class TestServiceCatalog(TestInfrahubDockerClient):
     @pytest.fixture(scope="class")
     def provider(self) -> Generator[Provider, None, None]:
@@ -77,7 +77,7 @@ class TestServiceCatalog(TestInfrahubDockerClient):
                 )
 
         sites = await client.all(kind=LocationSite)
-        assert len(sites) == 3
+        assert {site.shortname.value for site in sites} == {"par01", "bru01", "nyc01", "dal01"}
 
     async def test_add_repository(
         self, client: InfrahubClient, root_dir: Path, default_branch: str, remote_repos_dir: Path
@@ -93,6 +93,109 @@ class TestServiceCatalog(TestInfrahubDockerClient):
 
         repos = await client.all(kind=CoreGenericRepository)
         assert repos
+
+    async def test_generator_allocation(self, client: InfrahubClient, infrahub_port: int, default_branch: str) -> None:
+        """Run the generator directly and verify it allocates a VLAN/prefix/port/gateway, twice.
+
+        Running the generator a second time on the same service must not create duplicate
+        resources; this is a regression test for the HFID/upsert fix in `allocate_vlan`
+        (see generators/implement_dedicated_internet.py).
+        """
+        service = await client.create(
+            kind=ServiceDedicatedInternet,
+            service_identifier=GENERATOR_SERVICE_IDENTIFIER,
+            account_reference="acct-generator-1",
+            status="draft",
+            bandwidth="100",
+            ip_package="small",
+            member_of_groups=["automated_dedicated_internet"],
+            location=["bru01"],
+            branch=default_branch,
+        )
+        await service.save()
+
+        command = (
+            f"infrahubctl generator dedicated_internet_generator "
+            f"--branch {default_branch} service_identifier={GENERATOR_SERVICE_IDENTIFIER}"
+        )
+        address = f"http://localhost:{infrahub_port}"
+        for _ in range(2):
+            result = self.execute_command(command=command, address=address)
+            assert result.returncode == 0, f"Generator run failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
+
+        service = await client.get(
+            kind=ServiceDedicatedInternet,
+            service_identifier__value=GENERATOR_SERVICE_IDENTIFIER,
+            branch=default_branch,
+        )
+
+        await service.vlan.fetch()
+        vlan = service.vlan.peer
+        assert vlan is not None
+        assert 1000 <= vlan.vlan_id.value <= 2000
+
+        await service.prefix.fetch()
+        prefix_node = service.prefix.peer
+        assert prefix_node is not None
+        # IPv4Network rather than ip_network(): the latter returns IPv4Network | IPv6Network, and
+        # subnet_of() requires both sides to be the same family, so mypy cannot prove the call is
+        # valid. This service allocates from an IPv4 pool, so name the family.
+        allocated_network = ipaddress.IPv4Network(str(prefix_node.prefix.value))
+        assert allocated_network.prefixlen == 29
+        assert allocated_network.subnet_of(ipaddress.IPv4Network("203.0.113.0/24"))
+
+        await service.gateway_ip_address.fetch()
+        assert service.gateway_ip_address.peer is not None
+
+        # `dedicated_interfaces` holds both the L2 customer port (allocate_port) and the L3 gateway
+        # interface (allocate_gateway): both inherit from DcimInterface and share the "service"
+        # relationship identifier. Filter for the L2 port specifically to check its state.
+        await service.dedicated_interfaces.fetch()
+        assert len(service.dedicated_interfaces.peers) == 2
+
+        l2_ports = await client.filters(kind=DcimInterfaceL2, service__ids=[service.id], branch=default_branch)
+        assert len(l2_ports) == 1
+        port = l2_ports[0]
+        assert port.status.value == "active"
+        assert port.role.value == "customer"
+        await port.untagged_vlan.fetch()
+        assert port.untagged_vlan.peer.id == vlan.id
+
+        # The second generator run above must have reused the same resources, not duplicated them.
+        vlans = await client.filters(kind=IpamVLAN, service__ids=[service.id], branch=default_branch)
+        assert len(vlans) == 1
+        prefixes = await client.filters(kind=IpamPrefix, service__ids=[service.id], branch=default_branch)
+        assert len(prefixes) == 1
+
+    async def test_artifact_rendering(self, client: InfrahubClient, infrahub_port: int, default_branch: str) -> None:
+        """Verify the startup-config transform renders the VLAN/port allocated by the generator.
+
+        Uses `infrahubctl render` (like the generator test uses `infrahubctl generator`) to render
+        the transform directly against current data, rather than the artifact-generation pipeline:
+        the artifact for this device was already rendered once (stale) when the repository synced,
+        and re-triggering that pipeline on demand did not reliably produce an updated render.
+        """
+        service = await client.get(
+            kind=ServiceDedicatedInternet,
+            service_identifier__value=GENERATOR_SERVICE_IDENTIFIER,
+            branch=default_branch,
+        )
+
+        l2_ports = await client.filters(kind=DcimInterfaceL2, service__ids=[service.id], branch=default_branch)
+        port = l2_ports[0]
+        await port.device.fetch()
+        device = port.device.peer
+        await port.untagged_vlan.fetch()
+        vlan = port.untagged_vlan.peer
+
+        address = f"http://localhost:{infrahub_port}"
+        command = f"infrahubctl render device_config --branch {default_branch} device_name={device.name.value}"
+        result = self.execute_command(command=command, address=address)
+        assert result.returncode == 0, f"Render failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
+        content = result.stdout
+
+        assert f"switchport access vlan {vlan.vlan_id.value}" in content
+        assert f'description "Port allocated to service {GENERATOR_SERVICE_IDENTIFIER}"' in content
 
     async def test_portal(self, override_client: None, client: InfrahubClient, default_branch: str) -> None:
         """Test the streamlit app on top of a running infrahub instance.
@@ -110,7 +213,7 @@ class TestServiceCatalog(TestInfrahubDockerClient):
         app.text_input("input-service-identifier").set_value(service_identifier).run()
         app.text_input("input-account-reference").set_value("acct-12345").run()
         app.selectbox("select-location").select("bru01").run()
-        app.selectbox("select-bandwidth").set_value(100).run()
+        app.selectbox("select-bandwidth").set_value("100").run()
         app.select_slider("select-ip-package").set_value("small").run()
         app.button("FormSubmitter:new_dedicated_internet_form-Submit").click().run(timeout=15)
 
@@ -118,10 +221,12 @@ class TestServiceCatalog(TestInfrahubDockerClient):
         branches = await client.branch.all()
         assert expected_branch_name in branches, f"Branch '{expected_branch_name}' was not created"
 
-        # Verify the service was created on the new branch
+        # Verify the service was created on the new branch. `ServiceDedicatedInternet` is
+        # branch-agnostic, so other services created by earlier tests are visible here too;
+        # filter by identifier rather than asserting on the raw count.
         services = await client.all(kind=ServiceDedicatedInternet, branch=expected_branch_name)
-        assert len(services) == 1, "Service was not created on the new branch"
-        assert services[0].service_identifier.value == service_identifier
+        matches = [service for service in services if service.service_identifier.value == service_identifier]
+        assert len(matches) == 1, "Service was not created on the new branch"
 
         # Verify the proposed change was created
         proposed_changes = await client.all(kind=CoreProposedChange)

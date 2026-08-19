@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 
 import httpx
-from invoke import Context, task
+from invoke import Context, Exit, task
 
 CURRENT_DIRECTORY = Path(__file__).resolve()
 DOCUMENTATION_DIRECTORY = CURRENT_DIRECTORY.parent / "docs"
@@ -145,31 +145,32 @@ def format_all(context: Context) -> None:
 def lint_yaml(context: Context) -> None:
     """Lint all YAML files with yamllint."""
     print(" - Check code with yamllint")
-    exec_cmd = "yamllint ."
+    exec_cmd = "yamllint -s ."
     with context.cd(MAIN_DIRECTORY_PATH):
         context.run(exec_cmd, pty=True)
 
 
 @task
 def lint_mypy(context: Context) -> None:
-    """Type-check the service_catalog package with mypy."""
+    """Type-check the entire repository with mypy."""
     print(" - Check code with mypy")
-    exec_cmd = "mypy --show-error-codes service_catalog"
+    exec_cmd = "mypy --show-error-codes ."
     with context.cd(MAIN_DIRECTORY_PATH):
         context.run(exec_cmd, pty=True)
 
 
 @task
 def lint_ruff(context: Context) -> None:
-    """Lint all Python files with ruff."""
+    """Lint all Python files with ruff and check that they are formatted."""
     print(" - Check code with ruff")
-    exec_cmd = "ruff check ."
+    exec_cmds = ["ruff check .", "ruff format --check --diff"]
     with context.cd(MAIN_DIRECTORY_PATH):
-        context.run(exec_cmd, pty=True)
+        for cmd in exec_cmds:
+            context.run(cmd, pty=True)
 
 
-@task
-def lint_rumdl(context: Context) -> None:
+@task(name="lint-markdown")
+def lint_markdown(context: Context) -> None:
     """Lint all Markdown files with rumdl."""
     print(" - Check code with rumdl")
     exec_cmd = "rumdl check ."
@@ -183,7 +184,36 @@ def lint_all(context: Context) -> None:
     lint_yaml(context)
     lint_ruff(context)
     lint_mypy(context)
-    lint_rumdl(context)
+    lint_markdown(context)
+
+
+@task(name="test-unit")
+def test_unit(context: Context) -> None:
+    """Run every test that needs no Infrahub deployment."""
+    exec_cmds = ["pytest tests/unit", "pytest tests/integration -m offline"]
+    with context.cd(MAIN_DIRECTORY_PATH):
+        for cmd in exec_cmds:
+            context.run(cmd, pty=True)
+
+
+@task(
+    name="test-integration",
+    help={"tier": "core (default) runs everything but the extended tier; full runs all of it."},
+)
+def test_integration(context: Context, tier: str = "core") -> None:
+    """Run the integration test suite against a Dockerized Infrahub instance."""
+    if tier not in {"core", "full"}:
+        raise Exit(f"tier must be 'core' or 'full', got {tier!r}")
+    marker = "" if tier == "full" else ' -m "not extended"'
+    with context.cd(MAIN_DIRECTORY_PATH):
+        context.run(f"pytest tests/integration{marker}", pty=True)
+
+
+@task(name="test")
+def test_all(context: Context) -> None:
+    """Run the full test suite (unit and integration)."""
+    with context.cd(MAIN_DIRECTORY_PATH):
+        context.run("pytest tests", pty=True)
 
 
 @task(name="docs")
@@ -211,7 +241,7 @@ class _SemaphoreClient:
                 self._client.get("/api/ping")
                 print("Semaphore is reachable.")
                 return
-            except httpx.HTTPError:  # noqa: PERF203
+            except httpx.HTTPError:
                 print(f"Waiting for Semaphore (attempt {attempt}/8, retry in {delay}s)...")
                 time.sleep(delay)
                 delay = min(delay * 2, 60)

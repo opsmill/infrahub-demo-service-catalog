@@ -4,10 +4,10 @@ version = "0.1.1"
 description = "Service Catalog demo built with Infrahub and Streamlit for requesting and managing network services"
 authors = [{name = "OpsMill", email = "info@opsmill.com"}]
 readme = "README.md"
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.11,<3.15"
 
 dependencies = [
-    "infrahub-sdk[all]>=1.19.0,<2.0.0",
+    "infrahub-sdk[all]>=1.19.0",
     "streamlit>=1.51.0,<2.0.0",
     "watchdog>=6.0.0,<7.0.0",
     "fast-depends>=3.0.3,<4.0.0",
@@ -17,7 +17,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "mypy>=1.20.1",
+    "mypy>=2.3.1",
     "pytest>=8.0.0,<10",
     "pytest-asyncio>=0.23.0,<2",
     "pytest-httpx>=0.30.0,<0.37",
@@ -26,8 +26,8 @@ dev = [
     "types-pyyaml>=6.0.12",
     "types-requests>=2.32.0",
     "yamllint>=1.37.1",
-    "infrahub-testcontainers>=1.8.2",
-    "rumdl>=0.1.71",
+    "infrahub-testcontainers>=1.10.8",
+    "rumdl>=0.2.55",
 ]
 
 [tool.uv]
@@ -40,7 +40,12 @@ testpaths = ["tests"]
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]
-addopts = "-vs"
+addopts = "--strict-markers"
+markers = [
+    "core: workflows every pull request must keep working. Run with -m 'not extended'.",
+    "extended: additional workflows run on dependency bumps and on main. Adds ~30-40 minutes.",
+    "offline: an integration-suite test that reads only repository files and needs no deployment.",
+]
 
 [tool.mypy]
 pretty = true
@@ -64,6 +69,14 @@ exclude = [
     "build",
     "dist",
     "examples",
+]
+
+extend-exclude = [
+    ".agents/",
+    ".specify/",
+    ".superpowers/",
+    "dev/commands/",
+    "scratchpad/",
 ]
 
 
@@ -136,9 +149,10 @@ max-complexity = 17
 
 "tasks.py" = [
     "PLC0415", # `import` should be at the top-level of a file
+    "PT028",   # Test function parameter has default argument
 ]
 
-[tool.rumdl]
+[tool.rumdl.global]
 disable = [
     "MD013",
     "MD014",
@@ -151,6 +165,23 @@ disable = [
     "MD045",
     "MD047",
 ]
+exclude = [
+    ".agents/",
+    ".claude/",
+    ".git/",
+    ".mypy_cache/",
+    ".ruff_cache/",
+    ".specify/",
+    ".superpowers/",
+    ".venv/",
+    "dev/commands/",
+    "docs/.docusaurus/",
+    "docs/build/",
+    "docs/node_modules/",
+    "node_modules/",
+    "scratchpad/",
+]
+respect-gitignore = true
 
 [tool.rumdl.MD007]
 indent = 4
