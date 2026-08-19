@@ -1,0 +1,23 @@
+.github/workflows/ci.yml
+  s_c61e7f2a6f8b30::t_328ea025ec5b09 4-10,16-28,36,48-50,60-81,84,86,91-94,97,101,104,106,112,115,119,121,127,130-132,134-141,144-146,149,153,155,159-161,164,167,170-172,175-178,180-184,186,192,195-198,200-206,209-231,233-246,252,255,278,287,293-294
+.github/workflows/sync-docs.yml
+  s_c61e7f2a6f8b30::t_01916154f9b0d3 1-2,39-42
+.yamllint.yml
+  s_c61e7f2a6f8b30::t_b9c4de6d75c9ed 4-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "74b825c4e29c35d0f2f2e76d2f9e042deb77290e",
+  "prompts": {},
+  "sessions": {
+    "s_c61e7f2a6f8b30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f96e34cf-79d1-45f1-ade3-89a74eb5ed2e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
