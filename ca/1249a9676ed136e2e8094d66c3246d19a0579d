@@ -1,0 +1,21 @@
+pyproject.toml
+  s_fe0f5d3d01ec8e::t_fe0616454a7be3 10,25-28,111-116
+uv.lock
+  s_fe0f5d3d01ec8e::t_a700839a92629a 71,78,81,83,272,277,279,520,528,530,609,623,632,644,646,660,1810,1816,1818,2253-2273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ca1249a9676ed136e2e8094d66c3246d19a0579d",
+  "prompts": {},
+  "sessions": {
+    "s_fe0f5d3d01ec8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb98ca86-cb79-4902-b38a-2e94eef2ebbc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
