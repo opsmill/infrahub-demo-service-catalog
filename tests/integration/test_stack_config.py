@@ -11,7 +11,7 @@ from .stack_config import DEFAULT_IMAGE_REPOSITORY, StackImage, resolve_stack_im
 
 pytestmark = pytest.mark.offline
 
-PACKAGED = "1.11.0b2"
+PACKAGED = "1.11.0"
 
 
 def test_defaults_to_the_vanilla_image_at_the_packaged_version() -> None:
@@ -49,13 +49,13 @@ def test_image_ver_wins_over_image_version() -> None:
 
 def test_default_tag_beats_the_packaged_version() -> None:
     """A repository pinning its own committed default is not overridden by the installed package."""
-    assert resolve_stack_image({}, PACKAGED, default_tag="1.11.0b0").tag == "1.11.0b0"
+    assert resolve_stack_image({}, PACKAGED, default_tag="1.11.1").tag == "1.11.1"
 
 
 def test_explicit_env_beats_the_default_tag() -> None:
     """An override is an override; nothing in the repository outranks it."""
     env = {"INFRAHUB_TESTING_IMAGE_VER": "1.12.0"}
-    assert resolve_stack_image(env, PACKAGED, default_tag="1.11.0b0").tag == "1.12.0"
+    assert resolve_stack_image(env, PACKAGED, default_tag="1.11.1").tag == "1.12.0"
 
 
 def test_base_version_is_read_only_for_a_custom_build() -> None:

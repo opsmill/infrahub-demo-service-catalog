@@ -11,7 +11,7 @@ on:
       infrahub_version:
         description: "Infrahub version to bump to"
         required: true
-        default: "1.10.8"
+        default: "1.11.0"
       infrahub_sdk_version:
         description: "Optional: also bump infrahub-sdk to this version"
         required: false
