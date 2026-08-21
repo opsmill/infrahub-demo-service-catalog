@@ -1,0 +1,19 @@
+generators/implement_dedicated_internet.py
+  s_fe0f5d3d01ec8e::t_19c1275ba5e936 91-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "64dd138e36b056f37bedb7464fa6b007e7aedb93",
+  "prompts": {},
+  "sessions": {
+    "s_fe0f5d3d01ec8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb98ca86-cb79-4902-b38a-2e94eef2ebbc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
