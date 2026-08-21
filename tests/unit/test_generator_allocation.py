@@ -58,6 +58,7 @@ async def test_allocate_vlan_reuses_existing_vlan_and_skips_create() -> None:
     client = AsyncMock()
     existing_vlan = MagicMock()
     existing_vlan.name = MagicMock(value="vlan__test-1")
+    existing_vlan.save = AsyncMock()
     client.filters.return_value = [existing_vlan]
 
     generator = make_generator(client)
@@ -65,6 +66,26 @@ async def test_allocate_vlan_reuses_existing_vlan_and_skips_create() -> None:
 
     client.create.assert_not_awaited()
     assert generator.allocated_vlan is existing_vlan
+
+
+async def test_allocate_vlan_resaves_the_reused_vlan() -> None:
+    """The reused VLAN must re-enter this run's group, or the cleanup deletes it.
+
+    A generator run's group holds what that run produced, and Infrahub removes members a later run
+    stops producing. Reading the VLAN back does not put it there, so a reuse branch that only
+    returned left the VLAN out of the group and the next run's cleanup deleted it. Saving is what
+    keeps it, and `allow_upsert=True` resolves here because `vlan_id` now holds a concrete value.
+    """
+    client = AsyncMock()
+    existing_vlan = MagicMock()
+    existing_vlan.name = MagicMock(value="vlan__test-1")
+    existing_vlan.save = AsyncMock()
+    client.filters.return_value = [existing_vlan]
+
+    generator = make_generator(client)
+    await generator.allocate_vlan()
+
+    existing_vlan.save.assert_awaited_once_with(allow_upsert=True)
 
 
 async def test_allocate_prefix_uses_pool_and_prefix_length() -> None:
