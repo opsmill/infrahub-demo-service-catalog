@@ -1,9 +1,11 @@
 ---
 extends: default
 
+# /.github is deliberately absent: the workflow files are YAML this repository authors and CI runs,
+# so they are linted like everything else. Their own `# yamllint disable` headers waive only the
+# rules a workflow genuinely needs waived.
 ignore: |
   /.git
-  /.github
   /.venv
   node_modules/
 

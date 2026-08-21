@@ -70,3 +70,7 @@ secrets.yaml
 
 # Ansible/Semaphore cache
 ansible/*.md5
+
+# Spec-kit scratch state (.specify is tracked; what it writes at runtime is not)
+.specify/**/.cache/
+.specify/feature.json

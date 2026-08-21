@@ -88,6 +88,15 @@ class DedicatedInternetGenerator(InfrahubGenerator):
         )
         if existing_vlans:
             self.allocated_vlan = existing_vlans[0]
+            # Saved, not just returned. A generator run's group holds what that run produced, and
+            # Infrahub deletes members that a later run stops producing. Reading the VLAN back does
+            # not put it in this run's group, so returning here left it out and the cleanup after the
+            # next run deleted it -- the VLAN this branch exists to preserve. Every other allocation
+            # below already re-saves on each run, which is why only this one was pruned.
+            #
+            # `allow_upsert=True` is safe here, unlike at creation: `vlan_id` is part of the HFID and
+            # now holds the concrete value the pool allocated, so the HFID resolves.
+            await self.allocated_vlan.save(allow_upsert=True)
             self.log.info(f"VLAN `{self.allocated_vlan.name.value}` already allocated to this service; reusing.")
             return
 
@@ -126,13 +135,13 @@ class DedicatedInternetGenerator(InfrahubGenerator):
             name__value=SERVICE_PREFIX_POOL,
         )
 
-        # Craft the data dict for prefix
+        # Craft the data dict for prefix. Relationship fields (`service`, `vlan`) are set below via
+        # attribute assignment instead: the pool-allocation mutation's `data` input does not reliably
+        # persist relationships, only plain attributes.
         prefix_data: dict = {
             "status": "active",
             "description": f"Prefix allocated to service {self.customer_service.service_identifier.value}",
-            "service": [self.customer_service.id],
             "role": "customer",
-            "vlan": [self.allocated_vlan.id],
         }
 
         # Create resource from the pool
@@ -143,6 +152,10 @@ class DedicatedInternetGenerator(InfrahubGenerator):
             prefix_length=self.prefix_length,
             identifier=self.customer_service.service_identifier.value,
         )
+
+        # Set the relationships explicitly; see comment above.
+        self.allocated_prefix.service = self.customer_service
+        self.allocated_prefix.vlan = self.allocated_vlan
 
         self.log.info(f"Prefix `{self.allocated_prefix}` assigned!")
 

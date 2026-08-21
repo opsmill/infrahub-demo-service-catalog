@@ -1,3 +1,5 @@
+---
+# yamllint disable rule:truthy rule:line-length
 name: Sync Folders
 
 on:
@@ -34,4 +36,7 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add .
-          if ! (git diff --quiet && git diff --staged --quiet); then git commit -m "Sync docs from infrahub-demo-service-catalog repo" && git push; fi
+          if ! (git diff --quiet && git diff --staged --quiet); then
+            git commit -m "Sync docs from infrahub-demo-service-catalog repo"
+            git push
+          fi

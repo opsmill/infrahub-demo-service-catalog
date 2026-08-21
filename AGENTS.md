@@ -53,7 +53,10 @@ invoke lint
 ### Run Tests
 
 ```bash
-uv run pytest
+uv run invoke test                          # unit + integration
+uv run invoke test-unit                     # no Docker
+uv run invoke test-integration              # requires Docker; --tier=core default
+uv run invoke test-integration --tier=full  # adds the extended tier
 ```
 
 ### Validate Schemas

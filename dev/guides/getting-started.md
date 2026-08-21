@@ -55,10 +55,10 @@
 
 ### Testing
 
-- `uv run pytest` - Run all tests
-- `uv run pytest tests/unit/` - Run unit tests only
-- `uv run pytest tests/integration/` - Run integration tests
-- `uv run pytest -k test_name` - Run specific test
+- `invoke test` - Run the full test suite (unit and integration)
+- `invoke test-unit` - Run unit tests only (no Docker required)
+- `invoke test-integration` - Run integration tests (spins up a Dockerized Infrahub instance via `infrahub-testcontainers`)
+- `uv run pytest -k test_name` - Run a specific test
 
 ### Documentation
 
