@@ -1,0 +1,19 @@
+tests/integration/test_create_service.py
+  s_c6f346a2001a0e::t_9930923cf842af 126-128,133,160-162,190-192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "0473053fb6c6f0099f286e188cbc507e89b70c79",
+  "prompts": {},
+  "sessions": {
+    "s_c6f346a2001a0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c633b87b-9c13-445d-b44a-c048ba2fb1c6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
