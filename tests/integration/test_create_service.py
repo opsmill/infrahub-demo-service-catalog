@@ -15,7 +15,9 @@ from infrahub_sdk.testing.repository import GitRepo
 from infrahub_sdk.yaml import SchemaFile
 from service_catalog.infrahub import get_client
 from service_catalog.protocols_async import (
+    DcimInterface,
     DcimInterfaceL2,
+    IpamIPAddress,
     IpamPrefix,
     IpamVLAN,
     LocationSite,
@@ -123,39 +125,42 @@ class TestServiceCatalog(TestInfrahubDockerClient):
             result = self.execute_command(command=command, address=address)
             assert result.returncode == 0, f"Generator run failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
 
-        # ``include`` is what makes the ``fetch()`` calls below work: a relationship the query did not
-        # select arrives with no id or typename, and infrahub-sdk >=1.23 raises on fetching one rather
-        # than resolving it lazily.
         service = await client.get(
             kind=ServiceDedicatedInternet,
             service_identifier__value=GENERATOR_SERVICE_IDENTIFIER,
             branch=default_branch,
-            include=["vlan", "prefix", "gateway_ip_address", "dedicated_interfaces"],
         )
 
-        await service.vlan.fetch()
-        vlan = service.vlan.peer
-        assert vlan is not None
+        # Each allocation is read from its *owning* side rather than through the service. `vlan`,
+        # `prefix`, `gateway_ip_address` and `dedicated_interfaces` are all `direction: inbound`
+        # (schemas/service/service.yml), and infrahub-sdk >=1.23 raises on `fetch()` for a
+        # relationship the query left unresolved instead of resolving it lazily. Querying the side
+        # that stores the link avoids that entirely, and makes a missing allocation report itself as
+        # a count rather than as an SDK error.
+        #
+        # "exactly one" is also the assertion that the *second* generator run reused each resource
+        # instead of duplicating it, which is what this test exists to pin down.
+        vlans = await client.filters(kind=IpamVLAN, service__ids=[service.id], branch=default_branch)
+        assert len(vlans) == 1, "the generator must allocate exactly one VLAN, and reuse it on re-runs"
+        vlan = vlans[0]
         assert 1000 <= vlan.vlan_id.value <= 2000
 
-        await service.prefix.fetch()
-        prefix_node = service.prefix.peer
-        assert prefix_node is not None
+        prefixes = await client.filters(kind=IpamPrefix, service__ids=[service.id], branch=default_branch)
+        assert len(prefixes) == 1, "the generator must allocate exactly one prefix, and reuse it on re-runs"
         # IPv4Network rather than ip_network(): the latter returns IPv4Network | IPv6Network, and
         # subnet_of() requires both sides to be the same family, so mypy cannot prove the call is
         # valid. This service allocates from an IPv4 pool, so name the family.
-        allocated_network = ipaddress.IPv4Network(str(prefix_node.prefix.value))
+        allocated_network = ipaddress.IPv4Network(str(prefixes[0].prefix.value))
         assert allocated_network.prefixlen == 29
         assert allocated_network.subnet_of(ipaddress.IPv4Network("203.0.113.0/24"))
 
-        await service.gateway_ip_address.fetch()
-        assert service.gateway_ip_address.peer is not None
+        gateways = await client.filters(kind=IpamIPAddress, service__ids=[service.id], branch=default_branch)
+        assert len(gateways) == 1, "the generator must allocate exactly one gateway address"
 
-        # `dedicated_interfaces` holds both the L2 customer port (allocate_port) and the L3 gateway
-        # interface (allocate_gateway): both inherit from DcimInterface and share the "service"
-        # relationship identifier. Filter for the L2 port specifically to check its state.
-        await service.dedicated_interfaces.fetch()
-        assert len(service.dedicated_interfaces.peers) == 2
+        # Both the L2 customer port (allocate_port) and the L3 gateway interface (allocate_gateway)
+        # inherit from DcimInterface and share the "service" identifier, hence two.
+        interfaces = await client.filters(kind=DcimInterface, service__ids=[service.id], branch=default_branch)
+        assert len(interfaces) == 2
 
         l2_ports = await client.filters(
             kind=DcimInterfaceL2, service__ids=[service.id], branch=default_branch, include=["untagged_vlan"]
@@ -164,14 +169,7 @@ class TestServiceCatalog(TestInfrahubDockerClient):
         port = l2_ports[0]
         assert port.status.value == "active"
         assert port.role.value == "customer"
-        await port.untagged_vlan.fetch()
-        assert port.untagged_vlan.peer.id == vlan.id
-
-        # The second generator run above must have reused the same resources, not duplicated them.
-        vlans = await client.filters(kind=IpamVLAN, service__ids=[service.id], branch=default_branch)
-        assert len(vlans) == 1
-        prefixes = await client.filters(kind=IpamPrefix, service__ids=[service.id], branch=default_branch)
-        assert len(prefixes) == 1
+        assert port.untagged_vlan.id == vlan.id, "the allocated port must carry the allocated VLAN untagged"
 
     async def test_artifact_rendering(self, client: InfrahubClient, infrahub_port: int, default_branch: str) -> None:
         """Verify the startup-config transform renders the VLAN/port allocated by the generator.
@@ -188,13 +186,16 @@ class TestServiceCatalog(TestInfrahubDockerClient):
         )
 
         l2_ports = await client.filters(
-            kind=DcimInterfaceL2, service__ids=[service.id], branch=default_branch, include=["device", "untagged_vlan"]
+            kind=DcimInterfaceL2, service__ids=[service.id], branch=default_branch, include=["device"]
         )
         port = l2_ports[0]
         await port.device.fetch()
         device = port.device.peer
-        await port.untagged_vlan.fetch()
-        vlan = port.untagged_vlan.peer
+
+        # From the owning side, for the same reason as in test_generator_allocation.
+        vlans = await client.filters(kind=IpamVLAN, service__ids=[service.id], branch=default_branch)
+        assert len(vlans) == 1
+        vlan = vlans[0]
 
         address = f"http://localhost:{infrahub_port}"
         command = f"infrahubctl render device_config --branch {default_branch} device_name={device.name.value}"
