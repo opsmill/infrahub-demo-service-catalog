@@ -88,6 +88,15 @@ class DedicatedInternetGenerator(InfrahubGenerator):
         )
         if existing_vlans:
             self.allocated_vlan = existing_vlans[0]
+            # Saved, not just returned. A generator run's group holds what that run produced, and
+            # Infrahub deletes members that a later run stops producing. Reading the VLAN back does
+            # not put it in this run's group, so returning here left it out and the cleanup after the
+            # next run deleted it -- the VLAN this branch exists to preserve. Every other allocation
+            # below already re-saves on each run, which is why only this one was pruned.
+            #
+            # `allow_upsert=True` is safe here, unlike at creation: `vlan_id` is part of the HFID and
+            # now holds the concrete value the pool allocated, so the HFID resolves.
+            await self.allocated_vlan.save(allow_upsert=True)
             self.log.info(f"VLAN `{self.allocated_vlan.name.value}` already allocated to this service; reusing.")
             return
 
