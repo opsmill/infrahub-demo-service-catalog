@@ -123,10 +123,14 @@ class TestServiceCatalog(TestInfrahubDockerClient):
             result = self.execute_command(command=command, address=address)
             assert result.returncode == 0, f"Generator run failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
 
+        # ``include`` is what makes the ``fetch()`` calls below work: a relationship the query did not
+        # select arrives with no id or typename, and infrahub-sdk >=1.23 raises on fetching one rather
+        # than resolving it lazily.
         service = await client.get(
             kind=ServiceDedicatedInternet,
             service_identifier__value=GENERATOR_SERVICE_IDENTIFIER,
             branch=default_branch,
+            include=["vlan", "prefix", "gateway_ip_address", "dedicated_interfaces"],
         )
 
         await service.vlan.fetch()
@@ -153,7 +157,9 @@ class TestServiceCatalog(TestInfrahubDockerClient):
         await service.dedicated_interfaces.fetch()
         assert len(service.dedicated_interfaces.peers) == 2
 
-        l2_ports = await client.filters(kind=DcimInterfaceL2, service__ids=[service.id], branch=default_branch)
+        l2_ports = await client.filters(
+            kind=DcimInterfaceL2, service__ids=[service.id], branch=default_branch, include=["untagged_vlan"]
+        )
         assert len(l2_ports) == 1
         port = l2_ports[0]
         assert port.status.value == "active"
@@ -181,7 +187,9 @@ class TestServiceCatalog(TestInfrahubDockerClient):
             branch=default_branch,
         )
 
-        l2_ports = await client.filters(kind=DcimInterfaceL2, service__ids=[service.id], branch=default_branch)
+        l2_ports = await client.filters(
+            kind=DcimInterfaceL2, service__ids=[service.id], branch=default_branch, include=["device", "untagged_vlan"]
+        )
         port = l2_ports[0]
         await port.device.fetch()
         device = port.device.peer
