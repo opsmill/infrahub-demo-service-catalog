@@ -95,6 +95,28 @@ nodes:
             label: Customer
             description: Dedicated to connect a customer.
             color: "#1B5583"
+      - name: classification
+        kind: Dropdown
+        optional: true
+        description: Data classification of the hosts in this prefix, independent of its network role.
+        order_weight: 1100
+        choices:
+          - name: user
+            label: User
+            description: End-user networks -- the set the security team scans.
+            color: "#a0b78d"
+          - name: server
+            label: Server
+            description: Server and application networks.
+            color: "#77DD77"
+          - name: infrastructure
+            label: Infrastructure
+            description: Network infrastructure itself.
+            color: "#AEC6CF"
+          - name: restricted
+            label: Restricted
+            description: Regulated networks. Only members of restricted-network-admins may change these.
+            color: "#8E2F3A"
     relationships:
       - name: organization
         peer: OrganizationGeneric

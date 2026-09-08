@@ -10,12 +10,21 @@ generator_definitions:
     parameters:
       service_identifier: "service_identifier__value"
 
+# CHECKS
+check_definitions:
+  - name: restricted_prefix_guard
+    file_path: "checks/restricted_prefix_guard.py"
+    class_name: RestrictedPrefixCheck
+    # No targets: global check, runs against every proposed change.
+
 # QUERIES
 queries:
   - name: dedicated_internet_info
     file_path: "generators/dedicated_internet.gql"
   - name: device_info
     file_path: "templates/device_info.gql"
+  - name: restricted_prefixes
+    file_path: "checks/restricted_prefixes.gql"
 
 # MENU
 menus:

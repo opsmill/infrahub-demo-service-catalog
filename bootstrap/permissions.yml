@@ -66,6 +66,16 @@ spec:
 apiVersion: infrahub.app/v1
 kind: Object
 spec:
+  kind: CoreAccountGroup
+  data:
+    # Membership allowlist read by the restricted_prefix_guard check. It carries no roles:
+    # Infrahub permissions are per kind, so the per-instance rule lives in the check.
+    - name: "restricted-network-admins"
+      description: "Accounts allowed to change prefixes classified as restricted"
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
   kind: CoreAccount
   data:
     - name: "john"

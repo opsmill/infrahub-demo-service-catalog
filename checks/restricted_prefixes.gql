@@ -1,0 +1,50 @@
+query RestrictedPrefixes {
+  Branch {
+    name
+    is_default
+    branched_from
+  }
+  IpamPrefix(classification__value: "restricted") {
+    edges {
+      node {
+        id
+        display_label
+        prefix {
+          updated_at
+          updated_by {
+            id
+            display_label
+          }
+        }
+        classification {
+          updated_at
+          updated_by {
+            id
+            display_label
+          }
+        }
+        status {
+          updated_at
+          updated_by {
+            id
+            display_label
+          }
+        }
+        role {
+          updated_at
+          updated_by {
+            id
+            display_label
+          }
+        }
+        description {
+          updated_at
+          updated_by {
+            id
+            display_label
+          }
+        }
+      }
+    }
+  }
+}
