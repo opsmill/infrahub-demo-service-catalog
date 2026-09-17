@@ -1,0 +1,26 @@
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: LocationRack
+  data:
+    - name: "Brussels 1 Rack A"
+      shortname: "bru01-ra"
+      facility_id: "BRU01-A12"
+      height: 24
+      parent: "bru01"
+    - name: "Dallas 1 Rack A"
+      shortname: "dal01-ra"
+      facility_id: "DAL01-A04"
+      height: 24
+      parent: "dal01"
+    - name: "New York 1 Rack A"
+      shortname: "nyc01-ra"
+      facility_id: "NYC01-B11"
+      height: 24
+      parent: "nyc01"
+    - name: "Paris 1 Rack A"
+      shortname: "par01-ra"
+      facility_id: "PAR01-C02"
+      height: 24
+      parent: "par01"

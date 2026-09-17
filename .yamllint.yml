@@ -8,6 +8,8 @@ ignore: |
   /.git
   /.venv
   node_modules/
+  # Backstage app tree: linted by its own prettier/eslint config
+  /backstage
 
 rules:
   new-lines: disable
