@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 import logging
 import random
 
@@ -125,9 +126,48 @@ class DedicatedInternetGenerator(InfrahubGenerator):
 
         self.log.info(f"VLAN `{self.allocated_vlan.name.value}` assigned!")
 
+    async def release_resized_prefix(self) -> None:
+        """Release the service's prefix when its IP package no longer matches its size.
+
+        The pool keys an allocation on the identifier -- the service identifier here -- and refuses
+        to hand back a different prefix length for one it has already allocated:
+        "This resource is already allocated as 203.0.113.0/29; its prefix length cannot be changed".
+        So a service whose ip_package changed can only be re-allocated once the old prefix is gone.
+        Deleting it frees the allocation, and the run then allocates the new size under the same
+        identifier. The customer is renumbered, which is what resizing their subnet means.
+        """
+        existing_prefixes = await self.client.filters(
+            kind=IpamPrefix,
+            service__ids=[self.customer_service.id],
+        )
+
+        for prefix in existing_prefixes:
+            current = ipaddress.ip_network(str(prefix.prefix.value))
+            if current.prefixlen == self.prefix_length:
+                continue
+
+            self.log.info(
+                f"Prefix `{current}` no longer matches the `{self.customer_service.ip_package.value}` "
+                f"IP package (/{self.prefix_length}); releasing it.",
+            )
+
+            # The addresses inside it go first, or they outlive the prefix that contains them.
+            for address in await self.client.filters(
+                kind=IpamIPAddress,
+                service__ids=[self.customer_service.id],
+            ):
+                if ipaddress.ip_interface(str(address.address.value)).ip in current:
+                    self.log.info(f"Releasing address `{address.address.value}`.")
+                    await address.delete()
+
+            await prefix.delete()
+
     async def allocate_prefix(self) -> None:
         """Allocate a prefix coming from a resource pool to the service."""
         self.log.info("Allocating prefix from pool...")
+
+        # A re-run after an ip_package change cannot resize what the pool already allocated.
+        await self.release_resized_prefix()
 
         # Get resource pool
         resource_pool = await self.client.get(

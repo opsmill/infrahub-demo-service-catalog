@@ -3,53 +3,79 @@ apiVersion: infrahub.app/v1
 kind: Object
 spec:
   kind: DcimDevice
+  # Every device is mounted in its site's rack, so the elevations in the
+  # Backstage Racks page are there on a fresh install.
   data:
     # ------------------------------------------------------------
     # Core devices / L2
     # ------------------------------------------------------------
     - name: sw01-bru01
+      rack: bru01-ra
+      position: 2
+      rack_face: front
       location: bru01
       status: active
       object_template: "Generic switch"
       member_of_groups: ["generic_devices"]
       index: 1
     - name: sw02-bru01
+      rack: bru01-ra
+      position: 4
+      rack_face: front
       location: bru01
       status: active
       object_template: "Generic switch"
       member_of_groups: ["generic_devices"]
       index: 2
     - name: sw01-par01
+      rack: par01-ra
+      position: 2
+      rack_face: front
       location: par01
       status: active
       object_template: "Generic switch"
       member_of_groups: ["generic_devices"]
       index: 1
     - name: sw02-par01
+      rack: par01-ra
+      position: 4
+      rack_face: front
       location: par01
       status: active
       object_template: "Generic switch"
       member_of_groups: ["generic_devices"]
       index: 2
     - name: sw01-nyc01
+      rack: nyc01-ra
+      position: 2
+      rack_face: front
       location: nyc01
       status: active
       object_template: "Generic switch"
       member_of_groups: ["generic_devices"]
       index: 1
     - name: sw02-nyc01
+      rack: nyc01-ra
+      position: 4
+      rack_face: front
       location: nyc01
       status: active
       object_template: "Generic switch"
       member_of_groups: ["generic_devices"]
       index: 2
     - name: sw01-dal01
+      rack: dal01-ra
+      position: 2
+      rack_face: front
       location: dal01
       status: active
       object_template: "Generic switch"
       member_of_groups: ["generic_devices"]
       index: 1
     - name: sw02-dal01
+      rack: dal01-ra
+      position: 4
+      rack_face: front
       location: dal01
       status: active
       object_template: "Generic switch"
@@ -60,48 +86,72 @@ spec:
     # Edge devices / L3
     # ------------------------------------------------------------
     - name: rb01-bru01
+      rack: bru01-ra
+      position: 8
+      rack_face: front
       location: bru01
       status: active
       index: 1
       object_template: "Generic router"
       member_of_groups: ["generic_devices"]
     - name: rb02-bru01
+      rack: bru01-ra
+      position: 10
+      rack_face: rear
       location: bru01
       status: active
       index: 2
       object_template: "Generic router"
       member_of_groups: ["generic_devices"]
     - name: rb01-par01
+      rack: par01-ra
+      position: 8
+      rack_face: front
       location: par01
       status: active
       index: 1
       object_template: "Generic router"
       member_of_groups: ["generic_devices"]
     - name: rb02-par01
+      rack: par01-ra
+      position: 10
+      rack_face: rear
       location: par01
       status: active
       index: 2
       object_template: "Generic router"
       member_of_groups: ["generic_devices"]
     - name: rb01-nyc01
+      rack: nyc01-ra
+      position: 8
+      rack_face: front
       location: nyc01
       status: active
       index: 1
       object_template: "Generic router"
       member_of_groups: ["generic_devices"]
     - name: rb02-nyc01
+      rack: nyc01-ra
+      position: 10
+      rack_face: rear
       location: nyc01
       status: active
       index: 2
       object_template: "Generic router"
       member_of_groups: ["generic_devices"]
     - name: rb01-dal01
+      rack: dal01-ra
+      position: 8
+      rack_face: front
       location: dal01
       status: active
       index: 1
       object_template: "Generic router"
       member_of_groups: ["generic_devices"]
     - name: rb02-dal01
+      rack: dal01-ra
+      position: 10
+      rack_face: rear
       location: dal01
       status: active
       index: 2
