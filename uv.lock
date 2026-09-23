@@ -614,13 +614,13 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "infrahub-testcontainers", specifier = ">=1.11.0" },
+    { name = "infrahub-testcontainers", specifier = ">=1.11.3" },
     { name = "mypy", specifier = ">=2.3.1" },
     { name = "pytest", specifier = ">=8.0.0,<10" },
     { name = "pytest-asyncio", specifier = ">=0.23.0,<2" },
     { name = "pytest-clarity", specifier = ">=1.0.1" },
     { name = "pytest-httpx", specifier = ">=0.30.0,<0.37" },
-    { name = "ruff", specifier = ">=0.15.0,<0.16.0" },
+    { name = "ruff", specifier = ">=0.15.0,<0.17.0" },
     { name = "rumdl", specifier = ">=0.2.55" },
     { name = "types-pyyaml", specifier = ">=6.0.12" },
     { name = "types-requests", specifier = ">=2.32.0" },
@@ -663,7 +663,7 @@ all = [
 
 [[package]]
 name = "infrahub-testcontainers"
-version = "1.11.0"
+version = "1.11.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -673,9 +673,9 @@ dependencies = [
     { name = "pytest" },
     { name = "testcontainers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8e/b3/ba447e629a0b11170cb8c5074d772829f3bc470edc5c360fe024327cf4e8/infrahub_testcontainers-1.11.0.tar.gz", hash = "sha256:c9261c7d405a128a3b7afe1693e304a452bc6d12a7fe681565c81f3b5b521969", size = 19983, upload-time = "2026-08-19T21:42:16.077Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fc/20/0388d0e3e29217376b59cb06e11fe5ee8d35181b38b31cbbcfda6ddfa4e3/infrahub_testcontainers-1.11.3.tar.gz", hash = "sha256:1f4ca6ba3a570f5624b88b160f25dd7a1f9f189a5837acb800588e52ac5c5b07", size = 20670, upload-time = "2026-09-23T09:59:16.431Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a1/f0/63b8d52a965e21e99eef2869000218544b8ddb251658bde4dbda81698c49/infrahub_testcontainers-1.11.0-py3-none-any.whl", hash = "sha256:25ed6fc43abde04e4da59d85a3ac0b1018c597d9ffd2006cb136910ae2ea22f4", size = 26228, upload-time = "2026-08-19T21:42:16.864Z" },
+    { url = "https://files.pythonhosted.org/packages/2a/57/9a8e83162fdcd0bcdbcf76214353854e4d047c51538d5cdb51fe34431a13/infrahub_testcontainers-1.11.3-py3-none-any.whl", hash = "sha256:01cc5682137a6904fd61e5ae2f0e4a23fcbec7717bf23a2c218f34c69a8e7d61", size = 27058, upload-time = "2026-09-23T09:59:15.469Z" },
 ]
 
 [[package]]
@@ -1451,7 +1451,7 @@ wheels = [
 
 [[package]]
 name = "prefect-client"
-version = "3.7.4"
+version = "3.8.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "amplitude-analytics" },
@@ -1497,9 +1497,9 @@ dependencies = [
     { name = "websockets" },
     { name = "whenever", marker = "python_full_version >= '3.13'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c2/6a/bb032829c0f049b3c368a2e673f6eeda4b895080c185e3a750ce0edc5e89/prefect_client-3.7.4.tar.gz", hash = "sha256:2bc0913439c2ef1f614d1899bc30660924846f58448e23a044165ba591d0bcd5", size = 909617, upload-time = "2026-06-05T17:51:44.169Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3a/ff/38a8c1121da48475fb514111bb9b3aa34ddb4e7f3930b1c2cec743259557/prefect_client-3.8.6.tar.gz", hash = "sha256:8dab799dfa038e32c75578eae3a73a46722cd72a0bdc6f32a04151c50d7552f4", size = 939865, upload-time = "2026-09-14T14:38:42.549Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/77/73/919e73a47b364dfb01375df7d9e35b74d2cb612c653b69facde8c0184325/prefect_client-3.7.4-py3-none-any.whl", hash = "sha256:1b71fd1266fd8c6e6a1dec5e0f1f6efc633a57bbc60a7f1e313b0895add65876", size = 1124697, upload-time = "2026-06-05T17:51:41.926Z" },
+    { url = "https://files.pythonhosted.org/packages/ff/e9/7bf15991b7419286cbba9425c6ec916da6572742d0d946a1a2d8803e8d26/prefect_client-3.8.6-py3-none-any.whl", hash = "sha256:641d878d0a51c94e7de8a38576e9f7a115759f699ae2731c2b83152e21665955", size = 1160105, upload-time = "2026-09-14T14:38:40.523Z" },
 ]
 
 [[package]]
