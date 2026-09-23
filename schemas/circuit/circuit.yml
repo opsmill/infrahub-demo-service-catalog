@@ -148,6 +148,7 @@ nodes:
     description: Contract file associated with a circuit.
     label: Circuit Contract
     icon: mdi:file-document
+    menu_placement: DcimCircuit
     attributes:
       - name: contract_start_date
         kind: DateTime
