@@ -59,6 +59,26 @@ uv run invoke test-integration              # requires Docker; --tier=core defau
 uv run invoke test-integration --tier=full  # adds the extended tier
 ```
 
+### Run the Backstage Portal
+
+```bash
+invoke backstage-install                 # once
+invoke backstage-build && invoke start   # as part of the stack
+invoke backstage                         # or as a dev server, hot reload
+invoke backstage-test
+```
+
+See `dev/guides/backstage.md`. The `backstage/` workspace is Node/TypeScript
+with its own yarn, prettier and eslint; `invoke lint` does not cover it.
+
+The Infrahub integration lives in four publishable plugins under
+`backstage/plugins/` (`infrahub-common`, `-node`, `-backend`, and the frontend
+`infrahub`); `packages/app` and `packages/backend` hold only Otter-net's own
+branding and the lines that install them. The portal is branded as Otter-net,
+the demo's fictional ISP -- brand colours are in
+`packages/app/src/modules/theme/brand.ts`, and the panels take their colours
+from the MUI palette so the branding reaches them without the plugin knowing.
+
 ### Validate Schemas
 
 ```bash
