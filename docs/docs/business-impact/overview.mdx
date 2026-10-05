@@ -60,6 +60,16 @@ Infrahub does not merge a proposed change while a check has failed. The guard ha
 
 ![The failed Gold outage guard check on Paris router 1 maintenance, with its message](../media/business-impact/checks-paris-failed.png)
 
+## The audit record of an approved change
+
+Infrahub keeps a record of each proposed change. For an approved plan, it shows what an auditor asks for:
+
+- The plan: the proposed change's description, and its **Data** tab before the merge
+- The guard result: the Gold outage guard's conclusion and message on the **Checks** tab. When the guard passes, its message records the Gold SLA credit exposure at approval time
+- Who approved it and when: **Approved by** on the proposed change, and the approval and merge with their dates on the **Activity** page
+
+Infrahub refuses an approval from the account that opened the proposed change. The demo has a change approver account for this; see the [tutorial's last steps](plan-maintenance.mdx#step-8-view-the-audit-record-of-the-approved-change).
+
 ## Limits of the demo
 
 - No outage cost, savings or return on investment figure. The figures are counts and contract values.

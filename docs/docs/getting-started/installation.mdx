@@ -140,7 +140,7 @@ This single command performs three things:
 
 1. **Seeds Semaphore** with the project, SSH key, repository, inventory, environment, and task template (idempotent: you can run it more than once)
 2. **Loads the repository** configuration from `bootstrap/repository.yaml` into Infrahub. It is a read-write `CoreRepository` that references the local checkout mounted at `/upstream` in the container
-3. **Loads permissions** from `bootstrap/permissions.yml`, creating an operator account (`john` / `infrahub`) with permissions to manage repositories, merge branches, and review proposed changes
+3. **Loads permissions** from `bootstrap/permissions.yml`, creating an operator account (`john` / `infrahub`) with permissions to manage repositories, merge branches, and review proposed changes, and a change approver account (`approver` / `infrahub`) that approves and merges proposed changes and changes no other data
 
 #### What the repository provides
 
@@ -201,6 +201,7 @@ Confirm everything is working by accessing both interfaces:
 - **URL**: [http://localhost:8000](http://localhost:8000)
 - **Admin account**: `admin` / `infrahub`
 - **Operator account**: `john` / `infrahub` (limited permissions)
+- **Change approver account**: `approver` / `infrahub` (approves and merges proposed changes; changes no other data)
 - **What to Check**:
     - Navigate to the Schema page to see loaded models
     - Check the Objects page to verify demo data is present

@@ -72,3 +72,63 @@ spec:
       password: "infrahub"
       member_of_groups:
         - operator-group
+---
+# A change approver reviews and merges proposed changes and changes no other data. Infrahub refuses an
+# approval from the account that opened the proposed change, so the business impact demo needs a second
+# account to show who approved a change. Recording an approval changes the proposed change on the default
+# branch, hence `edit_default_branch`; the object permissions limit that to proposed changes.
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: CoreAccountRole
+  data:
+    - name: "approver-role-object"
+      permissions:
+        kind: CoreObjectPermission
+        data:
+          - namespace: "*"
+            name: "*"
+            action: "any"
+            decision: 1
+          - namespace: "*"
+            name: "*"
+            action: "view"
+            decision: 6
+          - namespace: "Core"
+            name: "ProposedChange"
+            action: "any"
+            decision: 6
+    - name: "approver-role-global"
+      permissions:
+        kind: CoreGlobalPermission
+        data:
+          - decision: 6
+            action: "edit_default_branch"
+          - decision: 6
+            action: "review_proposed_change"
+          - decision: 6
+            action: "merge_proposed_change"
+          - decision: 6
+            action: "merge_branch"
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: CoreAccountGroup
+  data:
+    - name: "approver-group"
+      roles:
+        - approver-role-object
+        - approver-role-global
+      description: "Group for change approvers: review and merge proposed changes"
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: CoreAccount
+  data:
+    - name: "approver"
+      label: "Change approver"
+      password: "infrahub"
+      member_of_groups:
+        - approver-group

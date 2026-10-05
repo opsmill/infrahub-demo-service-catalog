@@ -167,5 +167,5 @@ async def test_allocate_port_reuses_already_allocated_core_interface() -> None:
 
     await generator.allocate_port()
 
-    interface_peer.save.assert_awaited_once_with(allow_upsert=True)
+    interface_peer.save.assert_awaited_once_with(allow_upsert=True, update_group_context=False)
     assert generator.index == 1

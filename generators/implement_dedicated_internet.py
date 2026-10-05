@@ -238,8 +238,9 @@ class DedicatedInternetGenerator(InfrahubGenerator):
         allocated_port.service = self.customer_service
         allocated_port.untagged_vlan = self.allocated_vlan
 
-        # Finally save
-        await allocated_port.save(allow_upsert=True)
+        # Finally save. The port belongs to the switch, not to this generator: keep it out of the
+        # tracking group, or a later run where the service uses another port would delete it.
+        await allocated_port.save(allow_upsert=True, update_group_context=False)
 
     async def allocate_gateway(self) -> None:
         """Allocate a gateway to the service."""

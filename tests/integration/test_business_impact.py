@@ -397,6 +397,16 @@ class TestBusinessImpact(TestInfrahubDockerClient):
         assert after.state.value == "merged"
         assert router.status.value == "maintenance"
 
+        # The generator runs on main after the merge. It must leave the freed switch 1 ports in place:
+        # the ports belong to the switch, not to the generator's tracking group.
+        sw01 = client_sync.get(kind=DcimDevice, name__value="sw01-par01", branch="main")
+        wait_until_ports = [
+            str(port.name.value)
+            for port in client_sync.filters(kind=DcimInterfaceL2, device__ids=[sw01.id], branch="main")
+        ]
+        OPEN_CHECKS["switch 1 ports on main after the merge"] = ", ".join(sorted(wait_until_ports))
+        assert {"Ethernet4", "Ethernet5"} <= set(wait_until_ports)
+
     def test_report_open_checks(self) -> None:
         print("\nOpen checks:")
         for check, result in OPEN_CHECKS.items():

@@ -514,7 +514,8 @@ def _ensure_branch(client: InfrahubClientSync, change: MaintenanceChange) -> Non
 def _release_port(client: InfrahubClientSync, port: Any, branch: str) -> None:  # noqa: ANN401 - an SDK node
     """Free a customer port on `branch`, and take it out of the generator's tracking group first.
 
-    The generator deletes the nodes of its group that a run no longer saves. Without this, its next run
+    The generator deletes the nodes of its group that a run no longer saves. It now saves the port outside
+    its group, but a port saved by an earlier version of the generator is still a member, and the next run
     would delete the physical switch port instead of leaving it free.
     """
     for group in client.filters(kind=CoreGeneratorGroup, members__ids=[port.id], branch=branch):
