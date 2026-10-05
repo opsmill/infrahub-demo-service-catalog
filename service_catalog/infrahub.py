@@ -111,3 +111,29 @@ def get_dropdown_label_mapping(
     if matched_attribute is None:
         raise Exception(f"Can't find attribute `{attribute_name}` for kind `{kind}`")
     return {choice["name"]: choice["label"] for choice in matched_attribute.choices}
+
+
+@inject(cast=False)  # type: ignore[arg-type]
+def run_query(
+    name: str,
+    variables: dict[str, Any] | None = None,
+    branch: str = "main",
+    client: InfrahubClientSync = Depends(get_client),
+) -> dict[str, Any]:
+    """Run a stored GraphQL query by name on a branch and return its `data`.
+
+    `update_group=False` keeps the read from creating a query group in Infrahub.
+    Raises RuntimeError when the response body carries GraphQL errors.
+    """
+    body = client.query_gql_query(
+        name=name,
+        variables=variables or {},
+        branch_name=branch,
+        update_group=False,
+    )
+    errors = body.get("errors")
+    if errors:
+        messages = "; ".join(str(error.get("message", error)) for error in errors)
+        raise RuntimeError(f"Query `{name}` on branch `{branch}` failed: {messages}")
+    data: dict[str, Any] = body["data"]
+    return data

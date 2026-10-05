@@ -1,50 +1,101 @@
 {
   "version": 1,
   "skills": {
-    "infrahub-analyst": {
+    "infrahub-analyzing-data": {
       "source": "opsmill/infrahub-skills",
       "sourceType": "github",
-      "computedHash": "cac40594b19d8553ea0aef916a4d66f13caaae25051daef93250c9c73c848166"
+      "skillPath": "skills/infrahub-analyzing-data/SKILL.md",
+      "computedHash": "b3df6ef1d762f351ae10c27dfbff2ec2cb121d374b4a1b8a42892f52946ccc1c"
     },
-    "infrahub-check-creator": {
+    "infrahub-analyzing-diagnostics": {
       "source": "opsmill/infrahub-skills",
       "sourceType": "github",
-      "computedHash": "2689d540774cf9d16f2e4241ce7c09c29e3b56f25cf88242eae89f6437c1ab4a"
+      "skillPath": "skills/infrahub-analyzing-diagnostics/SKILL.md",
+      "computedHash": "de635764fd078aedeb50788944dd45a668ebec7cfd1733f0f85687a02d1fd80f"
+    },
+    "infrahub-auditing-repo": {
+      "source": "opsmill/infrahub-skills",
+      "sourceType": "github",
+      "skillPath": "skills/infrahub-auditing-repo/SKILL.md",
+      "computedHash": "8eca18c10aebd6aa47c50e19c2fdf8acc416e834466e92d0e670904598c029f7"
+    },
+    "infrahub-collecting-diagnostics": {
+      "source": "opsmill/infrahub-skills",
+      "sourceType": "github",
+      "skillPath": "skills/infrahub-collecting-diagnostics/SKILL.md",
+      "computedHash": "f6975bed008b7a22d9c9915ad1d28c84edfa7ce1a156961b58ee00a3fdb5fa9a"
     },
     "infrahub-common": {
       "source": "opsmill/infrahub-skills",
       "sourceType": "github",
-      "computedHash": "aed4ce06667b1705137118b2b6d0a2c8fceed70fc563440ef8b06186171406bc"
+      "skillPath": "skills/infrahub-common/SKILL.md",
+      "computedHash": "4cd63a0b2339245dabecbc4106b7a55060264303503b8f9c047a474210023a26"
     },
-    "infrahub-generator-creator": {
+    "infrahub-converting-netbox-device-types": {
       "source": "opsmill/infrahub-skills",
       "sourceType": "github",
-      "computedHash": "737af6d6c5608572c05e58d947b1d49f620acf76787d5cb7b8a558321c87c8bf"
+      "skillPath": "skills/infrahub-converting-netbox-device-types/SKILL.md",
+      "computedHash": "a56a85ef679a75a2991663991acfd62f8097ea31cc66343cec5b6a7b71788e96"
     },
-    "infrahub-menu-creator": {
+    "infrahub-importing-data": {
       "source": "opsmill/infrahub-skills",
       "sourceType": "github",
-      "computedHash": "cb7174870cdc14ba84dbf16d697d7c8dc1aac464401271a4913c76d9d8926161"
+      "skillPath": "skills/infrahub-importing-data/SKILL.md",
+      "computedHash": "42216f507dc50c36beb42829b74fef170020a22c9bb6007be52f0a710864820a"
     },
-    "infrahub-object-creator": {
+    "infrahub-managing-checks": {
       "source": "opsmill/infrahub-skills",
       "sourceType": "github",
-      "computedHash": "d1522628b3179c8cf686a6d828ef242b52a3ec2a3b5ca8e7f099cfb4fefcb7a1"
+      "skillPath": "skills/infrahub-managing-checks/SKILL.md",
+      "computedHash": "6ea49c6d5429ff5de957d672d665295dbfa0e803e2a3692b9fc533423f6a28a7"
     },
-    "infrahub-repo-auditor": {
+    "infrahub-managing-generators": {
       "source": "opsmill/infrahub-skills",
       "sourceType": "github",
-      "computedHash": "05343203003fc5ab97514fa01ed043ded4659ca2bcd506c43ea9fb7fdfaa2a43"
+      "skillPath": "skills/infrahub-managing-generators/SKILL.md",
+      "computedHash": "0d41c160559fd7b0fd6629dc2cc675e67d43ace0221e17e5398aafc7b140dbc4"
     },
-    "infrahub-schema-creator": {
+    "infrahub-managing-menus": {
       "source": "opsmill/infrahub-skills",
       "sourceType": "github",
-      "computedHash": "ab2feef296e6f7909e230abcbe6341a7f5cf3b406623ebfc5c5f3a7b4170de7b"
+      "skillPath": "skills/infrahub-managing-menus/SKILL.md",
+      "computedHash": "4a782f4d494732a8314f912ebfc090d324e8acc92f8e4f5568c53a0c9e1e8641"
     },
-    "infrahub-transform-creator": {
+    "infrahub-managing-objects": {
       "source": "opsmill/infrahub-skills",
       "sourceType": "github",
-      "computedHash": "a8ec2bbce92eff9b02f5576710f6e434daa6ce72f8ae85b16dd4faf45931efb6"
+      "skillPath": "skills/infrahub-managing-objects/SKILL.md",
+      "computedHash": "6b4c904791dbf3946ceb68c2be420c2b7dc27af7dc64398096a27fc98e63b9c0"
+    },
+    "infrahub-managing-schemas": {
+      "source": "opsmill/infrahub-skills",
+      "sourceType": "github",
+      "skillPath": "skills/infrahub-managing-schemas/SKILL.md",
+      "computedHash": "1fe24fb3e369ed97a17e6feea953cf52ee8c6ec2022b5473374163892cfccf50"
+    },
+    "infrahub-managing-transforms": {
+      "source": "opsmill/infrahub-skills",
+      "sourceType": "github",
+      "skillPath": "skills/infrahub-managing-transforms/SKILL.md",
+      "computedHash": "ded566ae6f491ae89cf0a6ec3a5803965d22e3be9b1fe1071974b76d17f01c49"
+    },
+    "infrahub-reporting-issues": {
+      "source": "opsmill/infrahub-skills",
+      "sourceType": "github",
+      "skillPath": "skills/infrahub-reporting-issues/SKILL.md",
+      "computedHash": "7bc4c7b2dd878beb7315dec26920bfcae282837a77bf5a576bcb65b00b772e38"
+    },
+    "infrahub-reporting-skill-gaps": {
+      "source": "opsmill/infrahub-skills",
+      "sourceType": "github",
+      "skillPath": "skills/infrahub-reporting-skill-gaps/SKILL.md",
+      "computedHash": "fb7677fecd95f1969c09a0a604a0cd1b48a56418d42cf2c441e7f82a7aff2b64"
+    },
+    "infrahub-teaching-concepts": {
+      "source": "opsmill/infrahub-skills",
+      "sourceType": "github",
+      "skillPath": "skills/infrahub-teaching-concepts/SKILL.md",
+      "computedHash": "09d98616bae12df42e80e1a443338b493fb33554b56b714eeee5847051e028b3"
     }
   }
 }

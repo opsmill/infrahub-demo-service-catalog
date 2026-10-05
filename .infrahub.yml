@@ -10,12 +10,21 @@ generator_definitions:
     parameters:
       service_identifier: "service_identifier__value"
 
+# CHECKS
+# Global (no targets): runs once in every proposed change pipeline. The query is bound by the class.
+check_definitions:
+  - name: gold_outage_guard
+    file_path: "checks/gold_outage_guard.py"
+    class_name: GoldOutageGuard
+
 # QUERIES
 queries:
   - name: dedicated_internet_info
     file_path: "generators/dedicated_internet.gql"
   - name: device_info
     file_path: "templates/device_info.gql"
+  - name: business_impact_services
+    file_path: "service_catalog/queries/business_impact_services.gql"
 
 # MENU
 menus:
@@ -41,6 +50,7 @@ objects:
   - data/06_device_type.yml
   - data/07_device_template.yml
   - data/08_device.yml
+  - data/10_customers_tiers.yml
   # - data/09_circuit.yml
 
 # TRANSFORMS

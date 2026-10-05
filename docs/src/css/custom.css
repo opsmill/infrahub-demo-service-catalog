@@ -144,3 +144,28 @@ body {
   border-radius: 0 var(--ifm-breadcrumb-border-radius) var(--ifm-breadcrumb-border-radius) 0;
   border-left: 1px solid var(--ifm-breadcrumb-color-active);
 }
+
+/* Screenshots on the business impact pages: a padded mat with a thin frame, rounded corners and a
+   soft shadow, so a screenshot reads as a picture of the product and not as part of the page. */
+:root {
+  --screenshot-mat: #ffffff;
+  --screenshot-border: #d3d8de;
+  --screenshot-shadow: 0 1px 2px rgb(15 23 42 / 0.06), 0 8px 20px rgb(15 23 42 / 0.08);
+}
+
+[data-theme='dark'] {
+  --screenshot-mat: #2a3035;
+  --screenshot-border: #48525a;
+  --screenshot-shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 10px 28px rgb(0 0 0 / 0.5);
+}
+
+html[class*='docs-doc-id-business-impact/'] .markdown img {
+  display: block;
+  box-sizing: border-box;
+  margin: 1.5rem auto 2rem;
+  padding: 10px;
+  background: var(--screenshot-mat);
+  border: 1px solid var(--screenshot-border);
+  border-radius: 12px;
+  box-shadow: var(--screenshot-shadow);
+}

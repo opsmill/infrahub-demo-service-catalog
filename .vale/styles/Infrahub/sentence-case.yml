@@ -11,6 +11,8 @@ scope:
   - heading.h6
 match: $sentence
 exceptions:
+  - Gold
+  - SLA
   - "Method 1: Direct in Settings (Not Recommended)"
   - "Method 2: Environment Variables (Recommended)"
   - "Method 3: VSCode Secrets (Future)"

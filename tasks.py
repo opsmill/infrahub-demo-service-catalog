@@ -379,3 +379,33 @@ def init(context: Context) -> None:
             output = context.run(cmd)
             if output is not None and output.exited != 0:
                 sys.exit(-1)
+
+
+@task(name="seed")
+def seed(context: Context) -> None:
+    """Seed the business impact demo: twelve services on main, generator runs, three maintenance changes.
+
+    Run after `invoke init`. Safe to run again: it creates only what is missing.
+    """
+    # Imported here so the other tasks do not load the SDK and the protocols.
+    from service_catalog.business_impact import seed as seed_steps
+
+    def run(command: str) -> None:
+        result = context.run(f"uv run {command}", warn=True)
+        if result is None or result.exited != 0:
+            exit_code = "unknown" if result is None else result.exited
+            raise seed_steps.SeedError(f"`{command}` exited with code {exit_code}")
+
+    if not os.getenv("INFRAHUB_ADDRESS"):
+        message = "Seed failed. Set INFRAHUB_ADDRESS to the Infrahub URL"
+        raise Exit(message, code=1)
+    client = seed_steps.build_client()
+    with context.cd(MAIN_DIRECTORY_PATH):
+        try:
+            seed_steps.wait_for_repository(client)
+            seed_steps.seed_services(client)
+            seed_steps.run_generators(client, run)
+            seed_steps.seed_maintenance(client)
+        except seed_steps.SeedError as exc:
+            raise Exit(f"Seed failed. {exc}", code=1) from exc
+    print("=== Seed complete ===")

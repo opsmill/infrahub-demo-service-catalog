@@ -8,136 +8,205 @@ from typing import TYPE_CHECKING
 
 from infrahub_sdk.protocols import (
     BuiltinIPAddress,
+    BuiltinIPAddressSync,
+    BuiltinIPNamespaceSync,
     BuiltinIPPrefix,
+    BuiltinIPPrefixSync,
+    BuiltinTagSync,
+    CoreArtifactSync,
     CoreArtifactTarget,
+    CoreGroupSync,
+    CoreIPAddressPoolSync,
+    CoreIPPoolSync,
+    CoreIPPrefixPoolSync,
     CoreNodeSync,
+    CoreNumberPoolSync,
+    CoreObjectComponentTemplate,
     CoreObjectTemplateSync,
     CoreProfileSync,
+    IpamNamespaceSync,
     LineageSource,
 )
 
 if TYPE_CHECKING:
-    from infrahub_sdk.node import RelatedNodeSync, RelationshipManagerSync
+    from infrahub_sdk.node import RelationshipAttributeSync, RelationshipManagerSync
     from infrahub_sdk.protocols_base import (
+        Boolean,
         BooleanOptional,
         Dropdown,
         DropdownOptional,
         Integer,
         IntegerOptional,
         IPHost,
+        IPHostOptional,
         IPNetwork,
+        IPNetworkOptional,
         String,
         StringOptional,
     )
 
 
-class DcimConnector(CoreNodeSync):
-    connected_endpoints: RelationshipManagerSync
-    member_of_groups: RelationshipManagerSync
-    profiles: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+class TemplateBuiltinIPAddress(CoreNodeSync):
+    address: IPHost
+    description: StringOptional
+    template_name: String
+    ip_namespace: RelationshipAttributeSync[BuiltinIPNamespaceSync]
+    ip_prefix: RelationshipAttributeSync[BuiltinIPPrefixSync]
+    ip_prefix_from_resource_pool: RelationshipAttributeSync[CoreIPPrefixPoolSync]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+
+
+class TemplateCoreArtifactTarget(CoreNodeSync):
+    template_name: String
+    artifacts: RelationshipManagerSync[CoreArtifactSync]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+
+
+class TemplateDcimEndpoint(CoreNodeSync):
+    template_name: String
+    connected_endpoint: RelationshipAttributeSync[DcimEndpoint]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
 
 
 class TemplateDcimGenericDevice(CoreNodeSync):
+    description: StringOptional
+    os_version: StringOptional
     template_name: String
-    member_of_groups: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    interfaces: RelationshipManagerSync[TemplateDcimInterface]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    platform: RelationshipAttributeSync[DcimPlatform]
+    primary_address: RelationshipAttributeSync[IpamIPAddress]
+    primary_address_from_resource_pool: RelationshipAttributeSync[CoreIPAddressPoolSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class TemplateDcimInterface(CoreNodeSync):
+    description: StringOptional
+    enabled: Boolean
+    mtu: Integer
+    name: String
+    role: DropdownOptional
+    speed: Integer
+    status: DropdownOptional
     template_name: String
-    member_of_groups: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    device: RelationshipAttributeSync[TemplateDcimGenericDevice]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    mtu_from_resource_pool: RelationshipAttributeSync[CoreNumberPoolSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    service: RelationshipAttributeSync[ServiceGeneric]
+    speed_from_resource_pool: RelationshipAttributeSync[CoreNumberPoolSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
+
+
+class TemplateDcimPhysicalDevice(CoreNodeSync):
+    position: IntegerOptional
+    rack_face: Dropdown
+    serial: StringOptional
+    template_name: String
+    device_type: RelationshipAttributeSync[DcimDeviceType]
+    location: RelationshipAttributeSync[LocationHosting]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    position_from_resource_pool: RelationshipAttributeSync[CoreNumberPoolSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
 
 
 class DcimEndpoint(CoreNodeSync):
-    connector: RelatedNodeSync
-    member_of_groups: RelationshipManagerSync
-    profiles: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    connected_endpoint: RelationshipAttributeSync[DcimEndpoint]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
 
 
 class LocationGeneric(CoreNodeSync):
     description: StringOptional
     name: String
     shortname: String
-    children: RelationshipManagerSync
-    member_of_groups: RelationshipManagerSync
-    parent: RelatedNodeSync
-    profiles: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
-    tags: RelationshipManagerSync
+    children: RelationshipManagerSync[LocationGeneric]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    parent: RelationshipAttributeSync[LocationGeneric]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class OrganizationGeneric(CoreNodeSync):
     description: StringOptional
     name: String
-    member_of_groups: RelationshipManagerSync
-    profiles: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
-    tags: RelationshipManagerSync
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class ServiceGeneric(CoreNodeSync):
     account_reference: String
+    monthly_charge: IntegerOptional
     service_identifier: String
-    member_of_groups: RelationshipManagerSync
-    profiles: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    customer: RelationshipAttributeSync[OrganizationCustomer]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tier: RelationshipAttributeSync[ServiceTier]
 
 
 class DcimGenericDevice(CoreNodeSync):
     description: StringOptional
     name: String
     os_version: StringOptional
-    interfaces: RelationshipManagerSync
-    member_of_groups: RelationshipManagerSync
-    platform: RelatedNodeSync
-    primary_address: RelatedNodeSync
-    profiles: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
-    tags: RelationshipManagerSync
+    interfaces: RelationshipManagerSync[DcimInterface]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    platform: RelationshipAttributeSync[DcimPlatform]
+    primary_address: RelationshipAttributeSync[IpamIPAddress]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class LocationHosting(CoreNodeSync):
     shortname: String
-    devices: RelationshipManagerSync
-    member_of_groups: RelationshipManagerSync
-    prefixes: RelationshipManagerSync
-    profiles: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
-    vlans: RelationshipManagerSync
+    devices: RelationshipManagerSync[DcimPhysicalDevice]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    prefixes: RelationshipManagerSync[IpamPrefix]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    vlans: RelationshipManagerSync[IpamVLAN]
 
 
 class DcimInterface(CoreNodeSync):
     description: StringOptional
-    enabled: BooleanOptional
-    mtu: IntegerOptional
+    enabled: Boolean
+    mtu: Integer
     name: String
+    role: DropdownOptional
     speed: Integer
-    device: RelatedNodeSync
-    member_of_groups: RelationshipManagerSync
-    profiles: RelationshipManagerSync
-    service: RelatedNodeSync
-    subscriber_of_groups: RelationshipManagerSync
-    tags: RelationshipManagerSync
-
-
-class CoreObjectComponentTemplate(CoreNodeSync):
-    template_name: String
-    member_of_groups: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    status: DropdownOptional
+    device: RelationshipAttributeSync[DcimGenericDevice]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    service: RelationshipAttributeSync[ServiceGeneric]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class DcimPhysicalDevice(CoreNodeSync):
     position: IntegerOptional
-    rack_face: DropdownOptional
+    rack_face: Dropdown
     serial: StringOptional
-    device_type: RelatedNodeSync
-    location: RelatedNodeSync
-    member_of_groups: RelationshipManagerSync
-    profiles: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    device_type: RelationshipAttributeSync[DcimDeviceType]
+    location: RelationshipAttributeSync[LocationHosting]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
 
 
 class LocationCountry(LocationGeneric):
@@ -145,28 +214,41 @@ class LocationCountry(LocationGeneric):
     name: String
     shortname: String
     timezone: StringOptional
-    children: RelationshipManagerSync
-    member_of_groups: RelationshipManagerSync
-    parent: RelatedNodeSync
-    profiles: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
-    tags: RelationshipManagerSync
+    children: RelationshipManagerSync[LocationMetro]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    parent: RelationshipAttributeSync[LocationGeneric]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
+
+
+class OrganizationCustomer(OrganizationGeneric):
+    description: StringOptional
+    name: String
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    services: RelationshipManagerSync[ServiceGeneric]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class ServiceDedicatedInternet(ServiceGeneric):
     account_reference: String
     bandwidth: Dropdown
     ip_package: Dropdown
+    monthly_charge: IntegerOptional
     service_identifier: String
-    status: DropdownOptional
-    dedicated_interfaces: RelationshipManagerSync
-    gateway_ip_address: RelatedNodeSync
-    location: RelatedNodeSync
-    member_of_groups: RelationshipManagerSync
-    prefix: RelatedNodeSync
-    profiles: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
-    vlan: RelatedNodeSync
+    status: Dropdown
+    customer: RelationshipAttributeSync[OrganizationCustomer]
+    dedicated_interfaces: RelationshipManagerSync[DcimInterface]
+    gateway_ip_address: RelationshipAttributeSync[IpamIPAddress]
+    location: RelationshipAttributeSync[LocationSite]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    prefix: RelationshipAttributeSync[IpamPrefix]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tier: RelationshipAttributeSync[ServiceTier]
+    vlan: RelationshipAttributeSync[IpamVLAN]
 
 
 class DcimDevice(CoreArtifactTarget, DcimGenericDevice, DcimPhysicalDevice):
@@ -175,118 +257,118 @@ class DcimDevice(CoreArtifactTarget, DcimGenericDevice, DcimPhysicalDevice):
     name: String
     os_version: StringOptional
     position: IntegerOptional
-    rack_face: DropdownOptional
+    rack_face: Dropdown
     role: DropdownOptional
     serial: StringOptional
     status: Dropdown
-    artifacts: RelationshipManagerSync
-    device_type: RelatedNodeSync
-    interfaces: RelationshipManagerSync
-    location: RelatedNodeSync
-    member_of_groups: RelationshipManagerSync
-    object_template: RelatedNodeSync
-    platform: RelatedNodeSync
-    primary_address: RelatedNodeSync
-    profiles: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
-    tags: RelationshipManagerSync
+    artifacts: RelationshipManagerSync[CoreArtifactSync]
+    device_type: RelationshipAttributeSync[DcimDeviceType]
+    interfaces: RelationshipManagerSync[DcimInterface]
+    location: RelationshipAttributeSync[LocationHosting]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    object_template: RelationshipAttributeSync[TemplateDcimDevice]
+    platform: RelationshipAttributeSync[DcimPlatform]
+    primary_address: RelationshipAttributeSync[IpamIPAddress]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class DcimDeviceType(CoreNodeSync):
     description: StringOptional
-    full_depth: BooleanOptional
-    height: IntegerOptional
+    full_depth: Boolean
+    height: Integer
     name: String
     part_number: StringOptional
     weight: IntegerOptional
-    manufacturer: RelatedNodeSync
-    member_of_groups: RelationshipManagerSync
-    platform: RelatedNodeSync
-    profiles: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
-    tags: RelationshipManagerSync
+    manufacturer: RelationshipAttributeSync[OrganizationManufacturer]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    platform: RelationshipAttributeSync[DcimPlatform]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class IpamIPAddress(BuiltinIPAddress):
     address: IPHost
     description: StringOptional
     fqdn: StringOptional
-    interface: RelatedNodeSync
-    ip_namespace: RelatedNodeSync
-    ip_prefix: RelatedNodeSync
-    member_of_groups: RelationshipManagerSync
-    profiles: RelationshipManagerSync
-    service: RelatedNodeSync
-    subscriber_of_groups: RelationshipManagerSync
+    interface: RelationshipAttributeSync[DcimInterfaceL3]
+    ip_namespace: RelationshipAttributeSync[BuiltinIPNamespaceSync]
+    ip_prefix: RelationshipAttributeSync[BuiltinIPPrefixSync]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    service: RelationshipAttributeSync[ServiceGeneric]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
 
 
 class DcimInterfaceL2(DcimInterface, DcimEndpoint):
     description: StringOptional
-    enabled: BooleanOptional
+    enabled: Boolean
     l2_mode: StringOptional
-    mtu: IntegerOptional
+    mtu: Integer
     name: String
     role: DropdownOptional
     speed: Integer
     status: DropdownOptional
-    connector: RelatedNodeSync
-    device: RelatedNodeSync
-    member_of_groups: RelationshipManagerSync
-    profiles: RelationshipManagerSync
-    service: RelatedNodeSync
-    subscriber_of_groups: RelationshipManagerSync
-    tagged_vlan: RelationshipManagerSync
-    tags: RelationshipManagerSync
-    untagged_vlan: RelatedNodeSync
+    connected_endpoint: RelationshipAttributeSync[DcimEndpoint]
+    device: RelationshipAttributeSync[DcimGenericDevice]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    service: RelationshipAttributeSync[ServiceGeneric]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tagged_vlan: RelationshipManagerSync[IpamVLAN]
+    tags: RelationshipManagerSync[BuiltinTagSync]
+    untagged_vlan: RelationshipAttributeSync[IpamVLAN]
 
 
 class DcimInterfaceL3(DcimInterface, DcimEndpoint):
     description: StringOptional
-    enabled: BooleanOptional
-    mtu: IntegerOptional
+    enabled: Boolean
+    mtu: Integer
     name: String
     role: DropdownOptional
     speed: Integer
     status: DropdownOptional
-    connector: RelatedNodeSync
-    device: RelatedNodeSync
-    ip_addresses: RelationshipManagerSync
-    member_of_groups: RelationshipManagerSync
-    profiles: RelationshipManagerSync
-    service: RelatedNodeSync
-    subscriber_of_groups: RelationshipManagerSync
-    tags: RelationshipManagerSync
+    connected_endpoint: RelationshipAttributeSync[DcimEndpoint]
+    device: RelationshipAttributeSync[DcimGenericDevice]
+    ip_addresses: RelationshipManagerSync[IpamIPAddress]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    service: RelationshipAttributeSync[ServiceGeneric]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class IpamL2Domain(CoreNodeSync):
     name: String
-    member_of_groups: RelationshipManagerSync
-    profiles: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
-    vlans: RelationshipManagerSync
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    vlans: RelationshipManagerSync[IpamVLAN]
 
 
 class OrganizationManufacturer(OrganizationGeneric):
     description: StringOptional
     name: String
-    device_type: RelationshipManagerSync
-    member_of_groups: RelationshipManagerSync
-    platform: RelationshipManagerSync
-    profiles: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
-    tags: RelationshipManagerSync
+    device_type: RelationshipManagerSync[DcimDeviceType]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    platform: RelationshipManagerSync[DcimPlatform]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class LocationMetro(LocationGeneric):
     description: StringOptional
     name: String
     shortname: String
-    children: RelationshipManagerSync
-    member_of_groups: RelationshipManagerSync
-    parent: RelatedNodeSync
-    profiles: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
-    tags: RelationshipManagerSync
+    children: RelationshipManagerSync[LocationSite]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    parent: RelationshipAttributeSync[LocationCountry]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class DcimPlatform(CoreNodeSync):
@@ -297,67 +379,67 @@ class DcimPlatform(CoreNodeSync):
     napalm_driver: StringOptional
     netmiko_device_type: StringOptional
     nornir_platform: StringOptional
-    devices: RelationshipManagerSync
-    manufacturer: RelatedNodeSync
-    member_of_groups: RelationshipManagerSync
-    profiles: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    devices: RelationshipManagerSync[DcimGenericDevice]
+    manufacturer: RelationshipAttributeSync[OrganizationManufacturer]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
 
 
 class IpamPrefix(BuiltinIPPrefix):
     broadcast_address: StringOptional
     description: StringOptional
     hostmask: StringOptional
-    is_pool: BooleanOptional
+    is_pool: Boolean
     is_top_level: BooleanOptional
-    member_type: DropdownOptional
+    member_type: Dropdown
     netmask: StringOptional
     network_address: StringOptional
     prefix: IPNetwork
     role: DropdownOptional
     status: Dropdown
     utilization: IntegerOptional
-    children: RelationshipManagerSync
-    gateway: RelatedNodeSync
-    ip_addresses: RelationshipManagerSync
-    ip_namespace: RelatedNodeSync
-    location: RelatedNodeSync
-    member_of_groups: RelationshipManagerSync
-    organization: RelatedNodeSync
-    parent: RelatedNodeSync
-    profiles: RelationshipManagerSync
-    resource_pool: RelationshipManagerSync
-    service: RelatedNodeSync
-    subscriber_of_groups: RelationshipManagerSync
-    vlan: RelatedNodeSync
+    children: RelationshipManagerSync[BuiltinIPPrefixSync]
+    gateway: RelationshipAttributeSync[IpamIPAddress]
+    ip_addresses: RelationshipManagerSync[BuiltinIPAddressSync]
+    ip_namespace: RelationshipAttributeSync[BuiltinIPNamespaceSync]
+    location: RelationshipAttributeSync[LocationHosting]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    organization: RelationshipAttributeSync[OrganizationGeneric]
+    parent: RelationshipAttributeSync[BuiltinIPPrefixSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    resource_pool: RelationshipManagerSync[CoreIPPoolSync]
+    service: RelationshipAttributeSync[ServiceGeneric]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    vlan: RelationshipAttributeSync[IpamVLAN]
 
 
 class OrganizationProvider(OrganizationGeneric):
     description: StringOptional
     name: String
-    member_of_groups: RelationshipManagerSync
-    profiles: RelationshipManagerSync
-    sites: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
-    tags: RelationshipManagerSync
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    sites: RelationshipManagerSync[LocationSite]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class LocationRack(LocationGeneric, LocationHosting):
     description: StringOptional
     facility_id: StringOptional
-    height: IntegerOptional
+    height: Integer
     name: String
     shortname: String
-    children: RelationshipManagerSync
-    devices: RelationshipManagerSync
-    member_of_groups: RelationshipManagerSync
-    owner: RelatedNodeSync
-    parent: RelatedNodeSync
-    prefixes: RelationshipManagerSync
-    profiles: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
-    tags: RelationshipManagerSync
-    vlans: RelationshipManagerSync
+    children: RelationshipManagerSync[LocationGeneric]
+    devices: RelationshipManagerSync[DcimPhysicalDevice]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    owner: RelationshipAttributeSync[OrganizationGeneric]
+    parent: RelationshipAttributeSync[LocationSite]
+    prefixes: RelationshipManagerSync[IpamPrefix]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
+    vlans: RelationshipManagerSync[IpamVLAN]
 
 
 class LocationSite(LocationGeneric, LocationHosting):
@@ -366,17 +448,26 @@ class LocationSite(LocationGeneric, LocationHosting):
     name: String
     physical_address: StringOptional
     shortname: String
-    children: RelationshipManagerSync
-    devices: RelationshipManagerSync
-    member_of_groups: RelationshipManagerSync
-    owner: RelatedNodeSync
-    parent: RelatedNodeSync
-    prefixes: RelationshipManagerSync
-    profiles: RelationshipManagerSync
-    services: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
-    tags: RelationshipManagerSync
-    vlans: RelationshipManagerSync
+    children: RelationshipManagerSync[LocationRack]
+    devices: RelationshipManagerSync[DcimPhysicalDevice]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    owner: RelationshipAttributeSync[OrganizationGeneric]
+    parent: RelationshipAttributeSync[LocationMetro]
+    prefixes: RelationshipManagerSync[IpamPrefix]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    services: RelationshipManagerSync[ServiceGeneric]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
+    vlans: RelationshipManagerSync[IpamVLAN]
+
+
+class ServiceTier(CoreNodeSync):
+    name: String
+    price_multiplier_pct: Integer
+    sla_credit_pct: Integer
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
 
 
 class IpamVLAN(CoreNodeSync):
@@ -385,50 +476,47 @@ class IpamVLAN(CoreNodeSync):
     role: DropdownOptional
     status: Dropdown
     vlan_id: Integer
-    l2domain: RelatedNodeSync
-    location: RelationshipManagerSync
-    member_of_groups: RelationshipManagerSync
-    prefixes: RelationshipManagerSync
-    profiles: RelationshipManagerSync
-    service: RelatedNodeSync
-    subscriber_of_groups: RelationshipManagerSync
+    l2domain: RelationshipAttributeSync[IpamL2Domain]
+    location: RelationshipManagerSync[LocationHosting]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    prefixes: RelationshipManagerSync[IpamPrefix]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    service: RelationshipAttributeSync[ServiceGeneric]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
 
 
 class ProfileBuiltinIPAddress(LineageSource, CoreProfileSync, CoreNodeSync):
+    address: IPHostOptional
     description: StringOptional
     profile_name: String
-    profile_priority: IntegerOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    profile_priority: Integer
+    ip_namespace: RelationshipAttributeSync[BuiltinIPNamespaceSync]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    related_nodes: RelationshipManagerSync[BuiltinIPAddressSync]
+    related_templates: RelationshipManagerSync[TemplateBuiltinIPAddress]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
 
 
 class ProfileBuiltinIPPrefix(LineageSource, CoreProfileSync, CoreNodeSync):
     description: StringOptional
     is_pool: BooleanOptional
     member_type: DropdownOptional
+    prefix: IPNetworkOptional
     profile_name: String
-    profile_priority: IntegerOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    profile_priority: Integer
+    ip_namespace: RelationshipAttributeSync[BuiltinIPNamespaceSync]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    related_nodes: RelationshipManagerSync[BuiltinIPPrefixSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
 
 
 class ProfileBuiltinTag(LineageSource, CoreProfileSync, CoreNodeSync):
     description: StringOptional
     profile_name: String
-    profile_priority: IntegerOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
-
-
-class ProfileDcimConnector(LineageSource, CoreProfileSync, CoreNodeSync):
-    profile_name: String
-    profile_priority: IntegerOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    profile_priority: Integer
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    related_nodes: RelationshipManagerSync[BuiltinTagSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
 
 
 class ProfileDcimDevice(LineageSource, CoreProfileSync, CoreNodeSync):
@@ -437,13 +525,21 @@ class ProfileDcimDevice(LineageSource, CoreProfileSync, CoreNodeSync):
     os_version: StringOptional
     position: IntegerOptional
     profile_name: String
-    profile_priority: IntegerOptional
+    profile_priority: Integer
     rack_face: DropdownOptional
     role: DropdownOptional
     serial: StringOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    status: DropdownOptional
+    artifacts: RelationshipManagerSync[CoreArtifactSync]
+    device_type: RelationshipAttributeSync[DcimDeviceType]
+    location: RelationshipAttributeSync[LocationHosting]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    platform: RelationshipAttributeSync[DcimPlatform]
+    primary_address: RelationshipAttributeSync[IpamIPAddress]
+    related_nodes: RelationshipManagerSync[DcimDevice]
+    related_templates: RelationshipManagerSync[TemplateDcimDevice]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class ProfileDcimDeviceType(LineageSource, CoreProfileSync, CoreNodeSync):
@@ -452,29 +548,37 @@ class ProfileDcimDeviceType(LineageSource, CoreProfileSync, CoreNodeSync):
     height: IntegerOptional
     part_number: StringOptional
     profile_name: String
-    profile_priority: IntegerOptional
+    profile_priority: Integer
     weight: IntegerOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    platform: RelationshipAttributeSync[DcimPlatform]
+    related_nodes: RelationshipManagerSync[DcimDeviceType]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class ProfileDcimEndpoint(LineageSource, CoreProfileSync, CoreNodeSync):
     profile_name: String
-    profile_priority: IntegerOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    profile_priority: Integer
+    connected_endpoint: RelationshipAttributeSync[DcimEndpoint]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    related_nodes: RelationshipManagerSync[DcimEndpoint]
+    related_templates: RelationshipManagerSync[TemplateDcimEndpoint]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
 
 
 class ProfileDcimGenericDevice(LineageSource, CoreProfileSync, CoreNodeSync):
     description: StringOptional
     os_version: StringOptional
     profile_name: String
-    profile_priority: IntegerOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    profile_priority: Integer
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    platform: RelationshipAttributeSync[DcimPlatform]
+    primary_address: RelationshipAttributeSync[IpamIPAddress]
+    related_nodes: RelationshipManagerSync[DcimGenericDevice]
+    related_templates: RelationshipManagerSync[TemplateDcimGenericDevice]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class ProfileDcimInterface(LineageSource, CoreProfileSync, CoreNodeSync):
@@ -482,10 +586,16 @@ class ProfileDcimInterface(LineageSource, CoreProfileSync, CoreNodeSync):
     enabled: BooleanOptional
     mtu: IntegerOptional
     profile_name: String
-    profile_priority: IntegerOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    profile_priority: Integer
+    role: DropdownOptional
+    speed: IntegerOptional
+    status: DropdownOptional
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    related_nodes: RelationshipManagerSync[DcimInterface]
+    related_templates: RelationshipManagerSync[TemplateDcimInterface]
+    service: RelationshipAttributeSync[ServiceGeneric]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class ProfileDcimInterfaceL2(LineageSource, CoreProfileSync, CoreNodeSync):
@@ -494,12 +604,17 @@ class ProfileDcimInterfaceL2(LineageSource, CoreProfileSync, CoreNodeSync):
     l2_mode: StringOptional
     mtu: IntegerOptional
     profile_name: String
-    profile_priority: IntegerOptional
+    profile_priority: Integer
     role: DropdownOptional
+    speed: IntegerOptional
     status: DropdownOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    connected_endpoint: RelationshipAttributeSync[DcimEndpoint]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    related_nodes: RelationshipManagerSync[DcimInterfaceL2]
+    related_templates: RelationshipManagerSync[TemplateDcimInterfaceL2]
+    service: RelationshipAttributeSync[ServiceGeneric]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class ProfileDcimInterfaceL3(LineageSource, CoreProfileSync, CoreNodeSync):
@@ -507,23 +622,31 @@ class ProfileDcimInterfaceL3(LineageSource, CoreProfileSync, CoreNodeSync):
     enabled: BooleanOptional
     mtu: IntegerOptional
     profile_name: String
-    profile_priority: IntegerOptional
+    profile_priority: Integer
     role: DropdownOptional
+    speed: IntegerOptional
     status: DropdownOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    connected_endpoint: RelationshipAttributeSync[DcimEndpoint]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    related_nodes: RelationshipManagerSync[DcimInterfaceL3]
+    related_templates: RelationshipManagerSync[TemplateDcimInterfaceL3]
+    service: RelationshipAttributeSync[ServiceGeneric]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class ProfileDcimPhysicalDevice(LineageSource, CoreProfileSync, CoreNodeSync):
     position: IntegerOptional
     profile_name: String
-    profile_priority: IntegerOptional
+    profile_priority: Integer
     rack_face: DropdownOptional
     serial: StringOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    device_type: RelationshipAttributeSync[DcimDeviceType]
+    location: RelationshipAttributeSync[LocationHosting]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    related_nodes: RelationshipManagerSync[DcimPhysicalDevice]
+    related_templates: RelationshipManagerSync[TemplateDcimPhysicalDevice]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
 
 
 class ProfileDcimPlatform(LineageSource, CoreProfileSync, CoreNodeSync):
@@ -534,37 +657,44 @@ class ProfileDcimPlatform(LineageSource, CoreProfileSync, CoreNodeSync):
     netmiko_device_type: StringOptional
     nornir_platform: StringOptional
     profile_name: String
-    profile_priority: IntegerOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    profile_priority: Integer
+    devices: RelationshipManagerSync[DcimGenericDevice]
+    manufacturer: RelationshipAttributeSync[OrganizationManufacturer]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    related_nodes: RelationshipManagerSync[DcimPlatform]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
 
 
 class ProfileIpamIPAddress(LineageSource, CoreProfileSync, CoreNodeSync):
     description: StringOptional
     fqdn: StringOptional
     profile_name: String
-    profile_priority: IntegerOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    profile_priority: Integer
+    interface: RelationshipAttributeSync[DcimInterfaceL3]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    related_nodes: RelationshipManagerSync[IpamIPAddress]
+    related_templates: RelationshipManagerSync[TemplateIpamIPAddress]
+    service: RelationshipAttributeSync[ServiceGeneric]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
 
 
 class ProfileIpamL2Domain(LineageSource, CoreProfileSync, CoreNodeSync):
     profile_name: String
-    profile_priority: IntegerOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    profile_priority: Integer
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    related_nodes: RelationshipManagerSync[IpamL2Domain]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
 
 
 class ProfileIpamNamespace(LineageSource, CoreProfileSync, CoreNodeSync):
     description: StringOptional
     profile_name: String
-    profile_priority: IntegerOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    profile_priority: Integer
+    ip_addresses: RelationshipManagerSync[BuiltinIPAddressSync]
+    ip_prefixes: RelationshipManagerSync[BuiltinIPPrefixSync]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    related_nodes: RelationshipManagerSync[IpamNamespaceSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
 
 
 class ProfileIpamPrefix(LineageSource, CoreProfileSync, CoreNodeSync):
@@ -572,211 +702,325 @@ class ProfileIpamPrefix(LineageSource, CoreProfileSync, CoreNodeSync):
     is_pool: BooleanOptional
     member_type: DropdownOptional
     profile_name: String
-    profile_priority: IntegerOptional
+    profile_priority: Integer
     role: DropdownOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    status: DropdownOptional
+    gateway: RelationshipAttributeSync[IpamIPAddress]
+    location: RelationshipAttributeSync[LocationHosting]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    organization: RelationshipAttributeSync[OrganizationGeneric]
+    related_nodes: RelationshipManagerSync[IpamPrefix]
+    service: RelationshipAttributeSync[ServiceGeneric]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    vlan: RelationshipAttributeSync[IpamVLAN]
 
 
 class ProfileIpamVLAN(LineageSource, CoreProfileSync, CoreNodeSync):
     description: StringOptional
+    name: StringOptional
     profile_name: String
-    profile_priority: IntegerOptional
+    profile_priority: Integer
     role: DropdownOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    status: DropdownOptional
+    location: RelationshipManagerSync[LocationHosting]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    prefixes: RelationshipManagerSync[IpamPrefix]
+    related_nodes: RelationshipManagerSync[IpamVLAN]
+    related_templates: RelationshipManagerSync[TemplateIpamVLAN]
+    service: RelationshipAttributeSync[ServiceGeneric]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
 
 
 class ProfileLocationCountry(LineageSource, CoreProfileSync, CoreNodeSync):
     description: StringOptional
+    name: StringOptional
     profile_name: String
-    profile_priority: IntegerOptional
+    profile_priority: Integer
     timezone: StringOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    related_nodes: RelationshipManagerSync[LocationCountry]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class ProfileLocationGeneric(LineageSource, CoreProfileSync, CoreNodeSync):
     description: StringOptional
+    name: StringOptional
     profile_name: String
-    profile_priority: IntegerOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    profile_priority: Integer
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    related_nodes: RelationshipManagerSync[LocationGeneric]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class ProfileLocationHosting(LineageSource, CoreProfileSync, CoreNodeSync):
     profile_name: String
-    profile_priority: IntegerOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    profile_priority: Integer
+    devices: RelationshipManagerSync[DcimPhysicalDevice]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    prefixes: RelationshipManagerSync[IpamPrefix]
+    related_nodes: RelationshipManagerSync[LocationHosting]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    vlans: RelationshipManagerSync[IpamVLAN]
 
 
 class ProfileLocationMetro(LineageSource, CoreProfileSync, CoreNodeSync):
     description: StringOptional
+    name: StringOptional
     profile_name: String
-    profile_priority: IntegerOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    profile_priority: Integer
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    related_nodes: RelationshipManagerSync[LocationMetro]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class ProfileLocationRack(LineageSource, CoreProfileSync, CoreNodeSync):
     description: StringOptional
     facility_id: StringOptional
     height: IntegerOptional
+    name: StringOptional
     profile_name: String
-    profile_priority: IntegerOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    profile_priority: Integer
+    devices: RelationshipManagerSync[DcimPhysicalDevice]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    owner: RelationshipAttributeSync[OrganizationGeneric]
+    prefixes: RelationshipManagerSync[IpamPrefix]
+    related_nodes: RelationshipManagerSync[LocationRack]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
+    vlans: RelationshipManagerSync[IpamVLAN]
 
 
 class ProfileLocationSite(LineageSource, CoreProfileSync, CoreNodeSync):
     description: StringOptional
     facility_id: StringOptional
+    name: StringOptional
     physical_address: StringOptional
     profile_name: String
-    profile_priority: IntegerOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    profile_priority: Integer
+    devices: RelationshipManagerSync[DcimPhysicalDevice]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    owner: RelationshipAttributeSync[OrganizationGeneric]
+    prefixes: RelationshipManagerSync[IpamPrefix]
+    related_nodes: RelationshipManagerSync[LocationSite]
+    services: RelationshipManagerSync[ServiceGeneric]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
+    vlans: RelationshipManagerSync[IpamVLAN]
+
+
+class ProfileOrganizationCustomer(LineageSource, CoreProfileSync, CoreNodeSync):
+    description: StringOptional
+    profile_name: String
+    profile_priority: Integer
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    related_nodes: RelationshipManagerSync[OrganizationCustomer]
+    services: RelationshipManagerSync[ServiceGeneric]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class ProfileOrganizationGeneric(LineageSource, CoreProfileSync, CoreNodeSync):
     description: StringOptional
     profile_name: String
-    profile_priority: IntegerOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    profile_priority: Integer
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    related_nodes: RelationshipManagerSync[OrganizationGeneric]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class ProfileOrganizationManufacturer(LineageSource, CoreProfileSync, CoreNodeSync):
     description: StringOptional
     profile_name: String
-    profile_priority: IntegerOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    profile_priority: Integer
+    device_type: RelationshipManagerSync[DcimDeviceType]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    platform: RelationshipManagerSync[DcimPlatform]
+    related_nodes: RelationshipManagerSync[OrganizationManufacturer]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class ProfileOrganizationProvider(LineageSource, CoreProfileSync, CoreNodeSync):
     description: StringOptional
     profile_name: String
-    profile_priority: IntegerOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    profile_priority: Integer
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    related_nodes: RelationshipManagerSync[OrganizationProvider]
+    sites: RelationshipManagerSync[LocationSite]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
 class ProfileServiceDedicatedInternet(LineageSource, CoreProfileSync, CoreNodeSync):
+    account_reference: StringOptional
+    bandwidth: DropdownOptional
+    ip_package: DropdownOptional
+    monthly_charge: IntegerOptional
     profile_name: String
-    profile_priority: IntegerOptional
+    profile_priority: Integer
     status: DropdownOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    customer: RelationshipAttributeSync[OrganizationCustomer]
+    dedicated_interfaces: RelationshipManagerSync[DcimInterface]
+    gateway_ip_address: RelationshipAttributeSync[IpamIPAddress]
+    location: RelationshipAttributeSync[LocationSite]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    prefix: RelationshipAttributeSync[IpamPrefix]
+    related_nodes: RelationshipManagerSync[ServiceDedicatedInternet]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tier: RelationshipAttributeSync[ServiceTier]
+    vlan: RelationshipAttributeSync[IpamVLAN]
 
 
 class ProfileServiceGeneric(LineageSource, CoreProfileSync, CoreNodeSync):
+    account_reference: StringOptional
+    monthly_charge: IntegerOptional
     profile_name: String
-    profile_priority: IntegerOptional
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
+    profile_priority: Integer
+    customer: RelationshipAttributeSync[OrganizationCustomer]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    related_nodes: RelationshipManagerSync[ServiceGeneric]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    tier: RelationshipAttributeSync[ServiceTier]
 
 
-class TemplateDcimDevice(LineageSource, TemplateDcimGenericDevice, CoreObjectTemplateSync, CoreNodeSync):
+class ProfileServiceTier(LineageSource, CoreProfileSync, CoreNodeSync):
+    price_multiplier_pct: IntegerOptional
+    profile_name: String
+    profile_priority: Integer
+    sla_credit_pct: IntegerOptional
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    related_nodes: RelationshipManagerSync[ServiceTier]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+
+
+class TemplateDcimDevice(
+    LineageSource,
+    TemplateCoreArtifactTarget,
+    TemplateDcimGenericDevice,
+    TemplateDcimPhysicalDevice,
+    CoreObjectTemplateSync,
+    CoreNodeSync,
+):
     description: StringOptional
     index: IntegerOptional
     os_version: StringOptional
     position: IntegerOptional
-    rack_face: DropdownOptional
+    rack_face: Dropdown
     role: DropdownOptional
     serial: StringOptional
     status: DropdownOptional
     template_name: String
-    artifacts: RelationshipManagerSync
-    device_type: RelatedNodeSync
-    interfaces: RelationshipManagerSync
-    location: RelatedNodeSync
-    member_of_groups: RelationshipManagerSync
-    platform: RelatedNodeSync
-    primary_address: RelatedNodeSync
-    related_nodes: RelationshipManagerSync
-    subscriber_of_groups: RelationshipManagerSync
-    tags: RelationshipManagerSync
+    artifacts: RelationshipManagerSync[CoreArtifactSync]
+    device_type: RelationshipAttributeSync[DcimDeviceType]
+    index_from_resource_pool: RelationshipAttributeSync[CoreNumberPoolSync]
+    interfaces: RelationshipManagerSync[TemplateDcimInterface]
+    location: RelationshipAttributeSync[LocationHosting]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    member_of_groups_for_instances: RelationshipManagerSync[CoreGroupSync]
+    platform: RelationshipAttributeSync[DcimPlatform]
+    position_from_resource_pool: RelationshipAttributeSync[CoreNumberPoolSync]
+    primary_address: RelationshipAttributeSync[IpamIPAddress]
+    primary_address_from_resource_pool: RelationshipAttributeSync[CoreIPAddressPoolSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    related_nodes: RelationshipManagerSync[DcimDevice]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    subscriber_of_groups_for_instances: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
-class TemplateDcimInterfaceL2(LineageSource, CoreObjectComponentTemplate, TemplateDcimInterface, CoreNodeSync):
+class TemplateDcimInterfaceL2(
+    LineageSource, CoreObjectComponentTemplate, TemplateDcimInterface, TemplateDcimEndpoint, CoreNodeSync
+):
     description: StringOptional
-    enabled: BooleanOptional
+    enabled: Boolean
     l2_mode: StringOptional
-    mtu: IntegerOptional
+    mtu: Integer
     name: String
     role: DropdownOptional
     speed: Integer
     status: DropdownOptional
     template_name: String
-    connector: RelatedNodeSync
-    device: RelatedNodeSync
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    service: RelatedNodeSync
-    subscriber_of_groups: RelationshipManagerSync
-    tagged_vlan: RelationshipManagerSync
-    tags: RelationshipManagerSync
-    untagged_vlan: RelatedNodeSync
+    connected_endpoint: RelationshipAttributeSync[DcimEndpoint]
+    device: RelationshipAttributeSync[TemplateDcimGenericDevice]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    member_of_groups_for_instances: RelationshipManagerSync[CoreGroupSync]
+    mtu_from_resource_pool: RelationshipAttributeSync[CoreNumberPoolSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    related_nodes: RelationshipManagerSync[DcimInterfaceL2]
+    service: RelationshipAttributeSync[ServiceGeneric]
+    speed_from_resource_pool: RelationshipAttributeSync[CoreNumberPoolSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    subscriber_of_groups_for_instances: RelationshipManagerSync[CoreGroupSync]
+    tagged_vlan: RelationshipManagerSync[TemplateIpamVLAN]
+    tags: RelationshipManagerSync[BuiltinTagSync]
+    untagged_vlan: RelationshipAttributeSync[TemplateIpamVLAN]
 
 
-class TemplateDcimInterfaceL3(LineageSource, CoreObjectComponentTemplate, TemplateDcimInterface, CoreNodeSync):
+class TemplateDcimInterfaceL3(
+    LineageSource, CoreObjectComponentTemplate, TemplateDcimInterface, TemplateDcimEndpoint, CoreNodeSync
+):
     description: StringOptional
-    enabled: BooleanOptional
-    mtu: IntegerOptional
+    enabled: Boolean
+    mtu: Integer
     name: String
     role: DropdownOptional
     speed: Integer
     status: DropdownOptional
     template_name: String
-    connector: RelatedNodeSync
-    device: RelatedNodeSync
-    ip_addresses: RelationshipManagerSync
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    service: RelatedNodeSync
-    subscriber_of_groups: RelationshipManagerSync
-    tags: RelationshipManagerSync
+    connected_endpoint: RelationshipAttributeSync[DcimEndpoint]
+    device: RelationshipAttributeSync[TemplateDcimGenericDevice]
+    ip_addresses: RelationshipManagerSync[TemplateIpamIPAddress]
+    ip_addresses_from_resource_pool: RelationshipAttributeSync[CoreIPAddressPoolSync]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    member_of_groups_for_instances: RelationshipManagerSync[CoreGroupSync]
+    mtu_from_resource_pool: RelationshipAttributeSync[CoreNumberPoolSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    related_nodes: RelationshipManagerSync[DcimInterfaceL3]
+    service: RelationshipAttributeSync[ServiceGeneric]
+    speed_from_resource_pool: RelationshipAttributeSync[CoreNumberPoolSync]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    subscriber_of_groups_for_instances: RelationshipManagerSync[CoreGroupSync]
+    tags: RelationshipManagerSync[BuiltinTagSync]
 
 
-class TemplateIpamIPAddress(LineageSource, CoreObjectComponentTemplate, CoreNodeSync):
+class TemplateIpamIPAddress(LineageSource, CoreObjectComponentTemplate, TemplateBuiltinIPAddress, CoreNodeSync):
     address: IPHost
     description: StringOptional
     fqdn: StringOptional
     template_name: String
-    interface: RelatedNodeSync
-    ip_namespace: RelatedNodeSync
-    ip_prefix: RelatedNodeSync
-    member_of_groups: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    service: RelatedNodeSync
-    subscriber_of_groups: RelationshipManagerSync
+    interface: RelationshipAttributeSync[DcimInterfaceL3]
+    ip_namespace: RelationshipAttributeSync[BuiltinIPNamespaceSync]
+    ip_prefix: RelationshipAttributeSync[BuiltinIPPrefixSync]
+    ip_prefix_from_resource_pool: RelationshipAttributeSync[CoreIPPrefixPoolSync]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    member_of_groups_for_instances: RelationshipManagerSync[CoreGroupSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    related_nodes: RelationshipManagerSync[IpamIPAddress]
+    service: RelationshipAttributeSync[ServiceGeneric]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    subscriber_of_groups_for_instances: RelationshipManagerSync[CoreGroupSync]
 
 
 class TemplateIpamVLAN(LineageSource, CoreObjectComponentTemplate, CoreNodeSync):
     description: StringOptional
+    name: String
     role: DropdownOptional
     status: Dropdown
     template_name: String
     vlan_id: Integer
-    l2domain: RelatedNodeSync
-    location: RelationshipManagerSync
-    member_of_groups: RelationshipManagerSync
-    prefixes: RelationshipManagerSync
-    related_nodes: RelationshipManagerSync
-    service: RelatedNodeSync
-    subscriber_of_groups: RelationshipManagerSync
+    l2domain: RelationshipAttributeSync[IpamL2Domain]
+    location: RelationshipManagerSync[LocationHosting]
+    member_of_groups: RelationshipManagerSync[CoreGroupSync]
+    member_of_groups_for_instances: RelationshipManagerSync[CoreGroupSync]
+    prefixes: RelationshipManagerSync[IpamPrefix]
+    prefixes_from_resource_pool: RelationshipAttributeSync[CoreIPPrefixPoolSync]
+    profiles: RelationshipManagerSync[CoreProfileSync]
+    related_nodes: RelationshipManagerSync[IpamVLAN]
+    service: RelationshipAttributeSync[ServiceGeneric]
+    subscriber_of_groups: RelationshipManagerSync[CoreGroupSync]
+    subscriber_of_groups_for_instances: RelationshipManagerSync[CoreGroupSync]
+    vlan_id_from_resource_pool: RelationshipAttributeSync[CoreNumberPoolSync]

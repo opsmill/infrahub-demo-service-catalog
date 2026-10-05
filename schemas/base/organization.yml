@@ -58,3 +58,12 @@ nodes:
       - OrganizationGeneric
     include_in_menu: true
     menu_placement: OrganizationGeneric
+
+  - name: Customer
+    namespace: Organization
+    description: Buyer of Dedicated Internet services
+    icon: mdi:account-tie
+    include_in_menu: false
+    menu_placement: OrganizationGeneric
+    inherit_from:
+      - OrganizationGeneric

@@ -1,0 +1,120 @@
+# Stored query for the Blast radius view and the Gold outage guard.
+# Ships as service_catalog/queries/business_impact_services.gql and is registered under
+# `queries` in .infrahub.yml as `business_impact_services`. Run on the selected branch;
+# run on main for the "In this change" comparison.
+# The ServiceTier block gives the Gold tier's SLA credit percentage for the tile help.
+query business_impact_services {
+  ServiceDedicatedInternet {
+    edges {
+      node {
+        service_identifier {
+          value
+        }
+        status {
+          value
+        }
+        bandwidth {
+          value
+        }
+        monthly_charge {
+          value
+        }
+        location {
+          node {
+            ... on LocationSite {
+              shortname {
+                value
+              }
+              name {
+                value
+              }
+            }
+          }
+        }
+        customer {
+          node {
+            name {
+              value
+            }
+          }
+        }
+        tier {
+          node {
+            name {
+              value
+            }
+            sla_credit_pct {
+              value
+            }
+          }
+        }
+        dedicated_interfaces {
+          edges {
+            node {
+              name {
+                value
+              }
+              device {
+                node {
+                  ... on DcimDevice {
+                    name {
+                      value
+                    }
+                    description {
+                      value
+                    }
+                    role {
+                      value
+                    }
+                    status {
+                      value
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  DcimDevice(role__values: ["core", "edge"]) {
+    edges {
+      node {
+        name {
+          value
+        }
+        description {
+          value
+        }
+        role {
+          value
+        }
+        status {
+          value
+        }
+        location {
+          node {
+            ... on LocationSite {
+              shortname {
+                value
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  ServiceTier {
+    edges {
+      node {
+        name {
+          value
+        }
+        sla_credit_pct {
+          value
+        }
+      }
+    }
+  }
+}

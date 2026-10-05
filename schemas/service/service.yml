@@ -26,6 +26,29 @@ generics:
         order_weight: 1010
         optional: false
         branch: agnostic
+      - name: monthly_charge
+        kind: Number
+        label: Monthly charge (EUR, demo business input)
+        optional: true
+        branch: aware
+        order_weight: 1020
+    relationships:
+      - name: customer
+        peer: OrganizationCustomer
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: service__customer
+        branch: aware
+        order_weight: 1030
+      - name: tier
+        peer: ServiceTier
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: service__tier
+        branch: aware
+        order_weight: 1040
 
 nodes:
   - name: DedicatedInternet
@@ -135,6 +158,14 @@ nodes:
 
 extensions:
   nodes:
+    - kind: OrganizationCustomer
+      relationships:
+        - name: services
+          peer: ServiceGeneric
+          cardinality: many
+          optional: true
+          identifier: service__customer
+          branch: aware
     - kind: LocationSite
       relationships:
         - name: services

@@ -13,6 +13,15 @@ const sidebars: SidebarsConfig = {
         'getting-started/developer-walkthrough',
       ],
     },
+    {
+      type: 'category',
+      label: 'Business impact',
+      collapsed: false,
+      link: { type: 'doc', id: 'business-impact/overview' },
+      items: [
+        'business-impact/plan-maintenance',
+      ],
+    },
   ]
 };
 

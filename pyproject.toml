@@ -22,6 +22,8 @@ dev = [
     "pytest-asyncio>=0.23.0,<2",
     "pytest-httpx>=0.30.0,<0.37",
     "pytest-clarity>=1.0.1",
+    # The unit tests read the schema and data YAML files.
+    "pyyaml>=6",
     # Floor and cap both come from ariadne-codegen (via infrahub-sdk[all]), which requires
     # ruff>=0.15.0,<0.17.0; recording it locally keeps a relock from crossing the boundary as a
     # side effect. ruff is lint-only here.
@@ -56,6 +58,8 @@ ignore_missing_imports = true
 disallow_untyped_defs = true
 warn_return_any = true
 warn_unused_ignores = true
+# Skills installed by `npx skills add` ship their own helper scripts; they are not authored here.
+exclude = ['^\.agents/', '^dev/skills/']
 
 [[tool.mypy.overrides]]
 module = "infrahub_sdk.*"
@@ -184,6 +188,7 @@ exclude = [
     ".superpowers/",
     ".venv/",
     "dev/commands/",
+    "dev/skills/",
     "docs/.docusaurus/",
     "docs/build/",
     "docs/node_modules/",

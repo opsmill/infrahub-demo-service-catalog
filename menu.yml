@@ -93,3 +93,15 @@ spec:
             label: "Dedicated Internet"
             kind: ServiceDedicatedInternet
             icon: "mdi:ethernet"
+
+          - namespace: Service
+            name: Tier
+            label: "Service Tiers"
+            kind: ServiceTier
+            icon: "mdi:medal-outline"
+
+          - namespace: Organization
+            name: Customer
+            label: "Customers"
+            kind: OrganizationCustomer
+            icon: "mdi:account-tie"

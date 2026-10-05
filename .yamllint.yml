@@ -7,7 +7,13 @@ extends: default
 ignore: |
   /.git
   /.venv
+  # Local, gitignored scratch area (for example a demo repository clone).
+  /.dev/
   node_modules/
+  # Written by the `specify` CLI (extensions, hook registry, workflows); not authored here.
+  /.specify/extensions/
+  /.specify/extensions.yml
+  /.specify/workflows/
 
 rules:
   new-lines: disable

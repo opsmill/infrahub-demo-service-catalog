@@ -1,0 +1,98 @@
+---
+title: Plan device maintenance without breaking a Gold commitment
+description: Take Paris edge router 1 down for maintenance, see which customers and commitments the change touches, and watch Infrahub refuse to merge it.
+---
+
+# Plan device maintenance without breaking a Gold commitment
+
+You need to take Paris edge router 1 (`rb01-par01`) down for maintenance. Before anyone touches the router, you want to know which customers lose service, what the change means for the Gold customers you have SLA commitments with, and whether the change can be merged as it is.
+
+The demo data already contains this change as a proposed change named "Paris router 1 maintenance". It sets the router to maintenance on its own branch, and nothing has merged.
+
+## Before you begin
+
+Install the demo and run the optional seed step, as described in the [installation guide](../getting-started/installation.mdx). The seed step creates twelve services in Paris and Brussels and three maintenance proposed changes:
+
+- "Paris router 1 maintenance" sets `rb01-par01` to maintenance
+- "Brussels switch 1 maintenance" sets `sw01-bru01` to maintenance
+- "New York router 1 maintenance" sets `rb01-nyc01` to maintenance; no active service runs through it
+
+For when a service counts as affected and what each label on the page means, see the [business impact overview](overview.mdx).
+
+## Step 1: open the change on the Business Impact page
+
+Open the portal at `http://localhost:8501` and select the **📊 Business impact** card on the home page, or **Business Impact** in the sidebar.
+
+The **Proposed change** picker opens on "Paris router 1 maintenance". The headline shows:
+
+> This change takes 2 Gold services for Northbank out of service
+
+![The Blast radius view for Paris router 1 maintenance: the headline and the three tiles](../media/business-impact/paris-headline-tiles.png)
+
+The three tiles below it show:
+
+| Tile | Value | Label |
+|---|---|---|
+| Customers affected | 3 | Counted |
+| Gold services affected | 2 of 5 | Counted |
+| Gold SLA credit exposure, per month | €2,565 | Your input |
+
+The exposure is the monthly charge of each affected Gold service times the Gold tier's SLA credit of 25%. It includes Gold services only, under the demo's SLA assumption.
+
+## Step 2: find the customers and services behind the figures
+
+The chart **Annual contract value per customer · your input** shows one bar per customer, with the part this change touches marked. The Northbank bar shows €123,120 affected of €149,040 a year. The Maison Verte bar shows €18,720 affected, Rapid Freight €4,800, and Helix Health nothing.
+
+Open **Affected services** to see each service with its customer, tier, bandwidth, switch, edge router and monthly charge. DI-1001 and DI-1002 are the two Gold services of Northbank behind Paris edge router 1.
+
+![The Affected services table: four services behind Paris switch 1 and Paris edge router 1](../media/business-impact/paris-affected-services.png)
+
+Open **Edge routers ranked by Gold contract value · your input**. Paris edge router 1 has the **In this change** marker, because its status in the proposed change differs from the current network.
+
+![The edge routers ranked by Gold contract value, with Paris edge router 1 marked as in this change](../media/business-impact/paris-router-ranking.png)
+
+## Step 3: compare with the current network and the other changes
+
+Select "Current network" in the picker. The headline shows "No service is affected", the tiles show 0, 0 of 5 and €0, and no bar in the chart is marked as affected. Compare this with the "Paris router 1 maintenance" view:
+
+![The Blast radius view for the current network: no service is affected](../media/business-impact/current-network.png)
+
+![The Blast radius view for Paris router 1 maintenance: 3 customers and 2 Gold services affected](../media/business-impact/paris-full.png)
+
+Select "Brussels switch 1 maintenance" in the picker. The headline shows "This change takes 1 Gold service for Helix Health out of service", and the tiles show 3, 1 of 5 and €2,025. A switch in maintenance affects the services behind it in the same way as an edge router.
+
+![The Blast radius view for Brussels switch 1 maintenance: 1 Gold service for Helix Health affected](../media/business-impact/brussels-full.png)
+
+Select "New York router 1 maintenance". The headline shows "No service is affected", as on the current network.
+
+## Step 4: read the failed check in Infrahub
+
+Open Infrahub at `http://localhost:8000` and sign in as `admin` / `infrahub`. Go to **Proposed Changes** and open "Paris router 1 maintenance". On the **Checks** tab, the Gold outage guard, listed as `gold_outage_guard`, has failed with this message:
+
+> Paris router 1 maintenance takes 2 Gold services for Northbank out of service (DI-1001, DI-1002). Gold SLA credit exposure: €2,565 per month (demo business input). Move these services to Paris edge router 2 first.
+
+![The Checks tab of Paris router 1 maintenance, with the failed Gold outage guard check and its message](../media/business-impact/checks-paris-failed.png)
+
+The check reads the same data as the Business Impact page and applies the same rule for what counts as affected.
+
+## Step 5: try to merge
+
+Select **Merge** on the proposed change. Infrahub refuses with "Unable to merge proposed change containing failing checks", and the router stays active on the current network.
+
+![The Paris router 1 maintenance proposed change after Merge is selected, with the message Unable to merge proposed change containing failing checks](../media/business-impact/merge-refused.png)
+
+The Gold outage guard has no override, so the change has to be rewritten before it can merge, for example by first moving DI-1001 and DI-1002 to Paris edge router 2.
+
+## Step 6: open a change that passes
+
+Open "New York router 1 maintenance". No active service runs through `rb01-nyc01`, so the Gold outage guard passes and does not block the merge.
+
+![The Checks tab of New York router 1 maintenance, with the Gold outage guard check passed](../media/business-impact/checks-new-york-passed.png)
+
+## Optional: change a device status yourself
+
+On the branch of a proposed change, set another device to maintenance in the Infrahub UI, for example `rb01-bru01`. The Business Impact page caches its reads for 10 seconds, so the change shows on the first page refresh after that.
+
+## What you did
+
+You reviewed a maintenance change by its effect on customers and commitments, not only by the device it touches. The Business Impact page showed which customers and Gold services the change affects and the SLA credit involved. The Gold outage guard enforced the rule "no change may take a Gold service out of service", and Infrahub refused the merge.
