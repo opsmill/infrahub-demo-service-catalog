@@ -128,8 +128,37 @@ def test_maintenance_changes() -> None:
         ("maint-sw01-bru01", "sw01-bru01", "Brussels switch 1 maintenance", True),
         # A site with no active service, so the Gold outage guard passes.
         ("maint-rb01-nyc01", "rb01-nyc01", "New York router 1 maintenance", False),
+        # The same maintenance after the Gold services are moved, so the Gold outage guard passes.
+        ("maint-rb01-par01-moved", "rb01-par01", "Paris router 1 maintenance, Gold services moved first", False),
     ]
     assert all(change.description for change in MAINTENANCE_CHANGES)
+
+
+def test_only_the_moved_plan_moves_services() -> None:
+    assert [change.moves for change in MAINTENANCE_CHANGES] == [
+        (),
+        (),
+        (),
+        (("DI-1001", "sw02-par01"), ("DI-1002", "sw02-par01")),
+    ]
+
+
+def test_moved_plan_covers_every_gold_service_behind_paris_edge_router_1() -> None:
+    """Every Gold service behind rb01-par01 moves to switch 2, whose edge router has the same index (rb02-par01)."""
+    moved = MAINTENANCE_CHANGES[3]
+    gold_behind_router = {
+        row.service_identifier for row in SEED_SERVICES if row.tier == "Gold" and row.edge_router == moved.device
+    }
+
+    assert {service for service, _ in moved.moves} == gold_behind_router
+    assert {switch for _, switch in moved.moves} == {"sw02-par01"}
+
+
+def test_generator_command_runs_on_the_given_branch() -> None:
+    assert seed.generator_command("DI-1001") == (
+        "infrahubctl generator dedicated_internet_generator service_identifier=DI-1001 --branch main"
+    )
+    assert seed.generator_command("DI-1001", "maint-rb01-par01-moved").endswith("--branch maint-rb01-par01-moved")
 
 
 GUARD = seed.GUARD_VALIDATOR_LABEL

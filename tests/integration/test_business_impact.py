@@ -42,10 +42,17 @@ from infrahub_sdk.yaml import SchemaFile
 from service_catalog.business_impact import seed
 from service_catalog.business_impact.blast_radius import BlastRadius, build_blast_radius, format_eur, parse_devices
 from service_catalog.infrahub import run_query
-from service_catalog.protocols_sync import DcimDevice, OrganizationCustomer
+from service_catalog.protocols_sync import (
+    DcimDevice,
+    DcimInterfaceL2,
+    DcimInterfaceL3,
+    OrganizationCustomer,
+    ServiceDedicatedInternet,
+)
 from tests.unit.test_gold_outage_guard import BRUSSELS_MESSAGE, PARIS_MESSAGE
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
     from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
@@ -57,6 +64,8 @@ logger = logging.getLogger(__name__)
 QUERY_NAME = "business_impact_services"
 PARIS = "maint-rb01-par01"
 BRUSSELS = "maint-sw01-bru01"
+MOVED = "maint-rb01-par01-moved"
+MOVED_NAME = "Paris router 1 maintenance, Gold services moved first"
 
 MERGE_MUTATION = """
 mutation MergeProposedChange($id: String!) {
@@ -145,16 +154,20 @@ class TestBusinessImpact(TestInfrahubDockerClient):
         guard = client_sync.get(kind=CoreCheckDefinition, name__value="gold_outage_guard", prefetch_relationships=True)
         assert guard.query.peer.name.value == QUERY_NAME
 
-    def test_seed_services_and_generators(self, client_sync: InfrahubClientSync, address: str) -> None:
-        seed.wait_for_repository(client_sync)
-        seed.seed_services(client_sync)
+    def _runner(self, address: str) -> Callable[[str], None]:
+        """Run an `infrahubctl` command against the test server; raise `SeedError` when it exits non-zero."""
 
         def run(command: str) -> None:
             result = self.execute_command(command=command, address=address)
             if result.returncode != 0:
                 raise seed.SeedError(f"exit {result.returncode}\nstdout: {result.stdout}\nstderr: {result.stderr}")
 
-        seed.run_generators(client_sync, run)
+        return run
+
+    def test_seed_services_and_generators(self, client_sync: InfrahubClientSync, address: str) -> None:
+        seed.wait_for_repository(client_sync)
+        seed.seed_services(client_sync)
+        seed.run_generators(client_sync, self._runner(address))
         _assert_fields_survive(client_sync, "main")
 
     def test_seed_is_idempotent_for_services(self, client_sync: InfrahubClientSync) -> None:
@@ -167,9 +180,9 @@ class TestBusinessImpact(TestInfrahubDockerClient):
         }
         assert all(statuses[row.service_identifier] == "active" for row in seed.SEED_SERVICES)
 
-    def test_seed_maintenance(self, client_sync: InfrahubClientSync) -> None:
+    def test_seed_maintenance(self, client_sync: InfrahubClientSync, address: str) -> None:
         main_instances = len(client_sync.all(kind=CoreGeneratorInstance, branch="main"))
-        seed.seed_maintenance(client_sync)
+        seed.seed_maintenance(client_sync, self._runner(address))
 
         for change in seed.MAINTENANCE_CHANGES:
             proposed_change = client_sync.get(kind=CoreProposedChange, name__value=change.proposed_change_name)
@@ -216,6 +229,47 @@ class TestBusinessImpact(TestInfrahubDockerClient):
         assert conclusion == "success"
         assert "Check succesfully completed" in messages
 
+    def test_moved_plan(self, client_sync: InfrahubClientSync) -> None:
+        """With DI-1001 and DI-1002 moved to Paris edge router 2 first, the same maintenance passes the guard.
+
+        The generator moves each gateway to rb02-par01 and does not delete the switch 1 port it released.
+        """
+        conclusion, messages = self._guard(client_sync, MOVED_NAME)
+        OPEN_CHECKS[f"Gold outage guard on {MOVED_NAME}"] = f"{conclusion}: {messages.strip()!r}"
+        assert conclusion == "success"
+
+        sw01 = client_sync.get(kind=DcimDevice, name__value="sw01-par01", branch=MOVED)
+        ports_on = {
+            branch: {
+                str(port.name.value)
+                for port in client_sync.filters(kind=DcimInterfaceL2, device__ids=[sw01.id], branch=branch)
+            }
+            for branch in ("main", MOVED)
+        }
+        assert ports_on[MOVED] == ports_on["main"]
+
+        for service_identifier in ("DI-1001", "DI-1002"):
+            service = client_sync.get(
+                kind=ServiceDedicatedInternet, service_identifier__value=service_identifier, branch=MOVED
+            )
+            gateways = client_sync.filters(
+                kind=DcimInterfaceL3, service__ids=[service.id], branch=MOVED, prefetch_relationships=True
+            )
+            ports = client_sync.filters(
+                kind=DcimInterfaceL2, service__ids=[service.id], branch=MOVED, prefetch_relationships=True
+            )
+            assert [gateway.device.peer.name.value for gateway in gateways] == ["rb02-par01"]
+            assert [port.device.peer.name.value for port in ports] == ["sw02-par01"]
+
+        result = build_blast_radius(_q1(client_sync, MOVED), _q1(client_sync, "main"))
+        assert result.headline == "2 services have no other path during this change, and none of them is Gold"
+        assert _tiles(result) == {
+            "Customers affected": "2",
+            "Gold services affected": "0 of 5",
+            "Gold SLA credit exposure, per month": "€0",
+        }
+        assert [row.service for row in result.affected_rows] == ["DI-1004", "DI-1006"]
+
     def test_merge_refused_on_paris(self, client_sync: InfrahubClientSync) -> None:
         """Infrahub refuses to merge a proposed change whose guard failed."""
         proposed_change = client_sync.get(kind=CoreProposedChange, name__value="Paris router 1 maintenance")
@@ -261,7 +315,7 @@ class TestBusinessImpact(TestInfrahubDockerClient):
     def test_blast_radius_paris(self, client_sync: InfrahubClientSync) -> None:
         result = build_blast_radius(_q1(client_sync, PARIS), _q1(client_sync, "main"))
 
-        assert result.headline == "This change takes 2 Gold services for Northbank out of service"
+        assert result.headline == "2 Gold services for Northbank have no other path during this change"
         assert _tiles(result) == {
             "Customers affected": "3",
             "Gold services affected": "2 of 5",
@@ -283,7 +337,7 @@ class TestBusinessImpact(TestInfrahubDockerClient):
     def test_blast_radius_brussels(self, client_sync: InfrahubClientSync) -> None:
         result = build_blast_radius(_q1(client_sync, BRUSSELS), _q1(client_sync, "main"))
 
-        assert result.headline == "This change takes 1 Gold service for Helix Health out of service"
+        assert result.headline == "1 Gold service for Helix Health has no other path during this change"
         assert _tiles(result) == {
             "Customers affected": "3",
             "Gold services affected": "1 of 5",
@@ -313,6 +367,20 @@ class TestBusinessImpact(TestInfrahubDockerClient):
             return
         OPEN_CHECKS['customer named "Equinix" refused'] = "False (the customer was created)"
         customer.delete()
+
+    def test_moved_plan_merges(self, client_sync: InfrahubClientSync) -> None:
+        """The plan with the Gold services moved first merges. Runs last: the merge changes main."""
+        proposed_change = client_sync.get(kind=CoreProposedChange, name__value=MOVED_NAME)
+        client_sync.execute_graphql(query=MERGE_MUTATION, variables={"id": proposed_change.id})
+
+        after = client_sync.get(kind=CoreProposedChange, id=proposed_change.id)
+        router = client_sync.get(kind=DcimDevice, name__value="rb01-par01", branch="main")
+        OPEN_CHECKS[f"merge of {MOVED_NAME}"] = (
+            f"state after: {after.state.value}; rb01-par01 on main: {router.status.value}"
+        )
+
+        assert after.state.value == "merged"
+        assert router.status.value == "maintenance"
 
     def test_report_open_checks(self) -> None:
         print("\nOpen checks:")

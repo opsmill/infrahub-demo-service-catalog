@@ -33,12 +33,12 @@ BRUSSELS = "Brussels switch 1 maintenance"
 NEW_YORK = "New York router 1 maintenance"
 
 PARIS_MESSAGE = (
-    "Paris router 1 maintenance takes 2 Gold services for Northbank out of service (DI-1001, DI-1002). "
+    "Paris router 1 maintenance leaves 2 Gold services for Northbank with no other path (DI-1001, DI-1002). "
     "Gold SLA credit exposure: €2,565 per month (demo business input). "
     "Move these services to Paris edge router 2 first."
 )
 BRUSSELS_MESSAGE = (
-    "Brussels switch 1 maintenance takes 1 Gold service for Helix Health out of service (DI-2001). "
+    "Brussels switch 1 maintenance leaves 1 Gold service for Helix Health with no other path (DI-2001). "
     "Gold SLA credit exposure: €2,025 per month (demo business input). "
     "Move this service to Brussels switch 2 first."
 )
@@ -135,7 +135,7 @@ def test_two_customers_joined_with_and_in_name_order() -> None:
     result = evaluate(branch, build_q1(), "Two sites")
 
     assert result.errors == [
-        "Two sites takes 3 Gold services for Helix Health and Northbank out of service (DI-1001, DI-1002, DI-2001). "
+        "Two sites leaves 3 Gold services for Helix Health and Northbank with no other path (DI-1001, DI-1002, DI-2001). "
         "Gold SLA credit exposure: €4,590 per month (demo business input). "
         "Move these services to Brussels switch 2 and Paris edge router 2 first."
     ]

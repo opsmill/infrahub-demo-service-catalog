@@ -383,7 +383,7 @@ def init(context: Context) -> None:
 
 @task(name="seed")
 def seed(context: Context) -> None:
-    """Seed the business impact demo: twelve services on main, generator runs, three maintenance changes.
+    """Seed the business impact demo: twelve services on main, generator runs, four maintenance changes.
 
     Run after `invoke init`. Safe to run again: it creates only what is missing.
     """
@@ -405,7 +405,7 @@ def seed(context: Context) -> None:
             seed_steps.wait_for_repository(client)
             seed_steps.seed_services(client)
             seed_steps.run_generators(client, run)
-            seed_steps.seed_maintenance(client)
+            seed_steps.seed_maintenance(client, run)
         except seed_steps.SeedError as exc:
             raise Exit(f"Seed failed. {exc}", code=1) from exc
     print("=== Seed complete ===")

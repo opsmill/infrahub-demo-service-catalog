@@ -9,10 +9,12 @@ error messages match the steps the installation guide lists:
    missing, and pin its switch by linking one free customer port.
    `run_generators`: run the provisioning generator for each service on main,
    then check that the service has its port, gateway and VLAN.
-3-4. `seed_maintenance`: create or rebase the three maintenance branches, set
-   the device to maintenance on each, open the proposed changes and wait for
+3-4. `seed_maintenance`: create or rebase the four maintenance branches, move
+   services on the branch where the change says so, set the device to
+   maintenance on each, open the proposed changes and wait for
    their pipelines. The Gold outage guard is expected to fail on the Paris and
-   Brussels changes; the wait reports that as an expected result.
+   Brussels changes and to pass on New York and on the Paris change with the
+   Gold services moved first; the wait reports each as an expected result.
 
 The pure helpers (port choice, allocation check, validator wait decision) take
 plain values so they are unit-tested without a server. The client is built by
@@ -25,11 +27,17 @@ import os
 import re
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk import InfrahubClientSync
 from infrahub_sdk.exceptions import GraphQLError, SchemaNotFoundError
-from infrahub_sdk.protocols import CoreGeneratorDefinition, CoreGraphQLQuery, CoreProposedChange, CoreValidator
+from infrahub_sdk.protocols import (
+    CoreGeneratorDefinition,
+    CoreGeneratorGroup,
+    CoreGraphQLQuery,
+    CoreProposedChange,
+    CoreValidator,
+)
 from service_catalog.protocols_sync import (
     DcimDevice,
     DcimInterface,
@@ -117,6 +125,9 @@ class MaintenanceChange:
     description: str
     # True when the change takes a Gold service out of service, so the Gold outage guard must fail it.
     guard_blocks: bool
+    # Services moved to another switch on the branch before the device goes into maintenance, as
+    # (service identifier, switch). The generator then puts each one on the edge router with that switch's index.
+    moves: tuple[tuple[str, str], ...] = ()
 
 
 SEED_SERVICES: tuple[SeedService, ...] = (
@@ -155,6 +166,17 @@ MAINTENANCE_CHANGES: tuple[MaintenanceChange, ...] = (
         proposed_change_name="New York router 1 maintenance",
         description="Maintenance on New York edge router 1 (rb01-nyc01)",
         guard_blocks=False,
+    ),
+    MaintenanceChange(
+        branch="maint-rb01-par01-moved",
+        device="rb01-par01",
+        proposed_change_name="Paris router 1 maintenance, Gold services moved first",
+        description=(
+            "Maintenance on Paris edge router 1 (rb01-par01), after moving DI-1001 and DI-1002 "
+            "to Paris switch 2 and Paris edge router 2"
+        ),
+        guard_blocks=False,
+        moves=(("DI-1001", "sw02-par01"), ("DI-1002", "sw02-par01")),
     ),
 )
 
@@ -443,10 +465,8 @@ def seed_services(client: InfrahubClientSync) -> None:
         print(f"{row.service_identifier}: pinned to {row.switch} {chosen.name}")
 
 
-def generator_command(service: SeedService) -> str:
-    return (
-        f"infrahubctl generator {GENERATOR_NAME} service_identifier={service.service_identifier} --branch {MAIN_BRANCH}"
-    )
+def generator_command(service_identifier: str, branch: str = MAIN_BRANCH) -> str:
+    return f"infrahubctl generator {GENERATOR_NAME} service_identifier={service_identifier} --branch {branch}"
 
 
 def run_generators(client: InfrahubClientSync, run: Callable[[str], None]) -> None:
@@ -458,7 +478,7 @@ def run_generators(client: InfrahubClientSync, run: Callable[[str], None]) -> No
     for row in SEED_SERVICES:
         print(f"{row.service_identifier}: running {GENERATOR_NAME}")
         try:
-            run(generator_command(row))
+            run(generator_command(row.service_identifier))
         except SeedError as exc:
             raise SeedError(f"Step 2: generator failed for {row.service_identifier}: {exc}") from exc
 
@@ -489,6 +509,70 @@ def _ensure_branch(client: InfrahubClientSync, change: MaintenanceChange) -> Non
     else:
         print(f"{change.branch}: creating")
         client.branch.create(branch_name=change.branch, sync_with_git=False, description=change.description)
+
+
+def _release_port(client: InfrahubClientSync, port: Any, branch: str) -> None:  # noqa: ANN401 - an SDK node
+    """Free a customer port on `branch`, and take it out of the generator's tracking group first.
+
+    The generator deletes the nodes of its group that a run no longer saves. Without this, its next run
+    would delete the physical switch port instead of leaving it free.
+    """
+    for group in client.filters(kind=CoreGeneratorGroup, members__ids=[port.id], branch=branch):
+        group.members.fetch()
+        group.members.remove(port.id)
+        group.save()
+    port.service = None
+    port.untagged_vlan = None
+    port.status.value = "free"
+    port.enabled.value = False
+    port.description.value = None
+    port.l2_mode.value = None
+    port.save()
+
+
+def move_services(client: InfrahubClientSync, change: MaintenanceChange, run: Callable[[str], None]) -> None:
+    """Step 3: on the change's branch, move each service to its new switch and run the generator there.
+
+    Safe to run again: a service whose port is already on the new switch is left as it is.
+    """
+    devices = _devices(client, change.branch)
+    for service_identifier, switch in change.moves:
+        service = client.get(
+            kind=ServiceDedicatedInternet, service_identifier__value=service_identifier, branch=change.branch
+        )
+        ports = client.filters(kind=DcimInterfaceL2, service__ids=[service.id], branch=change.branch)
+        target_id = _device_id(devices, switch)
+        if any(port.device.id == target_id for port in ports):
+            print(f"{change.branch}: {service_identifier} already on {switch}")
+            continue
+        for port in ports:
+            if port.device.id in devices and devices[port.device.id].role == "core":
+                _release_port(client, port, change.branch)
+
+        switch_ports = {
+            str(port.id): port
+            for port in client.filters(kind=DcimInterfaceL2, device__ids=[target_id], branch=change.branch)
+        }
+        chosen = choose_free_port(
+            PortRow(
+                id=port_id,
+                name=str(port.name.value),
+                role=port.role.value,
+                status=port.status.value,
+                service_id=port.service.id,
+            )
+            for port_id, port in switch_ports.items()
+        )
+        if chosen is None:
+            raise SeedError(f"Step 3: no free customer port on {switch} for {service_identifier}")
+        port = switch_ports[chosen.id]
+        port.service = service
+        port.save(allow_upsert=True)
+        print(f"{change.branch}: {service_identifier} moved to {switch} {chosen.name}")
+        try:
+            run(generator_command(service_identifier, change.branch))
+        except SeedError as exc:
+            raise SeedError(f"Step 3: generator failed for {service_identifier} on {change.branch}: {exc}") from exc
 
 
 def _ensure_proposed_change(client: InfrahubClientSync, change: MaintenanceChange) -> str:
@@ -526,11 +610,12 @@ def _validators(client: InfrahubClientSync, proposed_change_id: str) -> list[Val
     ]
 
 
-def seed_maintenance(client: InfrahubClientSync) -> None:
+def seed_maintenance(client: InfrahubClientSync, run: Callable[[str], None]) -> None:
     """Steps 3-4: maintenance branches, device status, proposed changes and the pipeline wait."""
     opened: list[tuple[MaintenanceChange, str]] = []
     for change in MAINTENANCE_CHANGES:
         _ensure_branch(client, change)
+        move_services(client, change, run)
         device = client.get(kind=DcimDevice, name__value=change.device, branch=change.branch)
         device.status.value = MAINTENANCE_STATUS
         device.save(allow_upsert=True)

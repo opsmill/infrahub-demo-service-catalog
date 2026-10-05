@@ -90,9 +90,9 @@ def test_page_opens_on_paris_router_1_maintenance(reads: list[tuple[str, str]]) 
         "Paris router 1 maintenance",
     ]
     assert picker.value == "Paris router 1 maintenance"
-    assert "## This change takes 2 Gold services for Northbank out of service" in _markdown(app)
+    assert "## 2 Gold services for Northbank have no other path during this change" in _markdown(app)
     assert [caption.value for caption in app.main.caption] == [
-        "Paris router 1 maintenance · caught in a proposed change, before merge",
+        "Paris router 1 maintenance · found in a proposed change, before merge",
         "Counted",
         "Counted",
         "Your input",
@@ -128,7 +128,7 @@ def test_page_on_brussels_switch_1_maintenance(reads: list[tuple[str, str]]) -> 
     app.sidebar.selectbox(key="business-impact-change").select_index(1).run(timeout=30)
 
     assert not app.exception
-    assert "## This change takes 1 Gold service for Helix Health out of service" in _markdown(app)
+    assert "## 1 Gold service for Helix Health has no other path during this change" in _markdown(app)
     assert _metrics(app)["Gold services affected"] == "1 of 5"
     assert _metrics(app)["Gold SLA credit exposure, per month"] == "€2,025"
 

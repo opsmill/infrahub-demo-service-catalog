@@ -1,31 +1,34 @@
 ---
-title: Plan device maintenance without breaking a Gold commitment
-description: Take Paris edge router 1 down for maintenance, see which customers and commitments the change touches, and watch Infrahub refuse to merge it.
+title: Plan maintenance that keeps Gold services in service
+description: Plan maintenance on Paris edge router 1, find the Gold services that have no other path during the window, move them first, and merge the plan once no Gold service depends on the router.
 ---
 
-# Plan device maintenance without breaking a Gold commitment
+# Plan maintenance that keeps Gold services in service
 
-You need to take Paris edge router 1 (`rb01-par01`) down for maintenance. Before anyone touches the router, you want to know which customers lose service, what the change means for the Gold customers you have SLA commitments with, and whether the change can be merged as it is.
+You plan maintenance on Paris edge router 1 (`rb01-par01`). The goal is that no Gold customer loses service during the window. Before the window is scheduled, you check which services depend only on this router, and you move the Gold services to Paris edge router 2.
 
-The demo data already contains this change as a proposed change named "Paris router 1 maintenance". It sets the router to maintenance on its own branch, and nothing has merged.
+The demo data contains this plan as a proposed change named "Paris router 1 maintenance". It sets the router to maintenance on its own branch. Nothing has merged.
+
+In the demo, each service has one path: one switch and one edge router. Paris edge router 2 is in the same site, but no service uses it as a second path. A service behind a device in maintenance therefore has no other path during the window.
 
 ## Before you begin
 
-Install the demo and run the optional seed step, as described in the [installation guide](../getting-started/installation.mdx). The seed step creates twelve services in Paris and Brussels and three maintenance proposed changes:
+Install the demo and run the optional seed step, as described in the [installation guide](../getting-started/installation.mdx). The seed step creates twelve services in Paris and Brussels and four maintenance proposed changes:
 
 - "Paris router 1 maintenance" sets `rb01-par01` to maintenance
 - "Brussels switch 1 maintenance" sets `sw01-bru01` to maintenance
 - "New York router 1 maintenance" sets `rb01-nyc01` to maintenance; no active service runs through it
+- "Paris router 1 maintenance, Gold services moved first" moves DI-1001 and DI-1002 to Paris switch 2 and Paris edge router 2, then sets `rb01-par01` to maintenance
 
 For when a service counts as affected and what each label on the page means, see the [business impact overview](overview.mdx).
 
-## Step 1: open the change on the Business Impact page
+## Step 1: check which services depend on the router
 
 Open the portal at `http://localhost:8501` and select the **📊 Business impact** card on the home page, or **Business Impact** in the sidebar.
 
 The **Proposed change** picker opens on "Paris router 1 maintenance". The headline shows:
 
-> This change takes 2 Gold services for Northbank out of service
+> 2 Gold services for Northbank have no other path during this change
 
 ![The Blast radius view for Paris router 1 maintenance: the headline and the three tiles](../media/business-impact/paris-headline-tiles.png)
 
@@ -37,57 +40,71 @@ The three tiles below it show:
 | Gold services affected | 2 of 5 | Counted |
 | Gold SLA credit exposure, per month | €2,565 | Your input |
 
-The exposure is the monthly charge of each affected Gold service times the Gold tier's SLA credit of 25%. It includes Gold services only, under the demo's SLA assumption.
+The exposure is the monthly charge of each affected Gold service times the Gold tier's SLA credit of 25%. It is the SLA credit the plan would cost if it went ahead as it is. It includes Gold services only, under the demo's SLA assumption.
 
-## Step 2: find the customers and services behind the figures
+## Step 2: find the Gold services to move first
 
-The chart **Annual contract value per customer · your input** shows one bar per customer, with the part this change touches marked. The Northbank bar shows €123,120 affected of €149,040 a year. The Maison Verte bar shows €18,720 affected, Rapid Freight €4,800, and Helix Health nothing.
+The chart **Annual contract value per customer · your input** shows one bar per customer, with the part that depends on the router marked. The Northbank bar shows €123,120 of €149,040 a year. The Maison Verte bar shows €18,720, Rapid Freight €4,800, and Helix Health nothing.
 
-Open **Affected services** to see each service with its customer, tier, bandwidth, switch, edge router and monthly charge. DI-1001 and DI-1002 are the two Gold services of Northbank behind Paris edge router 1.
+Open **Affected services** to see each service with its customer, tier, bandwidth, switch, edge router and monthly charge. DI-1001 and DI-1002 are the two Gold services of Northbank behind Paris edge router 1. These are the services to move before the maintenance. DI-1004 (Silver) and DI-1006 (Bronze) depend on the router too; the demo's Silver and Bronze SLAs exclude announced maintenance.
 
 ![The Affected services table: four services behind Paris switch 1 and Paris edge router 1](../media/business-impact/paris-affected-services.png)
 
-Open **Edge routers ranked by Gold contract value · your input**. Paris edge router 1 has the **In this change** marker, because its status in the proposed change differs from the current network.
+Open **Edge routers ranked by Gold contract value · your input**. Paris edge router 1 has the **In this change** marker, because its status in the proposed change differs from the current network. Paris edge router 2 is the router in the same site to move the Gold services to.
 
 ![The edge routers ranked by Gold contract value, with Paris edge router 1 marked as in this change](../media/business-impact/paris-router-ranking.png)
 
-## Step 3: compare with the current network and the other changes
+## Step 3: compare with the current network and the other plans
 
-Select "Current network" in the picker. The headline shows "No service is affected", the tiles show 0, 0 of 5 and €0, and no bar in the chart is marked as affected. Compare this with the "Paris router 1 maintenance" view:
+Select "Current network" in the picker. The headline shows "No service is affected", the tiles show 0, 0 of 5 and €0, and no bar in the chart is marked. Compare this with the "Paris router 1 maintenance" view:
 
 ![The Blast radius view for the current network: no service is affected](../media/business-impact/current-network.png)
 
-![The Blast radius view for Paris router 1 maintenance: 3 customers and 2 Gold services affected](../media/business-impact/paris-full.png)
+![The Blast radius view for Paris router 1 maintenance: 3 customers and 2 Gold services without another path](../media/business-impact/paris-full.png)
 
-Select "Brussels switch 1 maintenance" in the picker. The headline shows "This change takes 1 Gold service for Helix Health out of service", and the tiles show 3, 1 of 5 and €2,025. A switch in maintenance affects the services behind it in the same way as an edge router.
+Select "Brussels switch 1 maintenance". The headline shows "1 Gold service for Helix Health has no other path during this change", and the tiles show 3, 1 of 5 and €2,025. A switch in maintenance affects the services behind it in the same way as an edge router, so this plan also has a Gold service to move first.
 
-![The Blast radius view for Brussels switch 1 maintenance: 1 Gold service for Helix Health affected](../media/business-impact/brussels-full.png)
+![The Blast radius view for Brussels switch 1 maintenance: 1 Gold service for Helix Health without another path](../media/business-impact/brussels-full.png)
 
-Select "New York router 1 maintenance". The headline shows "No service is affected", as on the current network.
+Select "New York router 1 maintenance". The headline shows "No service is affected", as on the current network. This plan has nothing to move.
 
-## Step 4: read the failed check in Infrahub
+## Step 4: read why the plan is not complete yet
 
 Open Infrahub at `http://localhost:8000` and sign in as `admin` / `infrahub`. Go to **Proposed Changes** and open "Paris router 1 maintenance". On the **Checks** tab, the Gold outage guard, listed as `gold_outage_guard`, has failed with this message:
 
-> Paris router 1 maintenance takes 2 Gold services for Northbank out of service (DI-1001, DI-1002). Gold SLA credit exposure: €2,565 per month (demo business input). Move these services to Paris edge router 2 first.
+> Paris router 1 maintenance leaves 2 Gold services for Northbank with no other path (DI-1001, DI-1002). Gold SLA credit exposure: €2,565 per month (demo business input). Move these services to Paris edge router 2 first.
 
 ![The Checks tab of Paris router 1 maintenance, with the failed Gold outage guard check and its message](../media/business-impact/checks-paris-failed.png)
 
-The check reads the same data as the Business Impact page and applies the same rule for what counts as affected.
+The check reads the same data as the Business Impact page and applies the same rule for what counts as affected. The message names the services to move and where to move them.
 
-## Step 5: try to merge
+## Step 5: try to merge the incomplete plan
 
 Select **Merge** on the proposed change. Infrahub refuses with "Unable to merge proposed change containing failing checks", and the router stays active on the current network.
 
 ![The Paris router 1 maintenance proposed change after Merge is selected, with the message Unable to merge proposed change containing failing checks](../media/business-impact/merge-refused.png)
 
-The Gold outage guard has no override, so the change has to be rewritten before it can merge, for example by first moving DI-1001 and DI-1002 to Paris edge router 2.
+The Gold outage guard has no override. The plan can merge only after it moves the Gold services first, as in Step 7.
 
-## Step 6: open a change that passes
+## Step 6: open a plan that has nothing to move
 
 Open "New York router 1 maintenance". No active service runs through `rb01-nyc01`, so the Gold outage guard passes and does not block the merge.
 
 ![The Checks tab of New York router 1 maintenance, with the Gold outage guard check passed](../media/business-impact/checks-new-york-passed.png)
+
+## Step 7: merge the plan with the Gold services moved first
+
+The proposed change "Paris router 1 maintenance, Gold services moved first" is the complete plan. On its branch, the seed step moved DI-1001 and DI-1002 to free customer ports on Paris switch 2 and ran the provisioning generator for each one. The generator put their gateways on Paris edge router 2 and removed the gateways from Paris edge router 1. The seed step then set Paris edge router 1 to maintenance.
+
+In the portal, select "Paris router 1 maintenance, Gold services moved first". The headline shows "2 services have no other path during this change, and none of them is Gold". The tiles show 2, 0 of 5 and €0. DI-1004 and DI-1006 still depend on the router.
+
+![The Blast radius view for the plan with the Gold services moved first: 2 services affected, none of them Gold](../media/business-impact/moved-full.png)
+
+In Infrahub, open the proposed change. On the **Checks** tab, the Gold outage guard has passed.
+
+![The Checks tab of the plan with the Gold services moved first, with the Gold outage guard check passed](../media/business-impact/checks-moved-passed.png)
+
+Select **Merge**. Infrahub merges the plan: on the current network, DI-1001 and DI-1002 now run through Paris edge router 2, and Paris edge router 1 is in maintenance. Merging changes the demo's current network, so do this step last.
 
 ## Optional: change a device status yourself
 
@@ -95,4 +112,4 @@ On the branch of a proposed change, set another device to maintenance in the Inf
 
 ## What you did
 
-You reviewed a maintenance change by its effect on customers and commitments, not only by the device it touches. The Business Impact page showed which customers and Gold services the change affects and the SLA credit involved. The Gold outage guard enforced the rule "no change may take a Gold service out of service", and Infrahub refused the merge.
+You planned maintenance on Paris edge router 1 so that no Gold customer depends on the router during the window. The Business Impact page showed which services had no other path and the SLA credit the plan would cost as it was. The Gold outage guard kept the incomplete plan from merging, and named the services to move. The plan that moved the Gold services first passed the guard and merged.

@@ -104,7 +104,7 @@ def _error_message(
         action = f"Move {pronoun} off {join_names({device.label for device in unique})} first."
 
     return (
-        f"{change_name} takes {len(blocked)} Gold {noun}{customers} out of service ({identifiers}). "
+        f"{change_name} leaves {len(blocked)} Gold {noun}{customers} with no other path ({identifiers}). "
         f"Gold SLA credit exposure: {format_eur(credit)} per month ({CREDIT_LABEL}). "
         f"{action}"
     )

@@ -193,7 +193,7 @@ def _routers(result: BlastRadius) -> list[tuple[str, str, bool]]:
 def test_paris_router_1_maintenance(paris: Q1Data, current_network: Q1Data) -> None:
     result = build_blast_radius(paris, current_network)
 
-    assert result.headline == "This change takes 2 Gold services for Northbank out of service"
+    assert result.headline == "2 Gold services for Northbank have no other path during this change"
     assert _tiles(result) == {
         "Customers affected": "3",
         "Gold services affected": "2 of 5",
@@ -237,7 +237,7 @@ def test_paris_full_bars_match_figure_definitions(paris: Q1Data, current_network
 def test_brussels_switch_1_maintenance(brussels: Q1Data, current_network: Q1Data) -> None:
     result = build_blast_radius(brussels, current_network)
 
-    assert result.headline == "This change takes 1 Gold service for Helix Health out of service"
+    assert result.headline == "1 Gold service for Helix Health has no other path during this change"
     assert _tiles(result) == {
         "Customers affected": "3",
         "Gold services affected": "1 of 5",
@@ -331,7 +331,7 @@ def test_non_gold_only_headline_plural(current_network: Q1Data) -> None:
 
     result = build_blast_radius(data, current_network)
 
-    assert result.headline == "This change affects 2 services, none of them Gold"
+    assert result.headline == "2 services have no other path during this change, and none of them is Gold"
 
 
 def test_non_gold_only_headline_singular(current_network: Q1Data) -> None:
@@ -340,7 +340,7 @@ def test_non_gold_only_headline_singular(current_network: Q1Data) -> None:
 
     result = build_blast_radius(data, current_network)
 
-    assert result.headline == "This change affects 1 service, which is not Gold"
+    assert result.headline == "1 service has no other path during this change, and it is not Gold"
 
 
 def test_two_gold_customers_joined_with_and_in_name_order(current_network: Q1Data) -> None:
@@ -348,7 +348,7 @@ def test_two_gold_customers_joined_with_and_in_name_order(current_network: Q1Dat
 
     result = build_blast_radius(data, current_network)
 
-    assert result.headline == "This change takes 3 Gold services for Helix Health and Northbank out of service"
+    assert result.headline == "3 Gold services for Helix Health and Northbank have no other path during this change"
 
 
 def test_empty_active_service_list_shows_no_services_found() -> None:
@@ -382,7 +382,7 @@ def test_service_with_no_tier_is_not_gold(current_network: Q1Data) -> None:
 
     result = build_blast_radius(data, current_network)
 
-    assert result.headline == "This change takes 1 Gold service for Northbank out of service"
+    assert result.headline == "1 Gold service for Northbank has no other path during this change"
     assert _tiles(result)["Gold services affected"] == "1 of 4"
     assert _tiles(result)["Gold SLA credit exposure, per month"] == "€540"
     assert next(row for row in result.affected_rows if row.service == "DI-1001").tier == "Unassigned"
@@ -411,7 +411,7 @@ def test_any_status_other_than_active_is_out_of_service(status: str, current_net
 
     result = build_blast_radius(data, current_network)
 
-    assert result.headline == "This change takes 2 Gold services for Northbank out of service"
+    assert result.headline == "2 Gold services for Northbank have no other path during this change"
 
 
 def test_service_behind_two_out_of_service_devices_counts_once(current_network: Q1Data) -> None:
@@ -460,15 +460,15 @@ def test_gold_headline_names_only_real_customers(current_network: Q1Data) -> Non
 
     result = build_blast_radius(data, current_network)
 
-    assert result.headline == "This change takes 2 Gold services for Northbank out of service"
+    assert result.headline == "2 Gold services for Northbank have no other path during this change"
     assert _tiles(result)["Customers affected"] == "3"
 
 
 @pytest.mark.parametrize(
     ("unassigned", "headline"),
     [
-        (("DI-1001", "DI-1002"), "This change takes 2 Gold services out of service"),
-        (("DI-1001",), "This change takes 1 Gold service out of service"),
+        (("DI-1001", "DI-1002"), "2 Gold services have no other path during this change"),
+        (("DI-1001",), "1 Gold service has no other path during this change"),
     ],
 )
 def test_gold_headline_without_names_when_every_gold_service_is_unassigned(
@@ -491,7 +491,7 @@ def test_headline_caption_for_proposed_changes(paris: Q1Data, current_network: Q
     other = build_blast_radius(data, current_network)
 
     assert headline_caption("Paris router 1 maintenance", gold) == (
-        "Paris router 1 maintenance · caught in a proposed change, before merge"
+        "Paris router 1 maintenance · found in a proposed change, before merge"
     )
     assert headline_caption("Paris switch 2 maintenance", other) == (
         "Paris switch 2 maintenance · seen in a proposed change, before merge"

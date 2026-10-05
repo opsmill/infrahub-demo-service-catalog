@@ -860,7 +860,9 @@ The check always runs the rule from its own commit. When the file is imported on
 
 ### The seed task
 
-`invoke seed` (`service_catalog/business_impact/seed.py`) creates twelve services on `main` and runs the provisioning generator for each, so the seeded services look like ordered ones. It then opens three maintenance proposed changes. It pins each service to a switch by linking one free customer port before the generator runs; the generator reuses that port and picks the edge router with the same index.
+`invoke seed` (`service_catalog/business_impact/seed.py`) creates twelve services on `main` and runs the provisioning generator for each, so the seeded services look like ordered ones. It then opens four maintenance proposed changes. It pins each service to a switch by linking one free customer port before the generator runs; the generator reuses that port and picks the edge router with the same index.
+
+The fourth proposed change moves DI-1001 and DI-1002 to Paris switch 2 on its branch before Paris edge router 1 goes into maintenance. The seed step frees each old switch port and links a free port on switch 2, then runs the generator on the branch, which puts the gateway on Paris edge router 2. Before it frees the old port, it removes the port from the generator's group. The generator deletes the members of its group that a run no longer saves, so without this step it would delete the switch port.
 
 ## Architecture takeaways
 

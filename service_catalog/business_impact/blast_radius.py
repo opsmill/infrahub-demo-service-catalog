@@ -313,15 +313,15 @@ def headline_text(active: Iterable[ServiceRow]) -> str:
         return NO_SERVICE_AFFECTED
     gold = [service for service in affected if service.gold]
     if gold:
-        noun = "service" if len(gold) == 1 else "services"
+        noun, verb = ("service", "has") if len(gold) == 1 else ("services", "have")
         # Only real customers are named; a Gold service with no customer is counted but not named.
         names = join_names({service.customer for service in gold if service.customer})
         if not names:
-            return f"This change takes {len(gold)} Gold {noun} out of service"
-        return f"This change takes {len(gold)} Gold {noun} for {names} out of service"
+            return f"{len(gold)} Gold {noun} {verb} no other path during this change"
+        return f"{len(gold)} Gold {noun} for {names} {verb} no other path during this change"
     if len(affected) == 1:
-        return "This change affects 1 service, which is not Gold"
-    return f"This change affects {len(affected)} services, none of them Gold"
+        return "1 service has no other path during this change, and it is not Gold"
+    return f"{len(affected)} services have no other path during this change, and none of them is Gold"
 
 
 def headline_caption(change_label: str, result: BlastRadius) -> str:
@@ -329,7 +329,7 @@ def headline_caption(change_label: str, result: BlastRadius) -> str:
     if change_label == CURRENT_NETWORK:
         return ""
     if result.gold_headline:
-        return f"{change_label} · caught in a proposed change, before merge"
+        return f"{change_label} · found in a proposed change, before merge"
     return f"{change_label} · seen in a proposed change, before merge"
 
 

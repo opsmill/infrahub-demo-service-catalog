@@ -1,19 +1,19 @@
 ---
 title: Business impact
-description: How the demo links customers, service tiers and contract value to devices, shows which customers a proposed change affects, and blocks a change that breaks a Gold commitment.
+description: How the demo links customers, service tiers and contract value to devices, shows which services have no other path during a planned change, and blocks a plan that leaves a Gold service without one.
 ---
 
 # Business impact
 
-In this demo, each service is linked to its customer, its service tier and its monthly charge, in the same Infrahub graph as the switch, edge router and IP resources the service runs on. With that link in place, the Business Impact page shows which customers and which commitments a proposed change touches before it merges, and Infrahub refuses to merge a change that takes a Gold service out of service.
+In this demo, each service is linked to its customer, its service tier and its monthly charge, in the same Infrahub graph as the switch, edge router and IP resources the service runs on. With that link in place, you can plan a change by its effect on customers. Before a proposed change merges, the Business Impact page shows which services have no other path while the change is in place, and Infrahub refuses to merge a plan that leaves a Gold service without one.
 
 ![The Blast radius view for Paris router 1 maintenance: 3 customers and 2 Gold services affected, €2,565 Gold SLA credit exposure per month](../media/business-impact/paris-headline-tiles.png)
 
 ## Why business context belongs in the source of truth
 
-Change review usually happens at the level of devices and interfaces. A maintenance window on an edge router looks the same whether a lab circuit or the main internet connection of your largest customer runs through the router. The people who approve the change, and the people who are responsible for it afterwards, ask a different question: which customers lose service, and does the change break a commitment that was sold to them?
+Change review usually happens at the level of devices and interfaces. A maintenance window on an edge router looks the same whether a lab circuit or the main internet connection of your largest customer runs through the router. The people who plan and approve the change ask a different question: which customers depend on this device during the window, and which of them have a commitment that needs another path first?
 
-When customers, tiers and contract value are stored in a separate CRM or spreadsheet, someone answers that question manually, if at all, and usually after the change is planned. When they are stored in the same graph as the infrastructure, the answer is on the proposed change itself, built from the same data the automation already uses. The answer is part of the review, and you can enforce a rule such as "no change may take a Gold service out of service" as a check instead of a reminder.
+When customers, tiers and contract value are stored in a separate CRM or spreadsheet, someone answers that question manually, if at all, and usually after the window is scheduled. When they are stored in the same graph as the infrastructure, the answer is on the proposed change itself, built from the same data the automation already uses. The answer is part of the review, and you can enforce a rule such as "no plan may leave a Gold service without a path" as a check instead of a reminder.
 
 ## The business data
 
@@ -52,11 +52,11 @@ The Gold outage guard is a check in the proposed change pipeline. It reads the s
 
 | Situation | Result |
 |---|---|
-| An active Gold service has a device that is active on the current network and not active in the proposed change | Fails. The change causes the outage |
+| An active Gold service has a device that is active on the current network and not active in the proposed change | Fails. The plan leaves the service with no other path |
 | A Gold service's device was already out of service on the current network | Passes, and logs a message naming the service |
 | Only Silver or Bronze services are affected, or none | Passes |
 
-Infrahub does not merge a proposed change while a check has failed. The guard has no override: no tag, setting or role allows the change to merge. To merge, change the proposed change, for example by moving the Gold services to the other device at the site first.
+Infrahub does not merge a proposed change while a check has failed. The guard has no override: no tag, setting or role allows the change to merge. To merge, complete the plan first: move the Gold services to the other device at the site in the proposed change, as the plan in the tutorial's last step does.
 
 ![The failed Gold outage guard check on Paris router 1 maintenance, with its message](../media/business-impact/checks-paris-failed.png)
 
@@ -72,4 +72,4 @@ To load the demo data, run the optional seed step in the [installation guide](..
 
 ## In this section
 
-- [Plan device maintenance without breaking a Gold commitment](plan-maintenance.mdx): Take Paris edge router 1 down, see which customers it affects, and watch Infrahub refuse the merge
+- [Plan maintenance that keeps Gold services in service](plan-maintenance.mdx): Find the Gold services that depend on Paris edge router 1, move them first, and merge the plan once no Gold service depends on the router
