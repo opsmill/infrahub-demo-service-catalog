@@ -3,10 +3,12 @@
 # `queries` in .infrahub.yml as `business_impact_services`. Run on the selected branch;
 # run on main for the "In this change" comparison.
 # The ServiceTier block gives the Gold tier's SLA credit percentage for the tile help.
+# The service and device ids are the start and end of the Gold outage guard's path traversal.
 query business_impact_services {
   ServiceDedicatedInternet {
     edges {
       node {
+        id
         service_identifier {
           value
         }
@@ -81,6 +83,7 @@ query business_impact_services {
   DcimDevice(role__values: ["core", "edge"]) {
     edges {
       node {
+        id
         name {
           value
         }

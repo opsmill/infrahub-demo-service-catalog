@@ -19,8 +19,16 @@ from typing import TYPE_CHECKING, Any, cast
 import pytest
 
 from checks.gold_outage_guard import GoldOutageGuard
+from infrahub_sdk.exceptions import GraphQLError
 from service_catalog.business_impact.blast_radius import DeviceRow, parse_devices
-from service_catalog.business_impact.gold_outage_guard import GuardResult, evaluate, move_to_device
+from service_catalog.business_impact.gold_outage_guard import (
+    MAX_HOPS,
+    NETWORK_KINDS,
+    GuardResult,
+    evaluate,
+    move_to_device,
+    traversal_pairs,
+)
 from tests.unit.test_blast_radius import FORBIDDEN_COPY, REPO_ROOT, SEED, build_q1
 
 if TYPE_CHECKING:
@@ -220,11 +228,31 @@ class _Client:
         self.data_by_branch = data_by_branch
         self.change_name = change_name
         self.reads: list[tuple[str, str]] = []
+        self.traversals: list[tuple[str, str, dict[str, object]]] = []
+        self.traversal_error: Exception | None = None
+        # Service ids the traversal finds no path from, whatever the query says.
+        self.no_path_from: set[str] = set()
 
     async def query_gql_query(self, name: str, branch_name: str, **_: object) -> dict[str, Any]:
         self.reads.append((name, branch_name))
         body = self.data_by_branch[branch_name]
         return body if "errors" in body else {"data": body}
+
+    async def traverse_paths(self, source: str, destination: str, **kwargs: object) -> object:
+        """Answer from the branch data: a path exists when the service has an interface on the device."""
+        self.traversals.append((source, destination, kwargs))
+        if self.traversal_error is not None:
+            raise self.traversal_error
+        body = self.data_by_branch[str(kwargs["branch"])]
+        data = body.get("data", body)
+        devices = {
+            interface["node"]["device"]["node"]["id"]
+            for edge in data["ServiceDedicatedInternet"]["edges"]
+            if edge["node"]["id"] == source
+            for interface in edge["node"]["dedicated_interfaces"]["edges"]
+        }
+        reachable = destination in devices and source not in self.no_path_from
+        return type("PathTraversalResult", (), {"count": 1 if reachable else 0})()
 
     async def filters(self, **_: object) -> list[object]:
         if self.change_name is None:
@@ -270,6 +298,63 @@ def test_check_fails_when_a_query_returns_errors(failing: str) -> None:
 
     assert not check.passed
     assert any("query refused" in log["message"] for log in check.errors)
+
+
+def test_traversal_pairs_join_each_active_gold_service_to_each_device_out_of_service() -> None:
+    pairs = traversal_pairs(build_q1({"rb01-par01": "maintenance"}))
+
+    assert {(pair.service, pair.device) for pair in pairs} == {
+        (service, "rb01-par01") for service in ("DI-1001", "DI-1002", "DI-1003", "DI-2001", "DI-2002")
+    }
+    assert all(pair.service_id == f"service-{pair.service}" for pair in pairs)
+    assert all(pair.device_id == "device-rb01-par01" for pair in pairs)
+
+
+def test_traversal_pairs_are_empty_when_every_device_is_active() -> None:
+    assert traversal_pairs(build_q1()) == []
+
+
+def test_reached_devices_decide_which_services_depend_on_the_device() -> None:
+    """With `reached`, the devices behind the service's interfaces in the query are not used."""
+    branch = build_q1({"rb01-par01": "maintenance"})
+
+    assert evaluate(branch, build_q1(), PARIS, {"DI-1001": {"rb01-par01"}, "DI-1002": {"rb01-par01"}}).errors == [
+        PARIS_MESSAGE
+    ]
+    assert evaluate(branch, build_q1(), PARIS, {}).passed
+
+
+def test_check_traces_each_pair_on_the_branch_with_the_network_kinds() -> None:
+    client = _Client({"maint-rb01-par01": build_q1({"rb01-par01": "maintenance"}), "main": build_q1()}, PARIS)
+
+    _run_check(client, "maint-rb01-par01")
+
+    assert len(client.traversals) == 5
+    assert {kwargs["branch"] for _, _, kwargs in client.traversals} == {"maint-rb01-par01"}
+    assert {tuple(cast("list[str]", kwargs["kind_filter"])) for _, _, kwargs in client.traversals} == {NETWORK_KINDS}
+    assert {kwargs["max_depth"] for _, _, kwargs in client.traversals} == {MAX_HOPS}
+
+
+def test_check_passes_when_the_traversal_finds_no_path() -> None:
+    """The traversal, not the interface list in the query, decides whether a Gold service depends on the device."""
+    client = _Client({"maint-rb01-par01": build_q1({"rb01-par01": "maintenance"}), "main": build_q1()}, PARIS)
+    client.no_path_from = {"service-DI-1001", "service-DI-1002"}
+
+    check = _run_check(client, "maint-rb01-par01")
+
+    assert check.passed
+
+
+def test_check_fails_when_the_traversal_raises() -> None:
+    client = _Client({"maint-rb01-par01": build_q1({"rb01-par01": "maintenance"}), "main": build_q1()}, PARIS)
+    client.traversal_error = GraphQLError(errors=[{"message": "path traversal refused"}])
+
+    check = _run_check(client, "maint-rb01-par01")
+
+    assert not check.passed
+    assert next(log["message"] for log in check.errors).startswith(
+        "Gold outage guard could not trace the service paths:"
+    )
 
 
 def test_check_fails_when_the_branch_query_returns_errors_next_to_partial_data() -> None:

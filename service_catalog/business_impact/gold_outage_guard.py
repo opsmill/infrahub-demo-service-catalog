@@ -1,9 +1,18 @@
 """The Gold outage guard rule.
 
 `checks/gold_outage_guard.py` runs the stored query `business_impact_services`
-on the proposed change's branch and on main, then calls `evaluate`. The
-rule reuses the parsing and the "out of service = device not active" rule of
-`blast_radius.py`, so the Blast radius view and the check cannot disagree.
+on the proposed change's branch and on main. For each active Gold service and
+each device that is not active on the branch (`traversal_pairs`), it asks
+Infrahub's path traversal whether a network path joins the two, then calls
+`evaluate` with the devices each service reaches. The rule reuses the parsing
+and the "out of service = device not active" rule of `blast_radius.py`.
+
+The traversal only passes through `NETWORK_KINDS` and at most `MAX_HOPS`
+relationships: service, interface, device. That is the same dependency the
+Blast radius view reads from the query, so the view and the check agree. A
+model where a service depends on devices further away (an access switch and
+its uplinks, or a second path) raises `MAX_HOPS` and adds the link kinds,
+without a new query.
 
 A change fails when an active Gold service on the branch sits behind a device
 that this change takes out of service: not active on the branch, and active
@@ -19,7 +28,7 @@ absolute `service_catalog` import does not resolve (see the check file).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
@@ -34,9 +43,55 @@ from .blast_radius import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Collection, Iterable, Mapping
 
 CREDIT_LABEL = "demo business input"
+# Kinds a dependency path may pass through: the service, its interfaces and the devices they sit on.
+NETWORK_KINDS = ("ServiceDedicatedInternet", "DcimInterfaceL2", "DcimInterfaceL3", "DcimDevice")
+# Relationships from a service to a device it depends on: service > interface > device.
+MAX_HOPS = 2
+
+
+@dataclass(frozen=True)
+class TraversalPair:
+    """An active Gold service and a device that is not active on the branch: the path to look for."""
+
+    service: str
+    service_id: str
+    device: str
+    device_id: str
+
+
+def _edges(data: Mapping[str, object], kind: str) -> list[Mapping[str, object]]:
+    block = data.get(kind)
+    edges = block.get("edges") if isinstance(block, dict) else None
+    return [edge["node"] for edge in edges or [] if isinstance(edge, dict) and isinstance(edge.get("node"), dict)]
+
+
+def _value(node: Mapping[str, object], field_name: str) -> object:
+    attribute = node.get(field_name)
+    return attribute.get("value") if isinstance(attribute, dict) else None
+
+
+def traversal_pairs(branch_data: Mapping[str, object]) -> list[TraversalPair]:
+    """Each active Gold service paired with each core or edge device that is not active on the branch."""
+    gold = {service.identifier for service in active_services(parse_services(branch_data)) if service.gold}
+    services = [
+        (str(_value(node, "service_identifier")), str(node.get("id")))
+        for node in _edges(branch_data, "ServiceDedicatedInternet")
+        if _value(node, "service_identifier") in gold and node.get("id")
+    ]
+    out = {device.name for device in parse_devices(branch_data) if device.out_of_service}
+    devices = [
+        (str(_value(node, "name")), str(node.get("id")))
+        for node in _edges(branch_data, "DcimDevice")
+        if _value(node, "name") in out and node.get("id")
+    ]
+    return [
+        TraversalPair(service, service_id, device, device_id)
+        for service, service_id in services
+        for device, device_id in devices
+    ]
 
 
 @dataclass
@@ -118,13 +173,35 @@ def _warning_message(service: ServiceRow) -> str:
     )
 
 
-def evaluate(branch_data: Mapping[str, object], main_data: Mapping[str, object], change_name: str) -> GuardResult:
+def evaluate(
+    branch_data: Mapping[str, object],
+    main_data: Mapping[str, object],
+    change_name: str,
+    reached: Mapping[str, Collection[str]] | None = None,
+) -> GuardResult:
     """Apply the guard to the query result on the proposed change's branch and on main.
 
-    There is no override: no tag, setting or threshold changes the result.
+    `reached` maps a service identifier to the names of the devices that path traversal reached from it.
+    When it is given, those devices are the ones each service depends on; when it is None, the devices
+    behind the service's interfaces in the query are. There is no override: no tag, setting or threshold
+    changes the result.
     """
     main_devices = {device.name: device for device in parse_devices(main_data)}
-    gold = [service for service in active_services(parse_services(branch_data)) if service.gold and service.affected]
+    services: list[ServiceRow] = list(active_services(parse_services(branch_data)))
+    if reached is not None:
+        branch_devices = {device.name: device for device in parse_devices(branch_data)}
+        services = [
+            replace(
+                service,
+                devices=tuple(
+                    branch_devices[name]
+                    for name in sorted(reached.get(service.identifier, ()))
+                    if name in branch_devices
+                ),
+            )
+            for service in services
+        ]
+    gold = [service for service in services if service.gold and service.affected]
 
     blocked: list[ServiceRow] = []
     devices_out: list[DeviceRow] = []

@@ -88,6 +88,7 @@ def _device_names() -> list[str]:
 
 def _device_node(name: str, status: str) -> dict[str, object]:
     return {
+        "id": f"device-{name}",
         "name": _value(name),
         "description": _value(DESCRIPTIONS.get(name)),
         "role": _value("core" if name.startswith("sw") else "edge"),
@@ -120,6 +121,7 @@ def build_q1(
         service_edges.append(
             {
                 "node": {
+                    "id": f"service-{row.identifier}",
                     "service_identifier": _value(row.identifier),
                     "status": _value(row.status),
                     "bandwidth": _value(row.bandwidth),

@@ -41,6 +41,7 @@ from infrahub_sdk.testing.repository import GitRepo
 from infrahub_sdk.yaml import SchemaFile
 from service_catalog.business_impact import seed
 from service_catalog.business_impact.blast_radius import BlastRadius, build_blast_radius, format_eur, parse_devices
+from service_catalog.business_impact.gold_outage_guard import MAX_HOPS, NETWORK_KINDS
 from service_catalog.infrahub import run_query
 from service_catalog.protocols_sync import (
     DcimDevice,
@@ -313,6 +314,18 @@ class TestBusinessImpact(TestInfrahubDockerClient):
         assert all(device.site for device in devices), "every device must carry its site shortname"
 
     def test_blast_radius_paris(self, client_sync: InfrahubClientSync) -> None:
+        # The guard's path traversal with the network kinds finds the interface path only: DI-1001 reaches
+        # Paris edge router 1, DI-1003 (on router 2, same site) does not reach it through the site.
+        router = client_sync.get(kind=DcimDevice, name__value="rb01-par01", branch=PARIS)
+        for service_identifier, expected in (("DI-1001", 1), ("DI-1003", 0)):
+            service = client_sync.get(
+                kind=ServiceDedicatedInternet, service_identifier__value=service_identifier, branch=PARIS
+            )
+            paths = client_sync.traverse_paths(
+                service, router, kind_filter=list(NETWORK_KINDS), max_depth=MAX_HOPS, branch=PARIS
+            )
+            assert paths.count == expected, service_identifier
+
         result = build_blast_radius(_q1(client_sync, PARIS), _q1(client_sync, "main"))
 
         assert result.headline == "2 Gold services for Northbank have no other path during this change"

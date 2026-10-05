@@ -4,8 +4,11 @@ Registered under `check_definitions`
 in `.infrahub.yml` with no `targets`, so it runs once in every proposed change
 pipeline. It runs the stored query `business_impact_services` on the proposed
 change's branch (the SDK's `collect_data`), reads the same query on main through
-`self.client`, finds the proposed change's name by its source branch, and hands
-both results to `service_catalog.business_impact.gold_outage_guard.evaluate`.
+`self.client`, and finds the proposed change's name by its source branch. For
+each active Gold service and each device that is not active on the branch, it
+asks Infrahub's path traversal (`traverse_paths`, Infrahub 1.10 or later)
+whether a network path joins them. It hands the query results and the devices
+each service reaches to `service_catalog.business_impact.gold_outage_guard.evaluate`.
 
 How the rule is imported: Infrahub 1.11.4 imports a check file as
 `commits.<sha>.checks.gold_outage_guard`, with only the repository directory on
@@ -23,6 +26,7 @@ import importlib
 from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.checks import InfrahubCheck
+from infrahub_sdk.exceptions import Error as SdkError
 from infrahub_sdk.protocols import CoreProposedChange
 
 if TYPE_CHECKING:
@@ -64,6 +68,22 @@ class GoldOutageGuard(InfrahubCheck):
         names = sorted(str(change.name.value) for change in changes if change.name.value)
         return names[0] if names else FALLBACK_CHANGE_NAME
 
+    async def _reached(self, rule: ModuleType, data: dict) -> dict[str, set[str]]:
+        """Devices each active Gold service reaches through a network path, by path traversal on the branch."""
+        reached: dict[str, set[str]] = {}
+        for pair in rule.traversal_pairs(data):
+            paths = await self.client.traverse_paths(
+                pair.service_id,
+                pair.device_id,
+                kind_filter=list(rule.NETWORK_KINDS),
+                max_depth=rule.MAX_HOPS,
+                max_paths=1,
+                branch=self.branch_name,
+            )
+            if paths.count:
+                reached.setdefault(pair.service, set()).add(pair.device)
+        return reached
+
     async def validate(self, data: dict) -> None:
         # A rejected query must fail the check, not read as "no Gold service affected".
         if errors := [*self._branch_errors, *_query_errors(data)]:
@@ -74,7 +94,13 @@ class GoldOutageGuard(InfrahubCheck):
             self.log_error(message=f"Gold outage guard could not read the current network: {'; '.join(errors)}")
             return
 
-        result = load_rule().evaluate(data, main_body.get("data") or {}, await self._change_name())
+        rule = load_rule()
+        try:
+            reached = await self._reached(rule, data)
+        except SdkError as exc:
+            self.log_error(message=f"Gold outage guard could not trace the service paths: {exc}")
+            return
+        result = rule.evaluate(data, main_body.get("data") or {}, await self._change_name(), reached)
         for message in result.errors:
             self.log_error(message=message)
         for message in result.warnings:
