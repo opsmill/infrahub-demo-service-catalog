@@ -8,27 +8,17 @@ tags: tag1, tag2
 
 Impact: MEDIUM
 
-One-sentence statement of the rule.
-
-### Why it matters
-
-Two to four sentences naming the concrete consequence
-of getting this wrong across Infrahub workflows
-(generators, checks, transforms, object loading) — the
-validation error users see, the silent drift between
-code and schema, the partial sync that looks healthy
-but isn't. Pin to the actual mechanism, not generic
-"best practice" framing.
+Brief explanation of the rule and why it matters across
+multiple Infrahub workflows (generators, checks, transforms,
+object loading, etc.).
 
 ### Symptoms
 
-What the user sees when the rule is violated (error
-text, UI behavior, missing data).
+Describe what goes wrong when this rule is violated.
 
 ### Cause
 
-The mechanism that produced the symptom — why
-Infrahub, the SDK, or git is behaving that way.
+Explain the underlying reason.
 
 ### Fix
 
@@ -38,6 +28,7 @@ Infrahub, the SDK, or git is behaving that way.
 
 ### Prevention
 
-How to avoid hitting this in the first place.
+Guidance on how to avoid hitting this issue in the first
+place.
 
 Reference: [Infrahub Docs](https://docs.infrahub.app)
