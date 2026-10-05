@@ -105,3 +105,5 @@ class GoldOutageGuard(InfrahubCheck):
             self.log_error(message=message)
         for message in result.warnings:
             self.log_info(message=message)
+        if result.summary:
+            self.log_info(message=result.summary)

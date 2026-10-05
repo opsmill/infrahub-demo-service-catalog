@@ -96,10 +96,12 @@ def traversal_pairs(branch_data: Mapping[str, object]) -> list[TraversalPair]:
 
 @dataclass
 class GuardResult:
-    """What the check logs: each error fails it, each warning is informational."""
+    """What the check logs: each error fails it; each warning and the summary are informational."""
 
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    # Logged when the check passes with no warning, so the check result records the exposure at approval time.
+    summary: str | None = None
 
     @property
     def passed(self) -> bool:
@@ -216,4 +218,9 @@ def evaluate(
 
     if blocked:
         result.errors.append(_error_message(change_name, blocked, devices_out, parse_devices(branch_data)))
+    elif not result.warnings:
+        result.summary = (
+            f"{change_name} leaves no active Gold service without a path. "
+            f"Gold SLA credit exposure: {format_eur(Decimal(0))} per month ({CREDIT_LABEL})."
+        )
     return result

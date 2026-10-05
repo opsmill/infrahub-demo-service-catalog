@@ -300,6 +300,34 @@ def test_check_fails_when_a_query_returns_errors(failing: str) -> None:
     assert any("query refused" in log["message"] for log in check.errors)
 
 
+def test_pass_summary_records_the_exposure_at_approval_time() -> None:
+    result = evaluate(build_q1({"rb01-nyc01": "maintenance"}), build_q1(), NEW_YORK)
+
+    assert result.summary == (
+        "New York router 1 maintenance leaves no active Gold service without a path. "
+        "Gold SLA credit exposure: €0 per month (demo business input)."
+    )
+
+
+def test_no_pass_summary_on_a_failure_or_a_warning() -> None:
+    failed = evaluate(build_q1({"rb01-par01": "maintenance"}), build_q1(), PARIS)
+    warned = evaluate(build_q1({"sw01-bru01": "maintenance"}), build_q1({"sw01-bru01": "maintenance"}), NEW_YORK)
+
+    assert failed.summary is None
+    assert warned.warnings
+    assert warned.summary is None
+
+
+def test_check_logs_the_pass_summary() -> None:
+    client = _Client({"maint-rb01-nyc01": build_q1({"rb01-nyc01": "maintenance"}), "main": build_q1()}, NEW_YORK)
+
+    check = _run_check(client, "maint-rb01-nyc01")
+
+    assert check.passed
+    infos = [log["message"] for log in check.logs if log["level"] == "INFO"]
+    assert any(message.startswith("New York router 1 maintenance leaves no active Gold service") for message in infos)
+
+
 def test_traversal_pairs_join_each_active_gold_service_to_each_device_out_of_service() -> None:
     pairs = traversal_pairs(build_q1({"rb01-par01": "maintenance"}))
 

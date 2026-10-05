@@ -229,6 +229,7 @@ class TestBusinessImpact(TestInfrahubDockerClient):
 
         assert conclusion == "success"
         assert "Check succesfully completed" in messages
+        assert "New York router 1 maintenance leaves no active Gold service without a path." in messages
 
     def test_moved_plan(self, client_sync: InfrahubClientSync) -> None:
         """With DI-1001 and DI-1002 moved to Paris edge router 2 first, the same maintenance passes the guard.
@@ -238,6 +239,7 @@ class TestBusinessImpact(TestInfrahubDockerClient):
         conclusion, messages = self._guard(client_sync, MOVED_NAME)
         OPEN_CHECKS[f"Gold outage guard on {MOVED_NAME}"] = f"{conclusion}: {messages.strip()!r}"
         assert conclusion == "success"
+        assert f"{MOVED_NAME} leaves no active Gold service without a path. Gold SLA credit exposure: €0" in messages
 
         sw01 = client_sync.get(kind=DcimDevice, name__value="sw01-par01", branch=MOVED)
         ports_on = {
