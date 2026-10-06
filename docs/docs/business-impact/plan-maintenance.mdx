@@ -12,7 +12,7 @@ The demo data contains this plan as a proposed change named "Paris router 1 main
 
 In the demo, each service has one path: one switch and one edge router. Paris edge router 2 is in the same site, but no service uses it as a second path. A service behind a device in maintenance therefore has no other path during the window.
 
-## Why check Gold services before maintenance is approved
+## Why a maintenance plan needs a check on Gold services
 
 Maintenance is usually reviewed device by device. The review shows the router, not the customers behind it, so the question "which customers lose service?" is answered manually, if at all, and often after the window is scheduled. Gold customers pay for redundancy so that maintenance causes no downtime. A plan that takes their only path out of service breaks that commitment and exposes you to SLA credits. In this tutorial, the proposed change shows the affected customers and the credit exposure before approval, and the Gold outage guard blocks the merge until the plan moves the Gold services. For the reasoning behind storing business context in the same graph as the network, see the [business impact overview](overview.mdx#why-business-context-belongs-in-the-source-of-truth).
 
