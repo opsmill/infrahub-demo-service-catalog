@@ -241,6 +241,20 @@ class DedicatedInternetGenerator(InfrahubGenerator):
         # Finally save. The port belongs to the switch, not to this generator: keep it out of the
         # tracking group, or a later run where the service uses another port would delete it.
         await allocated_port.save(allow_upsert=True, update_group_context=False)
+        await self.release_port_from_group(allocated_port)
+
+    async def release_port_from_group(self, port: InfrahubNode) -> None:
+        """Take the port out of this generator's tracking group if an earlier run put it there.
+
+        Earlier versions of this generator saved the port inside the group. At the end of the run the SDK
+        deletes every member the run did not save, so it would delete the switch port of an existing service.
+        """
+        group = await self.client.group_context.get_group()
+        if group is None or port.id not in group.members.peer_ids:
+            return
+        self.log.info(f"Removing port {port.display_label} from the generator group {group.display_label}")
+        group.members.remove(port.id)
+        await group.save(update_group_context=False)
 
     async def allocate_gateway(self) -> None:
         """Allocate a gateway to the service."""
