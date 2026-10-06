@@ -140,7 +140,7 @@ This single command performs three things:
 
 1. **Seeds Semaphore** with the project, SSH key, repository, inventory, environment, and task template (idempotent: you can run it more than once)
 2. **Loads the repository** configuration from `bootstrap/repository.yaml` into Infrahub. It is a read-write `CoreRepository` that references the local checkout mounted at `/upstream` in the container
-3. **Loads permissions** from `bootstrap/permissions.yml`, creating an operator account (`john` / `infrahub`) with permissions to manage repositories, merge branches, and review proposed changes, and a change approver account (`approver` / `infrahub`) that approves and merges proposed changes and changes no other data
+3. **Loads permissions** from `bootstrap/permissions.yml`, creating an operator account (`john` / `infrahub`) with permissions to manage repositories, open, review and merge proposed changes, and merge branches. On the default branch, the operator changes data only through proposed changes
 
 #### What the repository provides
 
@@ -183,7 +183,7 @@ The command uses the `INFRAHUB_ADDRESS` and `INFRAHUB_API_TOKEN` variables from 
 
 1. Waits until Infrahub has imported the repository: the tiers, the customers, the `business_impact_services` query and the generator definition
 2. Creates twelve Dedicated Internet services in Paris and Brussels on `main`, each with a customer, a tier and a monthly charge, and runs the provisioning generator for each one
-3. Opens four maintenance proposed changes: "Paris router 1 maintenance", "Brussels switch 1 maintenance", "New York router 1 maintenance", and "Paris router 1 maintenance, Gold services moved first", which first moves DI-1001 and DI-1002 to Paris edge router 2 on its branch
+3. Opens four maintenance proposed changes as the operator account `john`: "Paris router 1 maintenance", "Brussels switch 1 maintenance", "New York router 1 maintenance", and "Paris router 1 maintenance, Gold services moved first", which first moves DI-1001 and DI-1002 to Paris edge router 2 on its branch
 4. Waits for each proposed change pipeline to finish
 
 You can run it again. It creates only the services and proposed changes that are missing. It runs the provisioning generator again for every service, sets the devices to maintenance again on their branches, and waits for the pipelines again. After you merge "Paris router 1 maintenance, Gold services moved first", a rerun stops at step 2, because DI-1001 and DI-1002 no longer use Paris edge router 1 on `main`.
@@ -201,7 +201,6 @@ Confirm everything is working by accessing both interfaces:
 - **URL**: [http://localhost:8000](http://localhost:8000)
 - **Admin account**: `admin` / `infrahub`
 - **Operator account**: `john` / `infrahub` (limited permissions)
-- **Change approver account**: `approver` / `infrahub` (approves and merges proposed changes; changes no other data)
 - **What to Check**:
     - Navigate to the Schema page to see loaded models
     - Check the Objects page to verify demo data is present

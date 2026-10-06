@@ -165,7 +165,9 @@ class TestBusinessImpact(TestInfrahubDockerClient):
 
         return run
 
-    def test_seed_services_and_generators(self, client_sync: InfrahubClientSync, address: str) -> None:
+    def test_seed_services_and_generators(self, client_sync: InfrahubClientSync, address: str, root_dir: Path) -> None:
+        # `invoke init` loads the operator account that opens the maintenance proposed changes.
+        self._runner(address)(f"infrahubctl object load {root_dir / 'bootstrap' / 'permissions.yml'}")
         seed.wait_for_repository(client_sync)
         seed.seed_services(client_sync)
         seed.run_generators(client_sync, self._runner(address))
@@ -386,6 +388,14 @@ class TestBusinessImpact(TestInfrahubDockerClient):
     def test_moved_plan_merges(self, client_sync: InfrahubClientSync) -> None:
         """The plan with the Gold services moved first merges. Runs last: the merge changes main."""
         proposed_change = client_sync.get(kind=CoreProposedChange, name__value=MOVED_NAME)
+        # The operator account opened the plan, so admin can approve it.
+        client_sync.execute_graphql(
+            query="mutation($id: String!){ CoreProposedChangeReview(data: {id: $id, decision: APPROVE}) { ok } }",
+            variables={"id": proposed_change.id},
+        )
+        approved = client_sync.get(kind=CoreProposedChange, id=proposed_change.id)
+        approved.approved_by.fetch()
+        assert [peer.peer.display_label for peer in approved.approved_by.peers] == ["Admin"]
         client_sync.execute_graphql(query=MERGE_MUTATION, variables={"id": proposed_change.id})
 
         after = client_sync.get(kind=CoreProposedChange, id=proposed_change.id)

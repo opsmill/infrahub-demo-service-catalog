@@ -29,8 +29,8 @@ import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from infrahub_sdk import InfrahubClientSync
-from infrahub_sdk.exceptions import GraphQLError, SchemaNotFoundError
+from infrahub_sdk import Config, InfrahubClientSync
+from infrahub_sdk.exceptions import AuthenticationError, GraphQLError, SchemaNotFoundError
 from infrahub_sdk.protocols import (
     CoreGeneratorDefinition,
     CoreGeneratorGroup,
@@ -55,6 +55,11 @@ if TYPE_CHECKING:
 MAIN_BRANCH = "main"
 GENERATOR_NAME = "dedicated_internet_generator"
 GENERATOR_GROUP = "automated_dedicated_internet"
+# The operator account from bootstrap/permissions.yml opens the maintenance proposed changes, so a
+# different account (admin) can approve them: Infrahub refuses an approval from the account that opened
+# the proposed change.
+OPERATOR_ACCOUNT = "john"
+OPERATOR_PASSWORD = "infrahub"  # noqa: S105 - the demo password loaded by `invoke init`
 STORED_QUERY_NAME = "business_impact_services"
 CORE_ROLE = "core"
 EDGE_ROLE = "edge"
@@ -363,6 +368,11 @@ def build_client() -> InfrahubClientSync:
     return InfrahubClientSync(address=os.environ["INFRAHUB_ADDRESS"])
 
 
+def build_operator_client(address: str) -> InfrahubClientSync:
+    """A client signed in as the operator account, which opens the proposed changes."""
+    return InfrahubClientSync(config=Config(address=address, username=OPERATOR_ACCOUNT, password=OPERATOR_PASSWORD))
+
+
 def _names(client: InfrahubClientSync, kind: type) -> list[str]:
     return [str(node.name.value) for node in client.all(kind=kind, branch=MAIN_BRANCH)]
 
@@ -576,7 +586,7 @@ def move_services(client: InfrahubClientSync, change: MaintenanceChange, run: Ca
             raise SeedError(f"Step 3: generator failed for {service_identifier} on {change.branch}: {exc}") from exc
 
 
-def _ensure_proposed_change(client: InfrahubClientSync, change: MaintenanceChange) -> str:
+def _ensure_proposed_change(client: InfrahubClientSync, operator: InfrahubClientSync, change: MaintenanceChange) -> str:
     rows = [
         ProposedChangeRow(
             id=str(node.id),
@@ -591,7 +601,7 @@ def _ensure_proposed_change(client: InfrahubClientSync, change: MaintenanceChang
         print(f"{change.proposed_change_name}: reusing open proposed change")
         return existing
 
-    proposed_change = client.create(
+    proposed_change = operator.create(
         kind=CoreProposedChange,
         branch=MAIN_BRANCH,
         name=change.proposed_change_name,
@@ -599,8 +609,14 @@ def _ensure_proposed_change(client: InfrahubClientSync, change: MaintenanceChang
         source_branch=change.branch,
         destination_branch=MAIN_BRANCH,
     )
-    proposed_change.save()
-    print(f"{change.proposed_change_name}: opened")
+    try:
+        proposed_change.save()
+    except AuthenticationError as exc:
+        raise SeedError(
+            f"Step 3: the {OPERATOR_ACCOUNT} account could not open {change.proposed_change_name} ({exc}). "
+            "Run `invoke init` first: it loads the account from bootstrap/permissions.yml"
+        ) from exc
+    print(f"{change.proposed_change_name}: opened by {OPERATOR_ACCOUNT}")
     return str(proposed_change.id)
 
 
@@ -613,6 +629,7 @@ def _validators(client: InfrahubClientSync, proposed_change_id: str) -> list[Val
 
 def seed_maintenance(client: InfrahubClientSync, run: Callable[[str], None]) -> None:
     """Steps 3-4: maintenance branches, device status, proposed changes and the pipeline wait."""
+    operator = build_operator_client(client.address)
     opened: list[tuple[MaintenanceChange, str]] = []
     for change in MAINTENANCE_CHANGES:
         _ensure_branch(client, change)
@@ -621,7 +638,7 @@ def seed_maintenance(client: InfrahubClientSync, run: Callable[[str], None]) -> 
         device.status.value = MAINTENANCE_STATUS
         device.save(allow_upsert=True)
         print(f"{change.branch}: {change.device} set to {MAINTENANCE_STATUS}")
-        opened.append((change, _ensure_proposed_change(client, change)))
+        opened.append((change, _ensure_proposed_change(client, operator, change)))
 
     for change, proposed_change_id in opened:
         latest: list[ValidatorRow] = []
