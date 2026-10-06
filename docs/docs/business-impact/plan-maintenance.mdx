@@ -110,21 +110,21 @@ On the **Checks** tab, the Gold outage guard has passed. Its message records the
 
 ![The Checks tab of the plan with the Gold services moved first, with the Gold outage guard check passed](../media/business-impact/checks-moved-passed.png)
 
-Infrahub does not let the account that opened a proposed change approve it. The seed step opened the plan as `admin`, so sign out and sign in as `approver` / `infrahub`, the change approver account from the [installation guide](../getting-started/installation.mdx). Select **Approve**, then **Merge**. Infrahub merges the plan: on the current network, DI-1001 and DI-1002 now run through Paris edge router 2, and Paris edge router 1 is in maintenance. Merging changes the demo's current network, so do this step after the others.
+Infrahub does not let the account that opened a proposed change approve it. The seed step opened the plan as `admin`, so sign out and sign in as `emma` / `infrahub`, the change manager account from the [installation guide](../getting-started/installation.mdx). Select **Approve**, then **Merge**. Infrahub merges the plan: on the current network, DI-1001 and DI-1002 now run through Paris edge router 2, and Paris edge router 1 is in maintenance. Merging changes the demo's current network, so do this step after the others.
 
 ## Step 8: view the audit record of the approved change
 
 After the merge, Infrahub keeps the record an auditor needs: the plan, the guard result, who approved it and when, and the exposure at approval time.
 
-Open the merged proposed change. The **State** is merged, **Approved by** shows the change approver, and the timeline lists "Change approver approved the proposed change", "merged the branch" and "merged the proposed change". The description states the plan.
+Open the merged proposed change. The **State** is merged, **Approved by** shows Emma, and the timeline lists "Emma approved the proposed change", "merged the branch" and "merged the proposed change". The description states the plan.
 
-![The merged proposed change: state merged, approved by the change approver, with the approval and merge in the timeline](../media/business-impact/audit-proposed-change.png)
+![The merged proposed change: state merged, approved by Emma, with the approval and merge in the timeline](../media/business-impact/audit-proposed-change.png)
 
-On the **Checks** tab, the Gold outage guard result is the one the approver saw, with the exposure at approval time.
+On the **Checks** tab, the Gold outage guard result is the one Emma saw when approving, with the exposure at approval time.
 
 ![The Checks tab of the merged proposed change, with the Gold outage guard result and the Gold SLA credit exposure](../media/business-impact/audit-guard-result.png)
 
-Select **Activity** in the menu. Select **Related Node**, choose the kind **Proposed Change**, and then select the plan. The list shows each event with its date, account and branch: the proposed change created by Admin, each validator that started and passed, and the update by the change approver when it approved and merged the plan.
+Select **Activity** in the menu. Select **Related Node**, choose the kind **Proposed Change**, and then select the plan. The list shows each event with its date, account and branch: the proposed change created by Admin, each validator that started and passed, and the update by Emma when the plan was approved and merged.
 
 ![The Activities page filtered to the plan: the creation, the validators and the approval with their dates and accounts](../media/business-impact/audit-activities.png)
 
@@ -134,4 +134,4 @@ On the branch of a proposed change, set another device to maintenance in the Inf
 
 ## What you did
 
-You planned maintenance on Paris edge router 1 so that no Gold customer depends on the router during the window. The Business Impact page showed which services had no other path and the SLA credit the plan would cost as it was. The Gold outage guard kept the incomplete plan from merging, and named the services to move. The plan that moved the Gold services first passed the guard, was approved by a second account and merged, and Infrahub kept the record of who approved it, when, and with which guard result.
+You planned maintenance on Paris edge router 1 so that no Gold customer depends on the router during the window. The Business Impact page showed which services had no other path and the SLA credit the plan would cost as it was. The Gold outage guard kept the incomplete plan from merging, and named the services to move. The plan that moved the Gold services first passed the guard, was approved by Emma and merged, and Infrahub kept the record of who approved it, when, and with which guard result.
