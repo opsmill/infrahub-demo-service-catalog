@@ -1,6 +1,7 @@
-"""Business Impact page: the Blast radius view.
+"""Business Impact page: the Blast radius and Single points of failure views.
 
-Layout and copy only. Every figure comes from `service_catalog.business_impact.blast_radius`;
+Layout and copy only. Every figure comes from `service_catalog.business_impact.blast_radius`
+and `service_catalog.business_impact.single_points`;
 every Infrahub read sits in a `st.cache_data(ttl=10)` wrapper keyed by branch that returns
 plain data. The page writes nothing to Infrahub. No on-screen string uses the word "branch".
 """
@@ -30,10 +31,28 @@ from service_catalog.business_impact.blast_radius import (
     headline_caption,
     picker_entries,
 )
+from service_catalog.business_impact.single_points import (
+    SinglePoints,
+    failure_headline,
+    failure_impact,
+    single_points,
+)
 from service_catalog.infrahub import filter_nodes, run_query
 
 QUERY_NAME = "business_impact_services"
 CACHE_TTL_S = 10
+
+VIEW_BLAST_RADIUS = "Blast radius"
+VIEW_SINGLE_POINTS = "Single points of failure"
+ONE_PATH_CAPTION = (
+    "Each service in this model has one path: its switch and its edge router. "
+    "If either device fails, the service has no path."
+)
+DEPENDENCY_TITLE = "Devices that Gold services depend on"
+FAILURE_TITLE = "If this device failed now"
+FAILURE_HELP = "Shows the current network with the selected device not active. Nothing is changed in Infrahub."
+GOLD_VALUE_COLUMN = "Gold contract value per year (EUR) · your input"
+GOLD_CREDIT_COLUMN = "Gold SLA credit per month (EUR) · your input"
 
 PICKER_HELP = "Each proposed change keeps its edits apart from the current network. Nothing here has merged."
 SIDEBAR_CAPTION = (
@@ -84,6 +103,10 @@ def read_proposed_changes(branch: str) -> list[dict[str, Any]]:
 
 
 # Rendering
+
+
+def render_view_picker() -> str:
+    return str(st.sidebar.radio("View", [VIEW_BLAST_RADIUS, VIEW_SINGLE_POINTS], key="business-impact-view"))
 
 
 def render_sidebar() -> PickerEntry:
@@ -198,5 +221,56 @@ def render_blast_radius(entry: PickerEntry) -> None:
     render_routers(result)
 
 
+def render_dependencies(points: SinglePoints) -> None:
+    st.markdown(f"#### {DEPENDENCY_TITLE}")
+    st.dataframe(
+        pd.DataFrame(
+            [
+                {
+                    "Device": row.label,
+                    "Role": row.role,
+                    "Gold services": ", ".join(row.gold_services),
+                    "Customers": ", ".join(row.customers),
+                    GOLD_VALUE_COLUMN: format_eur(row.gold_annual),
+                    GOLD_CREDIT_COLUMN: format_eur(row.gold_monthly_credit),
+                }
+                for row in points.devices
+            ]
+        ),
+        hide_index=True,
+    )
+
+
+def render_single_points() -> None:
+    try:
+        data = read_services(MAIN_BRANCH)
+    except Exception:
+        logger.exception("Reading %s failed", QUERY_NAME)
+        st.error(READ_ERROR)
+        return
+
+    points = single_points(data)
+    st.markdown(f"## {points.headline}")
+    st.caption(ONE_PATH_CAPTION)
+    if not points.devices:
+        return
+    render_dependencies(points)
+
+    st.markdown(f"### {FAILURE_TITLE}")
+    labels = {row.label: row.name for row in points.devices}
+    label = st.selectbox("Device", options=list(labels), help=FAILURE_HELP, key="business-impact-device")
+    result = failure_impact(data, labels[str(label)])
+    st.markdown(f"#### {failure_headline(str(label), result)}")
+    for column, tile in zip(st.columns(len(result.tiles)), result.tiles, strict=True):
+        column.metric(tile.label, tile.value, help=tile.help)
+        column.caption(tile.marker)
+    render_chart(result)
+    render_affected_services(result)
+
+
 st.markdown("# Business Impact")
-render_blast_radius(render_sidebar())
+if render_view_picker() == VIEW_SINGLE_POINTS:
+    st.sidebar.caption(SIDEBAR_CAPTION)
+    render_single_points()
+else:
+    render_blast_radius(render_sidebar())

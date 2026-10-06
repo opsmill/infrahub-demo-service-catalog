@@ -159,13 +159,64 @@ def test_on_screen_copy_never_says_branch(reads: list[tuple[str, str]]) -> None:
     assert not [text for text in texts if "branch" in text.lower()]
 
 
-def test_page_has_one_view(reads: list[tuple[str, str]]) -> None:
+def test_view_selector_names_both_views(reads: list[tuple[str, str]]) -> None:
     app = AppTest.from_file(PAGE).run(timeout=30)
 
     assert not app.exception
-    assert not app.sidebar.radio
-    assert not app.get("data_editor")
-    assert not app.checkbox
+    assert list(app.sidebar.radio(key="business-impact-view").options) == ["Blast radius", "Single points of failure"]
+    assert app.sidebar.radio(key="business-impact-view").value == "Blast radius"
+
+
+def _open_single_points(reads: list[tuple[str, str]] | None = None) -> AppTest:
+    app = AppTest.from_file(PAGE).run(timeout=30)
+    if reads is not None:
+        reads.clear()  # Keep only the reads of the Single points of failure view.
+    return app.sidebar.radio(key="business-impact-view").set_value("Single points of failure").run(timeout=30)
+
+
+def test_single_points_view(reads: list[tuple[str, str]]) -> None:
+    """Headline, the dependency table, and the failure of the first device in it."""
+    app = _open_single_points(reads)
+
+    assert not app.exception
+    assert not app.error
+    markdown = _markdown(app)
+    assert "## 5 of 5 Gold services have a single point of failure" in markdown
+    assert "#### If Paris edge router 1 failed now, 2 Gold services for Northbank would have no path" in markdown
+    table = app.dataframe[0].value
+    assert list(table["Device"])[:2] == ["Paris edge router 1", "Paris switch 1"]
+    assert list(table.columns) == [
+        "Device",
+        "Role",
+        "Gold services",
+        "Customers",
+        "Gold contract value per year (EUR) · your input",
+        "Gold SLA credit per month (EUR) · your input",
+    ]
+    assert _metrics(app) == {
+        "Customers affected": "3",
+        "Gold services affected": "2 of 5",
+        "Gold SLA credit exposure, per month": "€2,565",
+    }
+    # The view reads the current network only.
+    assert not [branch for name, branch in reads if name == "business_impact_services" and branch != "main"]
+
+
+def test_single_points_view_with_another_device(reads: list[tuple[str, str]]) -> None:
+    app = _open_single_points()
+    app.selectbox(key="business-impact-device").set_value("Brussels switch 1").run(timeout=30)
+
+    assert not app.exception
+    assert "#### If Brussels switch 1 failed now, 1 Gold service for Helix Health would have no path" in _markdown(app)
+    assert _metrics(app)["Gold SLA credit exposure, per month"] == "€2,025"
+
+
+def test_single_points_copy_never_says_branch(reads: list[tuple[str, str]]) -> None:
+    app = _open_single_points()
+    texts = [*_copy(app), app.selectbox(key="business-impact-device").help or ""]
+
+    assert texts
+    assert not [text for text in texts if "branch" in text.lower()]
 
 
 def test_proposed_change_read_error_falls_back_to_current_network(
