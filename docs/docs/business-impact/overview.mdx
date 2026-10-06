@@ -70,14 +70,6 @@ Infrahub keeps a record of each proposed change. For an approved plan, it shows 
 
 Infrahub refuses an approval from the account that opened the proposed change. The demo has a change approver account for this; see the [tutorial's last steps](plan-maintenance.mdx#step-8-view-the-audit-record-of-the-approved-change).
 
-## Limits of the demo
-
-- No outage cost, savings or return on investment figure. The figures are counts and contract values.
-- No cost to deliver a service. Keep that in your finance tools; Infrahub stores the relationships such a cost model needs, meaning which customer, service, port and router belong together.
-- One path per service. The guard does not detect two paths that share one device, and Gold services do not survive a single device failure.
-- No connection to CRM, billing or monitoring systems. The customers, tiers and monthly charges are loaded as demo data.
-- Unknown: whether a generator run on the server keeps each service's customer, tier and monthly charge. In testing, Infrahub did not rerun the generator when a maintenance proposed change was opened, so this case was not tested.
-
 To load the demo data, run the optional seed step in the [installation guide](../getting-started/installation.mdx#step-6-seed-the-business-impact-demo-optional).
 
 ## In this section
