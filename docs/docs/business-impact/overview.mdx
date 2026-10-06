@@ -15,6 +15,25 @@ Change review usually happens at the level of devices and interfaces. A maintena
 
 When customers, tiers and contract value are stored in a separate CRM or spreadsheet, someone answers that question manually, if at all, and usually after the window is scheduled. When they are stored in the same graph as the infrastructure, the answer is on the proposed change itself, built from the same data the automation already uses. The answer is part of the review, and you can enforce a rule such as "no plan may leave a Gold service without a path" as a check instead of a reminder.
 
+## What runs in Infrahub and what runs in the portal
+
+The Business Impact page is a small Streamlit app in this repository, not a screen that Infrahub provides. It reads one stored query from Infrahub and draws the figures. Infrahub holds the data and enforces the rule.
+
+In Infrahub:
+
+- Customers, tiers and monthly charges, linked to the services and to the switches and edge routers they run on
+- Each maintenance plan, on its own branch with a proposed change
+- The stored query `business_impact_services`, which the page reads through the Infrahub API
+- The Gold outage guard, a check written in Python in this repository. Infrahub runs it in every proposed change pipeline, refuses the merge while it fails, and keeps the record of the approval and the merge
+- The generator that allocates each service's VLAN, prefix, switch port and gateway
+
+In the portal:
+
+- The service request form
+- The Business Impact page: the headline, tiles, chart and tables. The page only reads from Infrahub
+
+The figures come from Python in this repository, in `service_catalog/business_impact/blast_radius.py`. The page and the guard use the same code, so they report the same services. Your own portal, ITSM tool or reporting tool can read the same stored query and show the same figures.
+
 ## The business data
 
 The demo schema adds three pieces of business data to every Dedicated Internet service. All three are demo business inputs, chosen to be plausible, not taken from a real price list:
