@@ -6,8 +6,9 @@ steps (the generator through `infrahubctl`), then runs the stored query on main 
 maintenance branches and feeds `blast_radius.py`.
 
 After the seed it asserts the Gold outage guard: its validator fails on the
-Paris and Brussels proposed changes with the messages the docs show and passes on New York, and Infrahub
-refuses to merge the Paris proposed change. The stack runs the stock Infrahub image, where
+Paris and Brussels proposed changes with the messages the docs show and passes on New York, it fails
+on a proposed change that deletes Brussels edge router 1, and Infrahub refuses to merge the Paris
+proposed change. The stack runs the stock Infrahub image, where
 `service_catalog` is not installed, so the guard's messages also record that the task worker
 imports `service_catalog.business_impact` from the repository.
 
@@ -67,6 +68,13 @@ PARIS = "maint-rb01-par01"
 BRUSSELS = "maint-sw01-bru01"
 MOVED = "maint-rb01-par01-moved"
 MOVED_NAME = "Paris router 1 maintenance, Gold services moved first"
+DELETED = "delete-rb01-bru01"
+DELETED_NAME = "Delete Brussels router 1"
+DELETED_MESSAGE = (
+    "Delete Brussels router 1 leaves 1 Gold service for Helix Health with no other path (DI-2001). "
+    "Gold SLA credit exposure: €2,025 per month (demo business input). "
+    "Move this service to Brussels edge router 2 first."
+)
 
 MERGE_MUTATION = """
 mutation MergeProposedChange($id: String!) {
@@ -113,7 +121,7 @@ def _tiles(result: BlastRadius) -> dict[str, str]:
     return {tile.label: tile.value for tile in result.tiles}
 
 
-class TestBusinessImpact(TestInfrahubDockerClient):
+class TestBusinessImpact(TestInfrahubDockerClient):  # noqa: PLR0904 - one test per step of the storyline
     @pytest.fixture(scope="class")
     def default_branch(self) -> str:
         return "main"
@@ -230,6 +238,43 @@ class TestBusinessImpact(TestInfrahubDockerClient):
         assert conclusion == "success"
         assert "Check succesfully completed" in messages
         assert "New York router 1 maintenance leaves no active Gold service without a path." in messages
+
+    def test_gold_outage_guard_fails_when_a_device_is_deleted(self, client_sync: InfrahubClientSync) -> None:
+        """Deleting Brussels edge router 1 removes DI-2001's gateway with it: no device is left with a status
+        to check, and the guard still fails because DI-2001 has no edge router on the branch.
+        """
+        client_sync.branch.create(branch_name=DELETED, sync_with_git=False, description=DELETED_NAME)
+        router = client_sync.get(kind=DcimDevice, name__value="rb01-bru01", branch=DELETED)
+        router.delete()
+
+        proposed_change = client_sync.create(
+            kind=CoreProposedChange,
+            branch="main",
+            name=DELETED_NAME,
+            source_branch=DELETED,
+            destination_branch="main",
+        )
+        proposed_change.save()
+
+        def finished() -> bool:
+            validators = client_sync.filters(kind=CoreValidator, proposed_change__ids=[proposed_change.id])
+            rows = [
+                seed.ValidatorRow(label=node.label.value, state=node.state.value, conclusion=node.conclusion.value)
+                for node in validators
+            ]
+            return seed.validators_finished(rows, required=(seed.GUARD_VALIDATOR_LABEL,))
+
+        seed.wait_until(
+            finished,
+            seed.PIPELINE_TIMEOUT_S,
+            f"the pipeline of {DELETED_NAME}",
+        )
+
+        conclusion, messages = self._guard(client_sync, DELETED_NAME)
+        OPEN_CHECKS[f"Gold outage guard on {DELETED_NAME}"] = f"{conclusion}: {messages.strip()!r}"
+
+        assert conclusion == "failure"
+        assert DELETED_MESSAGE in messages
 
     def test_moved_plan(self, client_sync: InfrahubClientSync) -> None:
         """With DI-1001 and DI-1002 moved to Paris edge router 2 first, the same maintenance passes the guard.
