@@ -20,6 +20,7 @@ const sidebars: SidebarsConfig = {
       link: { type: 'doc', id: 'business-impact/overview' },
       items: [
         'business-impact/plan-maintenance',
+        'business-impact/find-single-points-of-failure',
       ],
     },
   ]

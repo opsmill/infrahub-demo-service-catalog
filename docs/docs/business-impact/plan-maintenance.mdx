@@ -24,7 +24,7 @@ For when a service counts as affected and what each label on the page means, see
 
 ## Step 1: check which services depend on the router
 
-Open the portal at `http://localhost:8501` and select the **📊 Business impact** card on the home page, or **Business Impact** in the sidebar.
+Open the portal at `http://localhost:8501` and select the **📊 Business impact** card on the home page, or **Business Impact** in the sidebar. Under **View**, **Blast radius** is selected.
 
 The **Proposed change** picker opens on "Paris router 1 maintenance". The headline shows:
 
@@ -53,6 +53,8 @@ Open **Affected services** to see each service with its customer, tier, bandwidt
 Open **Edge routers ranked by Gold contract value · your input**. Paris edge router 1 has the **In this change** marker, because its status in the proposed change differs from the current network. Paris edge router 2 is the router in the same site to move the Gold services to.
 
 ![The edge routers ranked by Gold contract value, with Paris edge router 1 marked as in this change](../media/business-impact/paris-router-ranking.png)
+
+To view what would have no path if Paris edge router 1 failed without a plan, see [Find the Gold services that depend on a single device](find-single-points-of-failure.mdx).
 
 ## Step 3: compare with the current network and the other plans
 

@@ -190,8 +190,8 @@ def test_single_points_view(reads: list[tuple[str, str]]) -> None:
         "Role",
         "Gold services",
         "Customers",
-        "Gold contract value per year (EUR) · your input",
-        "Gold SLA credit per month (EUR) · your input",
+        "Gold contract value per year · your input",
+        "Gold SLA credit per month · your input",
     ]
     assert _metrics(app) == {
         "Customers affected": "3",

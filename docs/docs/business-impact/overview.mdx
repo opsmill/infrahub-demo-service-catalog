@@ -60,6 +60,12 @@ Infrahub does not merge a proposed change while a check has failed. The guard ha
 
 ![The failed Gold outage guard check on Paris router 1 maintenance, with its message](../media/business-impact/checks-paris-failed.png)
 
+## Single points of failure
+
+A device is a single point of failure for a service when every path of the service passes through it. In the demo, each service has one path: its switch and its edge router. If either device fails, the service has no path, so each Gold service has two single points of failure.
+
+The Single points of failure view on the Business Impact page shows this for the current network, without a proposed change. It counts the active Gold services with a single point of failure, ranks the devices they depend on by Gold contract value, and shows what would have no path if a selected device failed now. It applies the same rule and figures as the Blast radius view to the current network with that device not active, and changes nothing in Infrahub.
+
 ## The audit record of an approved change
 
 Infrahub keeps a record of each proposed change. For an approved plan, it shows what an auditor asks for:
@@ -75,3 +81,4 @@ To load the demo data, run the optional seed step in the [installation guide](..
 ## In this section
 
 - [Plan maintenance that keeps Gold services in service](plan-maintenance.mdx): Find the Gold services that depend on Paris edge router 1, move them first, and merge the plan once no Gold service depends on the router
+- [Find the Gold services that depend on a single device](find-single-points-of-failure.mdx): View which Gold services have a single point of failure, and what would have no path if a switch or edge router failed now

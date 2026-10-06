@@ -6,8 +6,8 @@
    - Entry point: `🏠_Home_Page.py` - Main portal interface
    - Service pages in `pages/` - Individual service request forms
    - `infrahub.py` - Infrahub SDK client wrapper with caching and dependency injection
-   - `pages/3_📊_Business_Impact.py` - Read-only Business Impact page for the business impact demo (Blast radius view): services with no other path during a proposed change, their customers and the Gold SLA credit exposure, from the stored query `queries/business_impact_services.gql`
-   - `business_impact/` - Pure functions behind the page (`blast_radius.py`) and the `invoke seed` steps (`seed.py`)
+   - `pages/3_📊_Business_Impact.py` - Read-only Business Impact page for the business impact demo, from the stored query `queries/business_impact_services.gql`. Blast radius view: services with no other path during a proposed change, their customers and the Gold SLA credit exposure. Single points of failure view: on main, the Gold services that depend on a single device and what would have no path if a selected device failed now
+   - `business_impact/` - Pure functions behind the page (`blast_radius.py`, `single_points.py`) and the `invoke seed` steps (`seed.py`)
 
 2. **Infrahub Integration**
    - Uses Infrahub SDK for data management and service orchestration
