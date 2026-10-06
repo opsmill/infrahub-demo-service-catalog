@@ -64,7 +64,7 @@ Infrahub does not merge a proposed change while a check has failed. The guard ha
 
 A device is a single point of failure for a service when every path of the service passes through it. In the demo, each service has one path: its switch and its edge router. If either device fails, the service has no path, so each Gold service has two single points of failure.
 
-The Single points of failure view on the Business Impact page shows this for the current network, without a proposed change. It counts the active Gold services with a single point of failure, ranks the devices they depend on by Gold contract value, and shows what would have no path if a selected device failed now. It applies the same rule and figures as the Blast radius view to the current network with that device not active, and changes nothing in Infrahub.
+The Single points of failure view on the Business Impact page shows this for the current network, without a proposed change. It counts the active Gold services with a single point of failure, ranks the devices they depend on by Gold contract value, and shows what would have no path if a selected device failed now. For the selected device, it uses the same rule and figures as the Blast radius view, on a copy of the current network with that device not active. The view only reads data from Infrahub.
 
 ## The audit record of an approved change
 

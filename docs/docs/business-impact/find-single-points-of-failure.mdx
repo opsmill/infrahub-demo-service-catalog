@@ -5,11 +5,11 @@ description: View which Gold services have a single point of failure on the curr
 
 # Find the Gold services that depend on a single device
 
-Use the Single points of failure view to find the switches and edge routers whose failure would leave Gold services with no path, and to decide which Gold services need a second path. The view reads the current network and changes nothing in Infrahub.
+Use the Single points of failure view to find the switches and edge routers whose failure would leave Gold services with no path, and to decide which Gold services need a second path. The view only reads the current network.
 
 ## Before you begin
 
-Install the demo and run the optional seed step, as described in the [installation guide](../getting-started/installation.mdx). For what counts as a single point of failure, see the [business impact overview](overview.mdx#single-points-of-failure).
+Install the demo and run the optional seed step, as described in the [installation guide](../getting-started/installation.mdx). For what counts as a single point of failure, read the [business impact overview](overview.mdx#single-points-of-failure).
 
 ## View the Gold services with a single point of failure
 
@@ -22,17 +22,17 @@ The headline shows how many active Gold services have a single point of failure:
 
 Each service in the demo has one path: its switch and its edge router. Each of these devices is a single point of failure for the services behind it.
 
-The table **Devices that Gold services depend on** lists each switch and edge router with Gold services behind it, ranked by the Gold contract value per year that depends on it. For each device, it shows the role, the Gold services, the customers, the Gold contract value per year and the Gold SLA credit per month.
+The table **Devices that Gold services depend on** lists each switch and edge router with Gold services behind it, ranked by the Gold contract value per year of those services. For each device, it shows the role, the Gold services, the customers, the Gold contract value per year and the Gold SLA credit per month.
 
 ![The Single points of failure view: 5 of 5 Gold services have a single point of failure, and the devices they depend on, ranked by Gold contract value](../media/business-impact/spof-dependencies.png)
 
-Paris edge router 1 and Paris switch 1 are at the top: DI-1001 and DI-1002 of Northbank depend on them, with €123,120 of Gold contract value a year and €2,565 of Gold SLA credit a month.
+Paris edge router 1 and Paris switch 1 are at the top. DI-1001 and DI-1002 of Northbank depend on them: €123,120 of Gold contract value a year, and €2,565 of Gold SLA credit a month.
 
 ## View what would have no path if a device failed now
 
-Under **If this device failed now**, select a device in **Device**. The view takes the current network with that device not active and shows the same figures as the Blast radius view: a headline, the three tiles, the annual contract value per customer and the affected services.
+Under **If this device failed now**, select a device in **Device**. The view sets that device to not active in a copy of the current network, and shows the same figures as the Blast radius view: a headline, the three tiles, the annual contract value per customer and the affected services.
 
-For Paris edge router 1, the headline shows "If Paris edge router 1 failed now, 2 Gold services for Northbank would have no path", and the tiles show 3, 2 of 5 and €2,565. Open **Affected services** to see DI-1001 and DI-1002, and the Silver and Bronze services DI-1004 and DI-1006 behind the same router.
+For Paris edge router 1, the headline shows "If Paris edge router 1 failed now, 2 Gold services for Northbank would have no path", and the tiles show 3, 2 of 5 and €2,565. Open **Affected services** to view DI-1001 and DI-1002, and the Silver and Bronze services DI-1004 and DI-1006 behind the same router.
 
 ![If Paris edge router 1 failed now: 2 Gold services for Northbank would have no path, with the tiles, the chart and the affected services](../media/business-impact/spof-failure-paris.png)
 
@@ -42,6 +42,6 @@ Select Brussels switch 1. The headline shows "If Brussels switch 1 failed now, 1
 
 ## Decide which Gold services need a second path
 
-The devices at the top of the table carry the most Gold contract value. A Gold service keeps a path through the failure of one device only when it has a second path through another switch and edge router. Start with the Gold services behind the devices at the top of the table.
+The devices at the top of the table have the most Gold contract value behind them. A Gold service still has a path after one device fails only when it has a second path, through another switch and edge router. Start with the Gold services behind the devices at the top of the table.
 
 For a planned change on one of these devices, move its Gold services to the other device at the site first, as in [Plan maintenance that keeps Gold services in service](plan-maintenance.mdx).

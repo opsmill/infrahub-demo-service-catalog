@@ -50,7 +50,9 @@ ONE_PATH_CAPTION = (
 )
 DEPENDENCY_TITLE = "Devices that Gold services depend on"
 FAILURE_TITLE = "If this device failed now"
-FAILURE_HELP = "Shows the current network with the selected device not active. Nothing is changed in Infrahub."
+FAILURE_HELP = (
+    "Uses a copy of the current network with the selected device not active. The view only reads from Infrahub."
+)
 GOLD_VALUE_COLUMN = "Gold contract value per year · your input"
 GOLD_CREDIT_COLUMN = "Gold SLA credit per month · your input"
 

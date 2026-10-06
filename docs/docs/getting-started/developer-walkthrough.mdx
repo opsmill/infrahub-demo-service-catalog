@@ -835,7 +835,7 @@ Infrahub loads the three tiers and four customers from `data/10_customers_tiers.
 
 `service_catalog/pages/3_📊_Business_Impact.py` is a read-only page. It contains layout and copy only; the figures come from `service_catalog/business_impact/blast_radius.py`, so unit tests cover every figure. It shows which services, customers and Gold SLA credit a proposed change touches.
 
-The Single points of failure view comes from `service_catalog/business_impact/single_points.py`. It reads the same stored query on `main` only. `single_points` counts the active Gold services with a single point of failure and ranks the devices they depend on. `with_device_failed` copies the query result with one device set to not active, and `build_blast_radius` turns that copy into the tiles, chart and tables of the Blast radius view. The view writes nothing to Infrahub.
+The Single points of failure view comes from `service_catalog/business_impact/single_points.py`. It reads the same stored query on `main` only. `single_points` counts the active Gold services with a single point of failure and ranks the devices they depend on. `with_device_failed` copies the query result with one device set to not active, and `build_blast_radius` builds the tiles, chart and tables of the Blast radius view from that copy. The view only reads from Infrahub.
 
 ### The Gold outage guard check
 
