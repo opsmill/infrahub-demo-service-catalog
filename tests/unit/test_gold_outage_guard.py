@@ -32,6 +32,7 @@ from service_catalog.business_impact.gold_outage_guard import (
 from tests.unit.test_blast_radius import FORBIDDEN_COPY, REPO_ROOT, SEED, build_q1
 
 if TYPE_CHECKING:
+    from collections.abc import Collection
     from pathlib import Path
 
     from infrahub_sdk import InfrahubClient
@@ -183,6 +184,88 @@ def test_message_without_a_peer_device_names_the_device_to_clear() -> None:
     result = evaluate(data, build_q1(), PARIS)
 
     assert result.errors[0].endswith("Move these services off Paris edge router 1 first.")
+
+
+def _without_device(data: dict[str, Any], device: str, services: Collection[str] | None = None) -> dict[str, Any]:
+    """Drop the interfaces on `device` from the services (all of them by default), as deleting it would."""
+    for edge in data["ServiceDedicatedInternet"]["edges"]:
+        node = edge["node"]
+        if services is None or node["service_identifier"]["value"] in services:
+            interfaces = node["dedicated_interfaces"]
+            interfaces["edges"] = [
+                interface
+                for interface in interfaces["edges"]
+                if interface["node"]["device"]["node"]["name"]["value"] != device
+            ]
+    if services is None:
+        data["DcimDevice"]["edges"] = [
+            edge for edge in data["DcimDevice"]["edges"] if edge["node"]["name"]["value"] != device
+        ]
+    return data
+
+
+def test_deleting_a_device_in_the_path_of_gold_services_fails() -> None:
+    """Deleting the router removes its interfaces, so no device behind the service has a status to check."""
+    result = evaluate(_without_device(build_q1(), "rb01-par01"), build_q1(), PARIS)
+
+    assert result.errors == [PARIS_MESSAGE]
+
+
+def test_removing_the_switch_port_of_a_gold_service_fails() -> None:
+    result = evaluate(_without_device(build_q1(), "sw01-bru01", {"DI-2001"}), build_q1(), BRUSSELS)
+
+    assert result.errors == [BRUSSELS_MESSAGE]
+
+
+def test_moving_gold_services_to_the_other_router_passes() -> None:
+    """The services still have an edge router: the change only replaces it."""
+    branch = build_q1({"rb01-par01": "maintenance"})
+    for edge in branch["ServiceDedicatedInternet"]["edges"]:
+        for interface in edge["node"]["dedicated_interfaces"]["edges"]:
+            device = interface["node"]["device"]["node"]
+            if device["name"]["value"] == "rb01-par01":
+                device["name"]["value"] = "rb02-par01"
+                device["description"]["value"] = "Paris edge router 2"
+                device["status"]["value"] = "active"
+
+    assert _passed_clean(evaluate(branch, build_q1(), PARIS))
+
+
+def test_decommissioning_a_gold_service_passes() -> None:
+    branch = build_q1()
+    branch["ServiceDedicatedInternet"]["edges"] = [
+        edge
+        for edge in branch["ServiceDedicatedInternet"]["edges"]
+        if edge["node"]["service_identifier"]["value"] != "DI-2001"
+    ]
+
+    assert _passed_clean(evaluate(branch, build_q1(), "Decommission DI-2001"))
+
+
+def test_removing_a_device_already_out_of_service_on_main_only_warns() -> None:
+    main = build_q1({"sw01-bru01": "maintenance"})
+    branch = _without_device(build_q1({"sw01-bru01": "maintenance"}), "sw01-bru01")
+
+    result = evaluate(branch, main, BRUSSELS)
+
+    assert result.errors == []
+    assert len(result.warnings) == 1
+    assert "Brussels switch 1" in result.warnings[0]
+
+
+def test_message_never_suggests_a_device_the_change_also_takes_out_of_service() -> None:
+    branch = build_q1({"rb01-par01": "maintenance", "rb02-par01": "maintenance"})
+
+    result = evaluate(branch, build_q1(), "Both Paris routers")
+
+    assert len(result.errors) == 1
+    assert result.errors[0].endswith("Move these services off Paris edge router 1 and Paris edge router 2 first.")
+
+
+def test_move_to_device_skips_a_peer_that_is_not_active() -> None:
+    devices = parse_devices(build_q1({"rb02-par01": "maintenance"}))
+
+    assert move_to_device(next(row for row in devices if row.name == "rb01-par01"), devices) is None
 
 
 @pytest.mark.parametrize(

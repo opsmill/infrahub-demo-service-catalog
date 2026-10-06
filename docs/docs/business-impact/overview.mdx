@@ -53,6 +53,7 @@ The Gold outage guard is a check in the proposed change pipeline. It reads the s
 | Situation | Result |
 |---|---|
 | An active Gold service has a device that is active on the current network and not active in the proposed change | Fails. The plan leaves the service with no other path |
+| The proposed change deletes the switch or edge router of an active Gold service, or removes its switch port or gateway interface, and the service has no other device in that role | Fails. The plan leaves the service with no other path |
 | A Gold service's device was already out of service on the current network | Passes, and logs a message naming the service |
 | Only Silver or Bronze services are affected, or none | Passes |
 

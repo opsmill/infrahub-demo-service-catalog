@@ -16,7 +16,10 @@ without a new query.
 
 A change fails when an active Gold service on the branch sits behind a device
 that this change takes out of service: not active on the branch, and active
-on main (or absent from main). A Gold service whose only out-of-service
+on main (or absent from main). It also fails when the change removes a device
+from the service's path: the service had a switch or an edge router on main
+and has none of that role on the branch, because the change deleted the
+device, the switch port or the gateway interface. A Gold service whose only out-of-service
 devices were already out of service on main gives a warning, not an error,
 so an existing problem does not block unrelated work. Nothing here imports
 Streamlit or calls Infrahub.
@@ -109,18 +112,22 @@ class GuardResult:
 
 
 def move_to_device(device: DeviceRow, devices: Iterable[DeviceRow]) -> DeviceRow | None:
-    """The device with the same role at the same site and the other index, or None.
+    """The active device with the same role at the same site and the other index, or None.
 
     Each seeded site has two devices per role (index 1 and 2), so the other
     index is the other device of that role at that site; the first by name
-    wins if a site ever has more.
+    wins if a site ever has more. A device that is not active is no place to
+    move a service to, so it is never returned.
     """
     if not device.site:
         return None
     peers = [
         other
         for other in devices
-        if other.name != device.name and other.role == device.role and other.site == device.site
+        if other.name != device.name
+        and other.role == device.role
+        and other.site == device.site
+        and not other.out_of_service
     ]
     return min(peers, key=lambda other: other.name, default=None)
 
@@ -130,8 +137,26 @@ def _already_out(device: DeviceRow, main_devices: Mapping[str, DeviceRow]) -> bo
     return on_main is not None and on_main.out_of_service
 
 
-def _caused_by_change(service: ServiceRow, main_devices: Mapping[str, DeviceRow]) -> tuple[DeviceRow, ...]:
-    return tuple(device for device in service.out_of_service_devices if not _already_out(device, main_devices))
+def removed_devices(service: ServiceRow, main_services: Mapping[str, ServiceRow]) -> tuple[DeviceRow, ...]:
+    """The devices the service had on main in a role it has no device for on the branch.
+
+    `service` is the row the query returns on the branch, before path traversal replaces its devices.
+    A role is still covered when the branch has any device of that role behind the service, so moving
+    a service to the other edge router is not a removal.
+    """
+    on_main = main_services.get(service.identifier)
+    if on_main is None:
+        return ()
+    roles = {device.role for device in service.devices}
+    return tuple(device for device in on_main.devices if device.role not in roles)
+
+
+def _caused_by_change(
+    service: ServiceRow, removed: Iterable[DeviceRow], main_devices: Mapping[str, DeviceRow]
+) -> tuple[DeviceRow, ...]:
+    return tuple(
+        device for device in (*service.out_of_service_devices, *removed) if not _already_out(device, main_devices)
+    )
 
 
 def _error_message(
@@ -139,6 +164,7 @@ def _error_message(
     blocked: list[ServiceRow],
     devices_out: Iterable[DeviceRow],
     branch_devices: tuple[DeviceRow, ...],
+    main_devices: Mapping[str, DeviceRow],
 ) -> str:
     one = len(blocked) == 1
     noun = "service" if one else "services"
@@ -147,8 +173,9 @@ def _error_message(
     identifiers = ", ".join(service.identifier for service in blocked)
     credit = sum((service.monthly_sla_credit for service in blocked), Decimal(0))
 
-    # Devices behind a service carry no site in the query; the `DcimDevice` block does.
-    by_name = {device.name: device for device in branch_devices}
+    # Devices behind a service carry no site in the query; the `DcimDevice` block does. A device the change
+    # deleted is only in the block on main.
+    by_name = {**main_devices, **{device.name: device for device in branch_devices}}
     unique: list[DeviceRow] = []
     for device in devices_out:
         if all(seen.name != device.name for seen in unique):
@@ -167,8 +194,8 @@ def _error_message(
     )
 
 
-def _warning_message(service: ServiceRow) -> str:
-    devices = join_names({device.label for device in service.out_of_service_devices})
+def _warning_message(service: ServiceRow, devices_out: Iterable[DeviceRow]) -> str:
+    devices = join_names({device.label for device in devices_out})
     return (
         f"WARNING: Gold service {service.identifier} for {service.customer_label} is already out of service "
         f"on the current network, behind {devices}. This change does not cause it, so it does not block the merge."
@@ -189,7 +216,10 @@ def evaluate(
     changes the result.
     """
     main_devices = {device.name: device for device in parse_devices(main_data)}
-    services: list[ServiceRow] = list(active_services(parse_services(branch_data)))
+    main_services = {service.identifier: service for service in parse_services(main_data)}
+    queried: list[ServiceRow] = list(active_services(parse_services(branch_data)))
+    removed = {service.identifier: removed_devices(service, main_services) for service in queried if service.gold}
+    services = queried
     if reached is not None:
         branch_devices = {device.name: device for device in parse_devices(branch_data)}
         services = [
@@ -201,23 +231,26 @@ def evaluate(
                     if name in branch_devices
                 ),
             )
-            for service in services
+            for service in queried
         ]
-    gold = [service for service in services if service.gold and service.affected]
+    gold = [service for service in services if service.gold and (service.affected or removed.get(service.identifier))]
 
     blocked: list[ServiceRow] = []
     devices_out: list[DeviceRow] = []
     result = GuardResult()
     for service in gold:
-        caused = _caused_by_change(service, main_devices)
+        lost = removed.get(service.identifier, ())
+        caused = _caused_by_change(service, lost, main_devices)
         if caused:
             blocked.append(service)
             devices_out.extend(caused)
         else:
-            result.warnings.append(_warning_message(service))
+            result.warnings.append(_warning_message(service, (*service.out_of_service_devices, *lost)))
 
     if blocked:
-        result.errors.append(_error_message(change_name, blocked, devices_out, parse_devices(branch_data)))
+        result.errors.append(
+            _error_message(change_name, blocked, devices_out, parse_devices(branch_data), main_devices)
+        )
     elif not result.warnings:
         result.summary = (
             f"{change_name} leaves no active Gold service without a path. "
