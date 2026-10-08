@@ -171,13 +171,16 @@ jobs:
           echo "PYTEST_DEBUG_TEMPROOT=/var/lib/github/${RUNNER_NAME/ghrunner/ghrunner_}/_temp" >> "$GITHUB_ENV"
       - name: "Run the core integration tier (blocking)"
         run: exec tini -s -g -- uv run invoke test-integration --tier=core
-      - name: "Run the full integration tier (advisory)"
+      - name: "Run the full integration tier (blocking for Infrahub bumps)"
         id: full
-        # Advisory until the upstream HTTP 500 fault is fixed: then drop `continue-on-error` and re-merge the two steps.
+        # Release bumps require the full tier; explicit rehearsals remain
+        # advisory while the upstream group-resolution fault is intermittent.
         if: needs.files-changed.outputs.run_full == 'true'
-        continue-on-error: true
+        # Release bumps merge only when the full end-to-end tier succeeds.
+        # Explicit full-tier rehearsals remain advisory while upstream is flaky.
+        continue-on-error: ${{ !startsWith(github.head_ref, 'update-infrahub-') || startsWith(github.head_ref, 'update-infrahub-sdk-') }}
         run: exec tini -s -g -- uv run invoke test-integration --tier=full
-      - name: "Report what the advisory full tier did"
+      - name: "Report what the full tier did"
         if: always() && needs.files-changed.outputs.run_full == 'true'
         env:
           OUTCOME: ${{ steps.full.outcome }}
@@ -186,12 +189,11 @@ jobs:
             echo "### Integration tiers"
             echo ""
             echo "- **core** (blocking): this job's own conclusion is the merge gate."
-            echo "- **full** (advisory, non-blocking): \`${OUTCOME}\`"
+            echo "- **full** (blocking for Infrahub bumps, advisory otherwise): \`${OUTCOME}\`"
             if [ "${OUTCOME}" = "failure" ]; then
               echo ""
-              echo "**The advisory full tier FAILED.** It does not block this merge -- see the"
-              echo "upstream CoreGeneratorGroup / CoreGraphQLQueryGroup resolution fault -- but read"
-              echo "the log before assuming that fault is what happened."
+              echo "**The full tier FAILED.** Infrahub bump PRs cannot merge until it passes."
+              echo "For other runs, check the log before attributing it to the upstream fault."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
