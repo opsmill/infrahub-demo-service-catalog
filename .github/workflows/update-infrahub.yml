@@ -261,7 +261,7 @@ jobs:
             exit 0
           fi
           BODY="${INFRAHUB_VERSION:+Bumps infrahub-testcontainers, the demo stack Dockerfile base image and the reference compose file to Infrahub ${INFRAHUB_VERSION}. }${SDK_VERSION:+Bumps infrahub-sdk to ${SDK_VERSION}.}"
-          QA_NOTE="This pull request's CI is the QA for this bump. The core integration tier runs and blocks the merge. An Infrahub-version bump additionally runs the full suite, extended tier included, as an advisory non-blocking report -- read its outcome in the run summary -- for as long as the upstream CoreGeneratorGroup / CoreGraphQLQueryGroup resolution fault keeps that tier from blocking."
+          QA_NOTE="This pull request's CI is the QA for this bump. The core integration tier runs and blocks the merge. An Infrahub-version bump also runs the full suite, extended tier included. Both tiers must pass before the release bump can merge."
           BODY=$(printf '%s\n\n%s' "${BODY}" "${QA_NOTE}")
           gh pr create \
             --title "${COMMIT_MESSAGE}" \

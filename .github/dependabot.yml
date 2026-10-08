@@ -1,36 +1,25 @@
 ---
-# yamllint disable rule:truthy
 version: 2
-
 updates:
-  # Maintain dependencies for GitHub Actions
+  # Regular dependency upgrades target main after cooldown.
+  # Security updates target the default branch and are reviewed manually.
+  - package-ecosystem: "uv"
+    directory: "/"
+    target-branch: main
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+      semver-minor-days: 14
+      semver-major-days: 30
+
   - package-ecosystem: "github-actions"
     directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
     target-branch: main
-    labels:
-      - "changes/patch"
-    groups:
-      all:
-        patterns:
-          - "*"
-
-  # Group all pip updates except infrahub-sdk
-  - package-ecosystem: "pip"
-    directory: "/"
     schedule:
-      interval: "daily"
-      time: "12:00"
-    target-branch: main
-    labels:
-      - "changes/patch"
-    groups:
-      all:
-        patterns:
-          - "^(?!infrahub-sdk$).*"  # Regex to exclude infrahub-sdk
-      infrahub-sdk:
-        patterns:
-          - "infrahub-sdk"
+      interval: weekly
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+    ignore:
+      - dependency-name: "github/gh-aw-actions/**"  # managed by gh aw compile
