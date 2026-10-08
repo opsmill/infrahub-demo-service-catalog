@@ -1,0 +1,28 @@
+---
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+version: "1.0"
+
+extensions:
+  nodes:
+    - kind: DcimPhysicalDevice
+      relationships:
+        # Deliberately alongside `location` rather than replacing it: the
+        # dedicated internet generator finds devices with
+        # location__ids=[<site>], so moving a device's location to its rack
+        # would stop it finding any.
+        - name: rack
+          label: Rack
+          peer: LocationRack
+          kind: Attribute
+          cardinality: one
+          optional: true
+          identifier: rack__mounted_devices
+          order_weight: 1250
+    - kind: LocationRack
+      relationships:
+        - name: mounted_devices
+          label: Mounted devices
+          peer: DcimPhysicalDevice
+          cardinality: many
+          optional: true
+          identifier: rack__mounted_devices

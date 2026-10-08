@@ -134,6 +134,70 @@ async def test_allocate_prefix_sets_relationships_via_attribute_assignment() -> 
     assert allocated_prefix.vlan is generator.allocated_vlan
 
 
+async def test_allocate_prefix_keeps_a_prefix_that_still_matches_the_package() -> None:
+    """A same-size re-run must not renumber the customer."""
+    client = AsyncMock()
+    client.get.return_value = MagicMock()
+    existing_prefix = MagicMock(prefix=MagicMock(value="203.0.113.0/29"), delete=AsyncMock())
+    allocated_prefix = MagicMock(save=AsyncMock())
+    client.allocate_next_ip_prefix.return_value = allocated_prefix
+
+    def filters(kind: type, **_: object) -> list[MagicMock]:
+        return [existing_prefix] if kind.__name__ == "IpamPrefix" else []
+
+    client.filters.side_effect = filters
+
+    generator = make_generator(client)
+    generator.allocated_vlan = MagicMock(id="vlan-id")
+    generator.customer_service.ip_package = MagicMock(value="small")
+    generator.prefix_length = 29
+
+    await generator.allocate_prefix()
+
+    existing_prefix.delete.assert_not_awaited()
+
+
+async def test_allocate_prefix_releases_a_prefix_of_the_wrong_size() -> None:
+    """Regression test: an ip_package change could not be applied.
+
+    The pool keys its allocation on the service identifier and refuses a different prefix length
+    for one it has already allocated ("its prefix length cannot be changed, only /29 can be used"),
+    so the generator failed on any service whose IP package changed. The old prefix, and the
+    addresses inside it, have to be released before the new size can be allocated.
+    """
+    client = AsyncMock()
+    client.get.return_value = MagicMock()
+    existing_prefix = MagicMock(prefix=MagicMock(value="203.0.113.0/29"), delete=AsyncMock())
+    gateway = MagicMock(address=MagicMock(value="203.0.113.1/29"), delete=AsyncMock())
+    # An address the service owns outside the released prefix must survive.
+    elsewhere = MagicMock(address=MagicMock(value="192.0.2.10/24"), delete=AsyncMock())
+    client.allocate_next_ip_prefix.return_value = MagicMock(save=AsyncMock())
+
+    def filters(kind: type, **_: object) -> list[MagicMock]:
+        if kind.__name__ == "IpamPrefix":
+            return [existing_prefix]
+        return [gateway, elsewhere]
+
+    client.filters.side_effect = filters
+
+    generator = make_generator(client)
+    generator.allocated_vlan = MagicMock(id="vlan-id")
+    generator.customer_service.ip_package = MagicMock(value="large")
+    generator.prefix_length = 27
+
+    await generator.allocate_prefix()
+
+    gateway.delete.assert_awaited_once()
+    elsewhere.delete.assert_not_awaited()
+    existing_prefix.delete.assert_awaited_once()
+    # And the new size is then allocated under the same identifier.
+    assert client.allocate_next_ip_prefix.call_args.kwargs["prefix_length"] == 27
+    assert (
+        client.allocate_next_ip_prefix.call_args.kwargs["identifier"]
+        == generator.customer_service.service_identifier.value
+    )
+
+
 async def test_allocate_port_raises_when_no_free_port_available() -> None:
     client = AsyncMock()
     generator = make_generator(client)

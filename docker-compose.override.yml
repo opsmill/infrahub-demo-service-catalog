@@ -51,3 +51,39 @@ services:
       timeout: 5s
       retries: 20
       start_period: 15s
+  backstage:
+    image: opsmill/infrahub-demo-backstage:local
+    build:
+      context: ./backstage
+      dockerfile: packages/backend/Dockerfile
+    # The bundle is built on the host, so run `invoke backstage-build` before
+    # this image is built or rebuilt.
+    command:
+      - node
+      - packages/backend
+      - --config
+      - app-config.yaml
+      - --config
+      - app-config.docker.yaml
+    restart: unless-stopped
+    depends_on:
+      infrahub-server:
+        condition: service_healthy
+    environment:
+      INFRAHUB_ADDRESS: http://infrahub-server:8000
+      INFRAHUB_API_TOKEN: ${INFRAHUB_API_TOKEN:-44af444d-3b26-410d-9546-b758657e026c}
+    ports:
+      # The backend serves the frontend bundle, so one port does both.
+      - "3001:7007"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://localhost:7007/.backstage/health/v1/readiness').then(r
+          => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 15s

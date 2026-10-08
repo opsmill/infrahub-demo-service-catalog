@@ -1,0 +1,39 @@
+{
+  "name": "@opsmill/backstage-plugin-infrahub-common",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "description": "Names shared by the Infrahub frontend and backend plugins",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "publishConfig": {
+    "access": "public",
+    "main": "dist/index.cjs.js",
+    "module": "dist/index.esm.js",
+    "types": "dist/index.d.ts"
+  },
+  "backstage": {
+    "role": "common-library",
+    "pluginId": "infrahub"
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "backstage-cli package build",
+    "lint": "backstage-cli package lint",
+    "test": "backstage-cli package test",
+    "clean": "backstage-cli package clean",
+    "prepack": "backstage-cli package prepack",
+    "postpack": "backstage-cli package postpack"
+  },
+  "devDependencies": {
+    "@backstage/cli": "^0.36.5"
+  },
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/opsmill/infrahub-demo-service-catalog",
+    "directory": "backstage/plugins/infrahub-common"
+  }
+}
