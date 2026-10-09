@@ -7,8 +7,9 @@ maintenance branches and feeds `blast_radius.py`.
 
 After the seed it asserts the Gold outage guard: its validator fails on the
 Paris and Brussels proposed changes with the messages the docs show and passes on New York, it fails
-on a proposed change that deletes Brussels edge router 1, and Infrahub refuses to merge the Paris
-proposed change. The stack runs the stock Infrahub image, where
+on a proposed change that deletes Brussels edge router 1, it fails on a proposed change that raises
+the Silver rule to 2 separate paths, and Infrahub refuses to merge the Paris proposed change and the
+Silver rule change. The stack runs the stock Infrahub image, where
 `service_catalog` is not installed, so the guard's messages also record that the task worker
 imports `service_catalog.business_impact` from the repository.
 
@@ -50,8 +51,9 @@ from service_catalog.protocols_sync import (
     DcimInterfaceL3,
     OrganizationCustomer,
     ServiceDedicatedInternet,
+    ServiceTier,
 )
-from tests.unit.test_gold_outage_guard import BRUSSELS_MESSAGE, PARIS_MESSAGE
+from tests.unit.test_gold_outage_guard import BRUSSELS_MESSAGE, PARIS_MESSAGE, RAISE_SILVER, RAISE_SILVER_MESSAGE
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -75,6 +77,7 @@ DELETED_MESSAGE = (
     "Gold SLA credit exposure: €2,025 per month (demo business input). "
     "Move this service to Brussels edge router 2 first."
 )
+RAISED = "raise-silver-rule"
 
 MERGE_MUTATION = """
 mutation MergeProposedChange($id: String!) {
@@ -215,6 +218,20 @@ class TestBusinessImpact(TestInfrahubDockerClient):  # noqa: PLR0904 - one test 
         checks = client_sync.filters(kind=CoreStandardCheck, validator__ids=[guard[0].id])
         return guard[0].conclusion.value, "\n".join(str(check.message.value or "") for check in checks)
 
+    @staticmethod
+    def _wait_for_guard(client_sync: InfrahubClientSync, proposed_change_id: str, name: str) -> None:
+        """Wait until the Gold outage guard validator of a proposed change has finished."""
+
+        def finished() -> bool:
+            validators = client_sync.filters(kind=CoreValidator, proposed_change__ids=[proposed_change_id])
+            rows = [
+                seed.ValidatorRow(label=node.label.value, state=node.state.value, conclusion=node.conclusion.value)
+                for node in validators
+            ]
+            return seed.validators_finished(rows, required=(seed.GUARD_VALIDATOR_LABEL,))
+
+        seed.wait_until(finished, seed.PIPELINE_TIMEOUT_S, f"the pipeline of {name}")
+
     @pytest.mark.parametrize(
         ("name", "message"),
         [("Paris router 1 maintenance", PARIS_MESSAGE), ("Brussels switch 1 maintenance", BRUSSELS_MESSAGE)],
@@ -256,26 +273,53 @@ class TestBusinessImpact(TestInfrahubDockerClient):  # noqa: PLR0904 - one test 
             destination_branch="main",
         )
         proposed_change.save()
-
-        def finished() -> bool:
-            validators = client_sync.filters(kind=CoreValidator, proposed_change__ids=[proposed_change.id])
-            rows = [
-                seed.ValidatorRow(label=node.label.value, state=node.state.value, conclusion=node.conclusion.value)
-                for node in validators
-            ]
-            return seed.validators_finished(rows, required=(seed.GUARD_VALIDATOR_LABEL,))
-
-        seed.wait_until(
-            finished,
-            seed.PIPELINE_TIMEOUT_S,
-            f"the pipeline of {DELETED_NAME}",
-        )
+        self._wait_for_guard(client_sync, proposed_change.id, DELETED_NAME)
 
         conclusion, messages = self._guard(client_sync, DELETED_NAME)
         OPEN_CHECKS[f"Gold outage guard on {DELETED_NAME}"] = f"{conclusion}: {messages.strip()!r}"
 
         assert conclusion == "failure"
         assert DELETED_MESSAGE in messages
+
+    def test_tightening_a_tier_rule_fails(self, client_sync: InfrahubClientSync) -> None:
+        """Raising the Silver rule from 0 to 2 fails, because each active Silver service has 1 path, and
+        Infrahub refuses to merge the proposed change.
+        """
+        client_sync.branch.create(branch_name=RAISED, sync_with_git=False, description=RAISE_SILVER)
+        silver = client_sync.get(kind=ServiceTier, name__value="Silver", branch=RAISED)
+        silver.min_paths.value = 2
+        silver.save()
+
+        proposed_change = client_sync.create(
+            kind=CoreProposedChange,
+            branch="main",
+            name=RAISE_SILVER,
+            source_branch=RAISED,
+            destination_branch="main",
+        )
+        proposed_change.save()
+        self._wait_for_guard(client_sync, proposed_change.id, RAISE_SILVER)
+
+        conclusion, messages = self._guard(client_sync, RAISE_SILVER)
+        OPEN_CHECKS[f"Gold outage guard on {RAISE_SILVER}"] = f"{conclusion}: {messages.strip()!r}"
+
+        assert conclusion == "failure"
+        assert RAISE_SILVER_MESSAGE in messages
+
+        try:
+            response = client_sync.execute_graphql(query=MERGE_MUTATION, variables={"id": proposed_change.id})
+            surface = f"mutation returned {response}"
+        except GraphQLError as exc:
+            surface = f"mutation raised GraphQLError: {exc.errors[0].get('message') if exc.errors else exc}"
+
+        after = client_sync.get(kind=CoreProposedChange, id=proposed_change.id)
+        silver_on_main = client_sync.get(kind=ServiceTier, name__value="Silver", branch="main")
+        OPEN_CHECKS[f"merge of {RAISE_SILVER}"] = (
+            f"{surface}; state after: {after.state.value}; Silver rule on main: {silver_on_main.min_paths.value}"
+        )
+
+        assert after.state.value == "open"
+        assert silver_on_main.min_paths.value == 0
 
     def test_moved_plan(self, client_sync: InfrahubClientSync) -> None:
         """With DI-1001 and DI-1002 moved to Paris edge router 2 first, the same maintenance passes the guard.

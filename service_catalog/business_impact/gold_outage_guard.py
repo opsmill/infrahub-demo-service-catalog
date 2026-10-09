@@ -28,8 +28,11 @@ A change fails when an active service has fewer separate paths on the branch
 than its tier's rule on the branch, and had at least as many on main as the
 rule on main required. A service that does not exist on main counts as meeting
 the rule on main. A service already short of its rule on main gives a warning,
-not an error, so an existing problem does not block unrelated work. Nothing
-here imports Streamlit or calls Infrahub.
+not an error, so an existing problem does not block unrelated work. A change
+that raises a tier's rule fails when an active service of that tier has fewer
+separate paths on the branch than the new rule, in one tightening error per
+tier; those services get no path error. Nothing here imports Streamlit or
+calls Infrahub.
 
 The imports are relative on purpose: the Infrahub task worker imports this
 module from the commit worktree as `commits.<sha>.service_catalog...`, where an
@@ -265,6 +268,24 @@ def _error_message(
     )
 
 
+def _tightening_message(
+    change_name: str, tier: str, old: int, new: int, services_with_counts: list[tuple[ServiceRow, int]]
+) -> str:
+    """The error for a change that raises the tier's rule from `old` to `new` while services have fewer paths."""
+    one = len(services_with_counts) == 1
+    noun = "service has" if one else "services have"
+    counts = {count for _, count in services_with_counts}
+    if not one and len(counts) == 1:
+        listed = f"{', '.join(service.identifier for service, _ in services_with_counts)}: {counts.pop()} each"
+    else:
+        listed = ", ".join(f"{service.identifier}: {count}" for service, count in services_with_counts)
+    return (
+        f"{change_name} raises the {tier} rule from {old} to {_paths(new)} during a change, and "
+        f"{len(services_with_counts)} active {tier} {noun} fewer ({listed}). "
+        f"Build the paths first, or keep the rule at {old}."
+    )
+
+
 def _warning_message(service: ServiceRow, devices_out: Iterable[DeviceRow]) -> str:
     devices = join_names({device.label for device in devices_out})
     behind = f", behind {devices}" if devices else ""
@@ -282,6 +303,8 @@ class _Guard:
     main_data: Mapping[str, object]
     reached: Mapping[str, Collection[str]] | None
     short: dict[str, _ShortTier] = field(default_factory=dict)
+    # Each raised tier's services with fewer paths on the branch than the new rule, with their path counts.
+    tightened: dict[str, list[tuple[ServiceRow, int]]] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
@@ -316,6 +339,9 @@ class _Guard:
         paths_b = path_count(service, depends_on.devices)
         if paths_b >= need_b:
             return
+        if need_b > need_m:
+            self.tightened.setdefault(tier, []).append((service, paths_b))
+            return
         lost = removed_devices(service, self.main_services)
         if self.main_paths(service, need_m) < need_m:
             self.warnings.append(_warning_message(service, (*depends_on.out_of_service_devices, *lost)))
@@ -326,11 +352,19 @@ class _Guard:
         short.devices_out.extend(caused or (*depends_on.out_of_service_devices, *lost))
 
     def errors(self, change_name: str) -> list[str]:
-        """One message per tier with services short of the rule, Gold first, then the tiers in name order."""
-        return [
+        """One path error per tier with services short of the rule, then one tightening error per raised tier.
+
+        Each group lists Gold first, then the tiers in name order.
+        """
+        path_errors = [
             _error_message(change_name, self.short[tier], self.branch_devices, self.main_devices)
             for tier in sorted(self.short, key=_tier_order)
         ]
+        tightening_errors = []
+        for tier in sorted(self.tightened, key=_tier_order):
+            need_b, need_m = self.needs(tier)
+            tightening_errors.append(_tightening_message(change_name, tier, need_m, need_b, self.tightened[tier]))
+        return path_errors + tightening_errors
 
 
 def evaluate(
@@ -344,7 +378,9 @@ def evaluate(
     For each active service with a tier, the rule on the branch and on main comes from `tier_rules`. A tier
     missing from one side's `ServiceTier` block uses the other side's rule, and a tier missing from both has
     rule 0. The path count on the branch comes from `path_count`; on main it uses the devices behind the
-    service on main, and a service missing on main counts as meeting the rule on main.
+    service on main, and a service missing on main counts as meeting the rule on main. When the branch raises
+    a tier's rule, its services with fewer paths than the new rule go into one tightening error for the tier
+    instead of a path error or a warning.
 
     `reached` maps a service identifier to the names of the devices that path traversal reached from it.
     When it is given, those devices are the ones each service depends on; when it is None, the devices

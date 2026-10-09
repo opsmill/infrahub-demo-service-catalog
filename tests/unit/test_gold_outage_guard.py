@@ -402,6 +402,88 @@ def test_service_new_on_the_branch_is_checked_against_the_branch_rule() -> None:
     ]
 
 
+# A change that raises a tier rule.
+
+RAISE_SILVER = "Promise two paths to Silver customers"
+RAISE_SILVER_MESSAGE = (
+    "Promise two paths to Silver customers raises the Silver rule from 0 to 2 separate paths during a change, "
+    "and 3 active Silver services have fewer (DI-1004, DI-1005, DI-2003: 1 each). "
+    "Build the paths first, or keep the rule at 0."
+)
+
+
+def _rules(silver: int, gold: int = 1) -> dict[str, int | None]:
+    return {"Gold": gold, "Silver": silver, "Bronze": 0}
+
+
+def test_raising_silver_to_two_fails() -> None:
+    result = evaluate(build_q1(min_paths=_rules(2)), build_q1(min_paths=_rules(0)), RAISE_SILVER)
+
+    assert not result.passed
+    assert result.errors == [RAISE_SILVER_MESSAGE]
+    assert result.warnings == []
+
+
+def test_tightening_message() -> None:
+    """With `sw01-bru01` in maintenance, DI-2003 has 0 paths and the other Silver services have 1."""
+    out = {"sw01-bru01": "maintenance"}
+
+    to_one = evaluate(build_q1(out, min_paths=_rules(1)), build_q1(out, min_paths=_rules(0)), RAISE_SILVER)
+    to_two = evaluate(build_q1(out, min_paths=_rules(2)), build_q1(out, min_paths=_rules(0)), RAISE_SILVER)
+
+    assert to_one.errors == [
+        "Promise two paths to Silver customers raises the Silver rule from 0 to 1 separate path during a change, "
+        "and 1 active Silver service has fewer (DI-2003: 0). Build the paths first, or keep the rule at 0."
+    ]
+    assert to_two.errors == [
+        "Promise two paths to Silver customers raises the Silver rule from 0 to 2 separate paths during a change, "
+        "and 3 active Silver services have fewer (DI-1004: 1, DI-1005: 1, DI-2003: 0). "
+        "Build the paths first, or keep the rule at 0."
+    ]
+
+
+def test_tightening_error_comes_after_the_path_errors() -> None:
+    """The raised Silver services get no path error; the Gold path error comes first."""
+    out = {"sw01-bru01": "maintenance"}
+
+    result = evaluate(build_q1(out, min_paths=_rules(1)), build_q1(min_paths=_rules(0)), BRUSSELS)
+
+    assert len(result.errors) == 2
+    assert result.errors[0] == BRUSSELS_MESSAGE
+    assert result.errors[1].startswith("Brussels switch 1 maintenance raises the Silver rule from 0 to 1")
+    assert "(DI-2003: 0)" in result.errors[1]
+
+
+def test_lowering_a_rule_passes() -> None:
+    result = evaluate(build_q1(min_paths=_rules(0, gold=0)), build_q1(min_paths=_rules(0)), "Lower the Gold rule")
+
+    assert _passed_clean(result)
+    assert result.summary == (
+        "Lower the Gold rule leaves no active Gold service without a path. "
+        "Gold SLA credit exposure: €0 per month (demo business input)."
+    )
+
+
+def test_raising_silver_to_one_passes() -> None:
+    """Every Silver service already has 1 path."""
+    result = evaluate(build_q1(min_paths=_rules(1)), build_q1(min_paths=_rules(0)), RAISE_SILVER)
+
+    assert _passed_clean(result)
+
+
+def test_new_tier_is_not_a_tightening() -> None:
+    """Silver is missing on main, so its branch rule applies on both sides and the router gives a path error."""
+    main_tiers = {"Gold": 25, "Bronze": 5}
+    branch = build_q1({"rb01-par01": "maintenance"}, min_paths=_rules(1))
+
+    result = evaluate(branch, build_q1(tiers=main_tiers, min_paths=_rules(0)), PARIS)
+
+    assert result.errors[0] == PARIS_MESSAGE
+    assert len(result.errors) == 2
+    assert result.errors[1].startswith("Paris router 1 maintenance leaves 1 Silver service for Maison Verte")
+    assert all("raises the" not in error for error in result.errors)
+
+
 # The check file, as the Infrahub task worker imports it.
 
 
