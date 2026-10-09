@@ -31,8 +31,10 @@ the rule on main. A service already short of its rule on main gives a warning,
 not an error, so an existing problem does not block unrelated work. A change
 that raises a tier's rule fails when an active service of that tier has fewer
 separate paths on the branch than the new rule, in one tightening error per
-tier; those services get no path error. Nothing here imports Streamlit or
-calls Infrahub.
+tier; those services get no path error. A service with neither a switch nor an
+edge router behind it on the branch and on main is left out: it has no path to
+lose, and the change took none away. Nothing here imports Streamlit or calls
+Infrahub.
 
 The imports are relative on purpose: the Infrahub task worker imports this
 module from the commit worktree as `commits.<sha>.service_catalog...`, where an
@@ -256,15 +258,17 @@ def _error_message(
             unique.append(by_name.get(device.name) or device)
     targets = [move_to_device(device, branch_devices) for device in unique]
     pronoun = "this service" if one else "these services"
-    if all(target is not None for target in targets):
-        action = f"Move {pronoun} to {join_names({target.label for target in targets if target is not None})} first."
-    else:
-        action = f"Move {pronoun} off {join_names({device.label for device in unique})} first."
+    # A service new on the branch with no dedicated interfaces yet has no device to name, so no Move sentence.
+    action = ""
+    if unique and all(target is not None for target in targets):
+        action = f"Move {pronoun} to {join_names({target.label for target in targets if target is not None})} first. "
+    elif unique:
+        action = f"Move {pronoun} off {join_names({device.label for device in unique})} first. "
 
     return (
         f"{change_name} leaves {len(services)} {short.tier} {noun}{customers} {without} ({identifiers}). "
         f"{short.tier} SLA credit exposure: {format_eur(credit)} per month ({CREDIT_LABEL}). "
-        f"{action} {_rule_sentence(short.tier, short.need, left)}"
+        f"{action}{_rule_sentence(short.tier, short.need, left)}"
     )
 
 
@@ -332,7 +336,20 @@ class _Guard:
         on_main = self.main_services.get(service.identifier)
         return need_m if on_main is None else path_count(on_main, on_main.devices)
 
+    def has_no_roles(self, service: ServiceRow) -> bool:
+        """True when neither a switch nor an edge router sits behind the service on the branch and on main.
+
+        Such a service has no path to lose, and the change took none away, so the guard leaves it out.
+        A service missing on main does not qualify: it is checked against the branch rule.
+        """
+        on_main = self.main_services.get(service.identifier)
+        if on_main is None:
+            return False
+        return not any(device.role in {CORE_ROLE, EDGE_ROLE} for device in (*service.devices, *on_main.devices))
+
     def check(self, service: ServiceRow, tier: str) -> None:
+        if self.has_no_roles(service):
+            return
         need_b, need_m = self.needs(tier)
         depends_on = self.depends_on(service)
         # The roles come from the row as queried, before path traversal replaces its devices.

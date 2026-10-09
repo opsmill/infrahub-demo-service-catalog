@@ -402,6 +402,44 @@ def test_service_new_on_the_branch_is_checked_against_the_branch_rule() -> None:
     ]
 
 
+def _without_interfaces(data: dict[str, Any], identifier: str) -> dict[str, Any]:
+    """Drop every dedicated interface of the service, as before its generator runs."""
+    for edge in data["ServiceDedicatedInternet"]["edges"]:
+        if edge["node"]["service_identifier"]["value"] == identifier:
+            edge["node"]["dedicated_interfaces"]["edges"] = []
+    return data
+
+
+def test_service_new_on_the_branch_without_interfaces_fails_with_no_move_sentence() -> None:
+    """No device sits behind the new service, so the message names none and goes on to the rule."""
+    new = SeedRow("DI-1008", "Northbank", "Gold", "1000", "sw02-par01", "rb01-par01", 2160)
+    branch = _without_interfaces(build_q1(rows=(new,)), "DI-1008")
+
+    result = evaluate(branch, build_q1(rows=()), "Order DI-1008")
+
+    assert result.errors == [
+        "Order DI-1008 leaves 1 Gold service for Northbank with no other path (DI-1008). "
+        "Gold SLA credit exposure: €540 per month (demo business input). "
+        "Gold requires at least 1 separate path during a change, and this change leaves 0."
+    ]
+    assert result.warnings == []
+
+
+def test_service_without_a_switch_or_edge_router_on_main_and_the_branch_is_left_out() -> None:
+    """The service has no path to lose and the change took none away, so the guard stays silent."""
+    branch = _without_interfaces(build_q1({"rb01-nyc01": "maintenance"}), "DI-2001")
+    main = _without_interfaces(build_q1(), "DI-2001")
+
+    result = evaluate(branch, main, NEW_YORK)
+
+    assert result.errors == []
+    assert result.warnings == []
+    assert result.summary == (
+        "New York router 1 maintenance leaves no active Gold service without a path. "
+        "Gold SLA credit exposure: €0 per month (demo business input)."
+    )
+
+
 # A change that raises a tier rule.
 
 RAISE_SILVER = "Promise two paths to Silver customers"

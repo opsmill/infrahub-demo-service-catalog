@@ -1,4 +1,7 @@
-"""Gold outage guard: a proposed change that takes an active Gold service out of service cannot merge.
+"""Gold outage guard: fails a proposed change that leaves a service short of its tier's rule or raises an unmet rule.
+
+The check fails when the proposed change leaves an active service with fewer separate paths than its
+tier's rule, or raises a tier's rule that the network does not meet.
 
 Registered under `check_definitions`
 in `.infrahub.yml` with no `targets`, so it runs once in every proposed change
