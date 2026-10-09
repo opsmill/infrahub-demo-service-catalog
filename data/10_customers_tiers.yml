@@ -7,12 +7,15 @@ spec:
     - name: Gold
       sla_credit_pct: 25
       price_multiplier_pct: 180
+      min_paths: 1
     - name: Silver
       sla_credit_pct: 10
       price_multiplier_pct: 130
+      min_paths: 0
     - name: Bronze
       sla_credit_pct: 5
       price_multiplier_pct: 100
+      min_paths: 0
 ---
 apiVersion: infrahub.app/v1
 kind: Object

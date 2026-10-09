@@ -26,6 +26,18 @@ generics:
         order_weight: 1010
         optional: false
         branch: agnostic
+      - name: requested_by
+        kind: Text
+        label: Requested by
+        optional: true
+        branch: agnostic
+        order_weight: 1012
+      - name: request_reason
+        kind: Text
+        label: Reason for the request
+        optional: true
+        branch: agnostic
+        order_weight: 1014
       - name: monthly_charge
         kind: Number
         label: Monthly charge (EUR, demo business input)

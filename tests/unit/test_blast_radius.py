@@ -34,6 +34,7 @@ Q1Data = dict[str, Any]
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 TIER_CREDIT = {"Gold": 25, "Silver": 10, "Bronze": 5}
+TIER_MIN_PATHS = {"Gold": 1, "Silver": 0, "Bronze": 0}
 
 DESCRIPTIONS = {
     "rb01-par01": "Paris edge router 1",
@@ -105,11 +106,15 @@ def build_q1(
     rows: tuple[SeedRow, ...] = SEED,
     tier_credit: Mapping[str, int] = TIER_CREDIT,
     tiers: Mapping[str, int] | None = None,
+    min_paths: Mapping[str, int | None] | None = None,
 ) -> dict[str, Any]:
     """Build query `data` with every device active unless `statuses` says otherwise.
 
     `tiers` fills the `ServiceTier` block (name to SLA credit percentage); it defaults to `tier_credit`.
+    `min_paths` sets each tier's minimum separate paths during a change (name to number); it defaults to
+    Gold 1, Silver 0, Bronze 0. A tier set to `None`, or not named, gets an empty value.
     """
+    rule_of = TIER_MIN_PATHS if min_paths is None else min_paths
     status_of = dict.fromkeys(_device_names(), "active")
     status_of.update(statuses or {})
     switch_ports: dict[str, int] = {}
@@ -152,7 +157,7 @@ def build_q1(
         for name in _device_names()
     ]
     tier_edges = [
-        {"node": {"name": _value(name), "sla_credit_pct": _value(pct)}}
+        {"node": {"name": _value(name), "sla_credit_pct": _value(pct), "min_paths": _value(rule_of.get(name))}}
         for name, pct in (tier_credit if tiers is None else tiers).items()
     ]
     return {

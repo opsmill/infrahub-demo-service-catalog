@@ -149,6 +149,8 @@ class OrganizationGeneric(CoreNode):
 class ServiceGeneric(CoreNode):
     account_reference: String
     monthly_charge: IntegerOptional
+    request_reason: StringOptional
+    requested_by: StringOptional
     service_identifier: String
     customer: RelationshipAttribute[OrganizationCustomer]
     member_of_groups: RelationshipManager[CoreGroup]
@@ -235,6 +237,8 @@ class ServiceDedicatedInternet(ServiceGeneric):
     bandwidth: Dropdown
     ip_package: Dropdown
     monthly_charge: IntegerOptional
+    request_reason: StringOptional
+    requested_by: StringOptional
     service_identifier: String
     status: Dropdown
     customer: RelationshipAttribute[OrganizationCustomer]
@@ -460,6 +464,7 @@ class LocationSite(LocationGeneric, LocationHosting):
 
 
 class ServiceTier(CoreNode):
+    min_paths: IntegerOptional
     name: String
     price_multiplier_pct: Integer
     sla_credit_pct: Integer
@@ -860,6 +865,8 @@ class ProfileServiceDedicatedInternet(LineageSource, CoreProfile, CoreNode):
     monthly_charge: IntegerOptional
     profile_name: String
     profile_priority: Integer
+    request_reason: StringOptional
+    requested_by: StringOptional
     status: DropdownOptional
     customer: RelationshipAttribute[OrganizationCustomer]
     dedicated_interfaces: RelationshipManager[DcimInterface]
@@ -878,6 +885,8 @@ class ProfileServiceGeneric(LineageSource, CoreProfile, CoreNode):
     monthly_charge: IntegerOptional
     profile_name: String
     profile_priority: Integer
+    request_reason: StringOptional
+    requested_by: StringOptional
     customer: RelationshipAttribute[OrganizationCustomer]
     member_of_groups: RelationshipManager[CoreGroup]
     related_nodes: RelationshipManager[ServiceGeneric]
@@ -886,6 +895,7 @@ class ProfileServiceGeneric(LineageSource, CoreProfile, CoreNode):
 
 
 class ProfileServiceTier(LineageSource, CoreProfile, CoreNode):
+    min_paths: IntegerOptional
     price_multiplier_pct: IntegerOptional
     profile_name: String
     profile_priority: Integer

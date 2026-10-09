@@ -151,6 +151,8 @@ class OrganizationGeneric(CoreNodeSync):
 class ServiceGeneric(CoreNodeSync):
     account_reference: String
     monthly_charge: IntegerOptional
+    request_reason: StringOptional
+    requested_by: StringOptional
     service_identifier: String
     customer: RelationshipAttributeSync[OrganizationCustomer]
     member_of_groups: RelationshipManagerSync[CoreGroupSync]
@@ -237,6 +239,8 @@ class ServiceDedicatedInternet(ServiceGeneric):
     bandwidth: Dropdown
     ip_package: Dropdown
     monthly_charge: IntegerOptional
+    request_reason: StringOptional
+    requested_by: StringOptional
     service_identifier: String
     status: Dropdown
     customer: RelationshipAttributeSync[OrganizationCustomer]
@@ -462,6 +466,7 @@ class LocationSite(LocationGeneric, LocationHosting):
 
 
 class ServiceTier(CoreNodeSync):
+    min_paths: IntegerOptional
     name: String
     price_multiplier_pct: Integer
     sla_credit_pct: Integer
@@ -862,6 +867,8 @@ class ProfileServiceDedicatedInternet(LineageSource, CoreProfileSync, CoreNodeSy
     monthly_charge: IntegerOptional
     profile_name: String
     profile_priority: Integer
+    request_reason: StringOptional
+    requested_by: StringOptional
     status: DropdownOptional
     customer: RelationshipAttributeSync[OrganizationCustomer]
     dedicated_interfaces: RelationshipManagerSync[DcimInterface]
@@ -880,6 +887,8 @@ class ProfileServiceGeneric(LineageSource, CoreProfileSync, CoreNodeSync):
     monthly_charge: IntegerOptional
     profile_name: String
     profile_priority: Integer
+    request_reason: StringOptional
+    requested_by: StringOptional
     customer: RelationshipAttributeSync[OrganizationCustomer]
     member_of_groups: RelationshipManagerSync[CoreGroupSync]
     related_nodes: RelationshipManagerSync[ServiceGeneric]
@@ -888,6 +897,7 @@ class ProfileServiceGeneric(LineageSource, CoreProfileSync, CoreNodeSync):
 
 
 class ProfileServiceTier(LineageSource, CoreProfileSync, CoreNodeSync):
+    min_paths: IntegerOptional
     price_multiplier_pct: IntegerOptional
     profile_name: String
     profile_priority: Integer

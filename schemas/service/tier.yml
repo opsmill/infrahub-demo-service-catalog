@@ -27,3 +27,8 @@ nodes:
         kind: Number
         label: Price multiplier (%)
         order_weight: 1200
+      - name: min_paths
+        kind: Number
+        label: Minimum separate paths during a change
+        optional: true
+        order_weight: 1300
