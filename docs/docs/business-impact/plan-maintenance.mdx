@@ -1,7 +1,7 @@
 ---
 title: Plan maintenance that keeps Gold services in service
 sidebar_label: Plan maintenance around Gold services
-description: Plan maintenance on Paris edge router 1, find the Gold services that have no other path during the window, move them first, merge the plan once no Gold service depends on the router, and view the audit record of the approval.
+description: Plan maintenance on Paris edge router 1, find the Gold services that have no other path during the window, view the guard fail when a tier rule is raised above what the network provides, move the Gold services first, merge the plan once no Gold service depends on the router, and view the audit record of the approval.
 ---
 
 # Plan maintenance that keeps Gold services in service
@@ -79,11 +79,11 @@ Select "New York router 1 maintenance". The headline shows "No service is affect
 
 Open Infrahub at `http://localhost:8000` and sign in as `admin` / `infrahub`. Go to **Proposed Changes** and open "Paris router 1 maintenance". On the **Checks** tab, the Gold outage guard, listed as `gold_outage_guard`, has failed with this message:
 
-> Paris router 1 maintenance leaves 2 Gold services for Northbank with no other path (DI-1001, DI-1002). Gold SLA credit exposure: €2,565 per month (demo business input). Move these services to Paris edge router 2 first.
+> Paris router 1 maintenance leaves 2 Gold services for Northbank with no other path (DI-1001, DI-1002). Gold SLA credit exposure: €2,565 per month (demo business input). Move these services to Paris edge router 2 first. Gold requires at least 1 separate path during a change, and this change leaves 0.
 
 ![The Checks tab of Paris router 1 maintenance, with the failed Gold outage guard check and its message](../media/business-impact/checks-paris-failed.png)
 
-The check reads the same data as the Business Impact page and applies the same rule for what counts as affected. The message names the services to move and where to move them.
+The check reads the same data as the Business Impact page and applies the same rule for what counts as affected. The message names the services to move and where to move them. Its last sentence states the Gold tier's rule, the minimum number of separate paths during a change, and how many paths the plan leaves.
 
 ## Step 5: try to merge the incomplete plan
 
@@ -91,7 +91,7 @@ Select **Merge** on the proposed change. Infrahub refuses with "Unable to merge 
 
 ![The Paris router 1 maintenance proposed change after Merge is selected, with the message Unable to merge proposed change containing failing checks](../media/business-impact/merge-refused.png)
 
-The Gold outage guard has no override. The plan can merge only after it moves the Gold services first, as in Step 7.
+The Gold outage guard has no override. The plan can merge only after it moves the Gold services first, as in Step 8.
 
 ## Step 6: open a plan that has nothing to move
 
@@ -99,7 +99,23 @@ Open "New York router 1 maintenance". No active service runs through `rb01-nyc01
 
 ![The Checks tab of New York router 1 maintenance, with the Gold outage guard check passed](../media/business-impact/checks-new-york-passed.png)
 
-## Step 7: approve and merge the plan with the Gold services moved first
+## Step 7: raise a tier rule and view the guard fail
+
+Each service tier carries a rule: the minimum number of separate paths each of its active services keeps during a change. On the current network, Gold has 1, Silver 0 and Bronze 0. A change to a tier's rule is a change to a customer commitment, and you plan it in a proposed change in the same way as maintenance. In this step, you promise Silver customers two separate paths during a change, and the guard compares that promise with the network.
+
+1. In Infrahub, create a branch named `raise-silver-rule`.
+2. On that branch, open **Services**, then **Service Tiers**, and select Silver. Set **Minimum separate paths during a change** to 2 and save.
+3. Open **Proposed Changes** and create a proposed change from `raise-silver-rule` to `main`, named "Promise two paths to Silver customers".
+
+When the pipeline finishes, the Gold outage guard on the **Checks** tab has failed with this message:
+
+> Promise two paths to Silver customers raises the Silver rule from 0 to 2 separate paths during a change, and 3 active Silver services have fewer (DI-1004, DI-1005, DI-2003: 1 each). Build the paths first, or keep the rule at 0.
+
+Each service has one path in the demo, so no Silver service meets the new rule. Select **Merge**. Infrahub refuses with "Unable to merge proposed change containing failing checks", and Silver keeps a rule of 0 on the current network.
+
+The Gold outage guard applies the rule of every tier, not only Gold. It kept the name "Gold outage guard" from when only Gold had a rule.
+
+## Step 8: approve and merge the plan with the Gold services moved first
 
 The proposed change "Paris router 1 maintenance, Gold services moved first" is the complete plan. On its branch, the seed step moved DI-1001 and DI-1002 to free customer ports on Paris switch 2 and ran the provisioning generator for each one. The generator put their gateways on Paris edge router 2 and removed the gateways from Paris edge router 1. The seed step then set Paris edge router 1 to maintenance.
 
@@ -119,7 +135,7 @@ On the **Checks** tab, the Gold outage guard has passed. Its message records the
 
 Infrahub does not let the account that opened a proposed change approve it. The seed step opened the plan as `admin`, so sign out and sign in as `emma` / `infrahub`, the change manager account from the [installation guide](../getting-started/installation.mdx). Select **Approve**, then **Merge**. Infrahub merges the plan: on the current network, DI-1001 and DI-1002 now run through Paris edge router 2, and Paris edge router 1 is in maintenance. Merging changes the demo's current network, so do this step after the others.
 
-## Step 8: view the audit record of the approved change
+## Step 9: view the audit record of the approved change
 
 After the merge, Infrahub keeps the record an auditor needs: the plan, the guard result, who approved it and when, and the exposure at approval time.
 
@@ -135,10 +151,14 @@ Select **Activity** in the menu. Select **Related Node**, choose the kind **Prop
 
 ![The Activities page filtered to the plan: the creation, the validators and the approval with their dates and accounts](../media/business-impact/audit-activities.png)
 
+The demo runs on Infrahub Community. Infrahub records Emma's approval and refuses an approval from the account that opened the proposed change, but does not require an approval before merge. Infrahub Enterprise can require approvals before merge.
+
+Each service also records who requested it and why: open **Services**, then **Dedicated Internet**, and select DI-1001, where **Requested by** reads "Northbank network operations" and **Reason for the request** reads "Primary internet access for the Paris trading floor".
+
 ## Optional: change a device status yourself
 
 On the branch of a proposed change, set another device to maintenance in the Infrahub UI, for example `rb01-bru01`. The Business Impact page caches its reads for 10 seconds, so the change shows on the first page refresh after that.
 
 ## What you did
 
-You planned maintenance on Paris edge router 1 so that no Gold customer depends on the router during the window. The Business Impact page showed which services had no other path and the SLA credit the plan would cost as it was. The Gold outage guard kept the incomplete plan from merging, and named the services to move. The plan that moved the Gold services first passed the guard, was approved by Emma and merged, and Infrahub kept the record of who approved it, when, and with which guard result.
+You planned maintenance on Paris edge router 1 so that no Gold customer depends on the router during the window. The Business Impact page showed which services had no other path and the SLA credit the plan would cost as it was. The Gold outage guard kept the incomplete plan from merging, and named the services to move. When you raised the Silver rule to 2 separate paths, the guard failed that proposed change too, because no Silver service has a second path. The plan that moved the Gold services first passed the guard, was approved by Emma and merged, and Infrahub kept the record of who approved it, when, and with which guard result.

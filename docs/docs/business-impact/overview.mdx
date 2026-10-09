@@ -40,11 +40,13 @@ The demo schema adds three pieces of business data to every Dedicated Internet s
 
 | Data | Values in the demo | Where it is stored |
 |---|---|---|
-| Service tier | Gold, Silver, Bronze, each with an SLA credit percentage (25, 10, 5) and a price multiplier | `ServiceTier` node |
+| Service tier | Gold, Silver, Bronze, each with an SLA credit percentage (25, 10, 5), a price multiplier and a minimum number of separate paths during a change (1, 0, 0) | `ServiceTier` node |
 | Customer | Northbank, Helix Health, Maison Verte, Rapid Freight | `OrganizationCustomer` node, beside manufacturers and providers |
 | Monthly charge | Base price by bandwidth times the tier multiplier, in euros | `monthly_charge` on the service |
 
 The customer, tier and monthly charge are branch-aware. You can change them in a proposed change without changing the current network.
+
+Each service in the demo data also records who requested it, in **Requested by**, and why, in **Reason for the request**. These two fields have the same value on every branch.
 
 ## When a service counts as affected
 
@@ -67,14 +69,21 @@ The Gold SLA credit exposure includes affected Gold services only. The demo data
 
 ## The Gold outage guard
 
-The Gold outage guard is a check in the proposed change pipeline. It reads the same data as the Business Impact page and applies the same rule for "affected". For each proposed change, the result is:
+The Gold outage guard is a check in the proposed change pipeline. It reads the same data as the Business Impact page and applies the same rule for "affected".
+
+Each service tier carries a rule: the minimum number of separate paths each of its active services keeps during a change. The guard reads the rule of each tier on the proposed change's branch and on the current network. In the demo data, Gold has 1, Silver 0 and Bronze 0. A rule of 0 means that announced maintenance may take a Silver or Bronze service down, because the demo data assumes that announced maintenance is excluded from Silver and Bronze SLAs. The guard applies the rule of every tier. Its name comes from Gold, the only tier with a rule above 0 in the demo data.
+
+For each proposed change, the result is:
 
 | Situation | Result |
 |---|---|
 | An active Gold service has a device that is active on the current network and not active in the proposed change | Fails. The plan leaves the service with no other path |
 | The proposed change deletes the switch or edge router of an active Gold service, or removes its switch port or gateway interface, and the service has no other device in that role | Fails. The plan leaves the service with no other path |
+| The proposed change raises a tier's rule and active services of that tier have fewer separate paths | Fails |
 | A Gold service's device was already out of service on the current network | Passes, and logs a message naming the service |
 | Only Silver or Bronze services are affected, or none | Passes |
+
+When the plan leaves a service with fewer separate paths than its tier's rule, the message ends with the rule, for example "Gold requires at least 1 separate path during a change, and this change leaves 0." When the proposed change raises a tier's rule, the message names the services with fewer paths than the new rule, with the number of paths each one has. For a rule raised from 0, it ends with "Build the paths first, or keep the rule at 0."
 
 Infrahub does not merge a proposed change while a check has failed. The guard has no override: no tag, setting or role allows the change to merge. To merge, complete the plan first: move the Gold services to the other device at the site in the proposed change, as the plan in the tutorial's last step does.
 
@@ -94,7 +103,9 @@ Infrahub keeps a record of each proposed change. For an approved plan, it shows 
 - The guard result: the Gold outage guard's conclusion and message on the **Checks** tab. When the guard passes, its message records the Gold SLA credit exposure at approval time
 - Who approved it and when: **Approved by** on the proposed change, and the approval and merge with their dates on the **Activity** page
 
-Infrahub refuses an approval from the account that opened the proposed change. In the demo, `admin` opens the plans and Emma, the change manager account, approves them; see the [tutorial's last steps](plan-maintenance.mdx#step-8-view-the-audit-record-of-the-approved-change).
+Infrahub refuses an approval from the account that opened the proposed change. In the demo, `admin` opens the plans and Emma, the change manager account, approves them; see the [tutorial's last steps](plan-maintenance.mdx#step-9-view-the-audit-record-of-the-approved-change).
+
+The demo runs on Infrahub Community. Infrahub records Emma's approval and refuses an approval from the account that opened the proposed change, but does not require an approval before merge. The Gold outage guard is what blocks a plan that fails the rule. Infrahub Enterprise can require approvals before merge.
 
 To load the demo data, run the optional seed step in the [installation guide](../getting-started/installation.mdx#step-6-seed-the-business-impact-demo-optional).
 
