@@ -252,6 +252,9 @@ class TestServiceCatalog(TestInfrahubDockerClient):
         services = await client.all(kind=ServiceDedicatedInternet, branch=expected_branch_name)
         matches = [service for service in services if service.service_identifier.value == service_identifier]
         assert len(matches) == 1, "Service was not created on the new branch"
+        # The order form does not fill the request record (FR-023).
+        assert matches[0].requested_by.value is None
+        assert matches[0].request_reason.value is None
 
         # Verify the proposed change was created
         proposed_changes = await client.all(kind=CoreProposedChange)

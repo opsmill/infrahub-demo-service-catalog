@@ -56,10 +56,31 @@ SPEC_SEED_TABLE: list[tuple[str, str, str, int, str, str, int]] = [
 ]
 
 
-def _tier_multipliers() -> dict[str, int]:
+# (service, requested_by, request_reason), from data-model.md
+REQUEST_RECORDS: list[tuple[str, str, str]] = [
+    ("DI-1001", "Northbank network operations", "Primary internet access for the Paris trading floor"),
+    ("DI-1002", "Northbank network operations", "Internet access for the Paris back office"),
+    ("DI-1003", "Helix Health IT infrastructure", "Internet access for the Paris clinic"),
+    ("DI-1004", "Maison Verte IT", "Internet access for the Paris flagship store"),
+    ("DI-1005", "Maison Verte IT", "Internet access for the Paris warehouse"),
+    ("DI-1006", "Rapid Freight logistics IT", "Internet access for the Paris depot"),
+    ("DI-1007", "Rapid Freight logistics IT", "Internet access for the Paris sorting centre"),
+    ("DI-2001", "Helix Health IT infrastructure", "Primary internet access for the Brussels hospital"),
+    ("DI-2002", "Northbank network operations", "Internet access for the Brussels branch"),
+    ("DI-2003", "Maison Verte IT", "Internet access for the Brussels store"),
+    ("DI-2004", "Rapid Freight logistics IT", "Internet access for the Brussels depot"),
+    ("DI-2005", "Rapid Freight logistics IT", "Internet access for the Brussels cross-dock"),
+]
+
+
+def _tier_rows() -> list[dict[str, Any]]:
     documents = list(yaml.safe_load_all(TIERS_FILE.read_text()))
     tiers = next(doc for doc in documents if doc["spec"]["kind"] == "ServiceTier")
-    return {row["name"]: int(row["price_multiplier_pct"]) for row in tiers["spec"]["data"]}
+    return list(tiers["spec"]["data"])
+
+
+def _tier_multipliers() -> dict[str, int]:
+    return {row["name"]: int(row["price_multiplier_pct"]) for row in _tier_rows()}
 
 
 def _customer_ports_per_switch() -> int:
@@ -86,6 +107,18 @@ def test_seed_services_match_spec_table() -> None:
         for row in SEED_SERVICES
     ]
     assert actual == SPEC_SEED_TABLE
+
+
+def test_every_service_has_a_request_record() -> None:
+    for row in SEED_SERVICES:
+        assert row.requested_by.strip(), row
+        assert row.request_reason.strip(), row
+    actual = [(row.service_identifier, row.requested_by, row.request_reason) for row in SEED_SERVICES]
+    assert actual == REQUEST_RECORDS
+
+
+def test_tier_rules() -> None:
+    assert {row["name"]: row.get("min_paths") for row in _tier_rows()} == {"Gold": 1, "Silver": 0, "Bronze": 0}
 
 
 def test_monthly_charge_follows_price_list() -> None:

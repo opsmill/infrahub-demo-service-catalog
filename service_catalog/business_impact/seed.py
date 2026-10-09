@@ -95,7 +95,10 @@ def monthly_charge(bandwidth_mbps: int, tier_multiplier_pct: int) -> int:
 
 @dataclass(frozen=True)
 class SeedService:
-    """One demo service: its identifier, customer, tier, bandwidth and pinned switch."""
+    """One demo service: its identifier, customer, tier, bandwidth, pinned switch and request record.
+
+    The request record says which team at the customer asked for the service and why.
+    """
 
     service_identifier: str
     customer: str
@@ -103,6 +106,8 @@ class SeedService:
     bandwidth_mbps: int
     switch: str
     edge_router: str
+    requested_by: str
+    request_reason: str
     ip_package: str = "small"
 
     @property
@@ -131,18 +136,126 @@ class MaintenanceChange:
 
 
 SEED_SERVICES: tuple[SeedService, ...] = (
-    SeedService("DI-1001", "Northbank", "Gold", 10000, "sw01-par01", "rb01-par01"),
-    SeedService("DI-1002", "Northbank", "Gold", 1000, "sw01-par01", "rb01-par01"),
-    SeedService("DI-1003", "Helix Health", "Gold", 1000, "sw02-par01", "rb02-par01"),
-    SeedService("DI-1004", "Maison Verte", "Silver", 1000, "sw01-par01", "rb01-par01"),
-    SeedService("DI-1005", "Maison Verte", "Silver", 100, "sw02-par01", "rb02-par01"),
-    SeedService("DI-1006", "Rapid Freight", "Bronze", 100, "sw01-par01", "rb01-par01"),
-    SeedService("DI-1007", "Rapid Freight", "Bronze", 1000, "sw02-par01", "rb02-par01"),
-    SeedService("DI-2001", "Helix Health", "Gold", 10000, "sw01-bru01", "rb01-bru01"),
-    SeedService("DI-2002", "Northbank", "Gold", 1000, "sw02-bru01", "rb02-bru01"),
-    SeedService("DI-2003", "Maison Verte", "Silver", 1000, "sw01-bru01", "rb01-bru01"),
-    SeedService("DI-2004", "Rapid Freight", "Bronze", 100, "sw02-bru01", "rb02-bru01"),
-    SeedService("DI-2005", "Rapid Freight", "Bronze", 1000, "sw01-bru01", "rb01-bru01"),
+    SeedService(
+        "DI-1001",
+        "Northbank",
+        "Gold",
+        10000,
+        "sw01-par01",
+        "rb01-par01",
+        requested_by="Northbank network operations",
+        request_reason="Primary internet access for the Paris trading floor",
+    ),
+    SeedService(
+        "DI-1002",
+        "Northbank",
+        "Gold",
+        1000,
+        "sw01-par01",
+        "rb01-par01",
+        requested_by="Northbank network operations",
+        request_reason="Internet access for the Paris back office",
+    ),
+    SeedService(
+        "DI-1003",
+        "Helix Health",
+        "Gold",
+        1000,
+        "sw02-par01",
+        "rb02-par01",
+        requested_by="Helix Health IT infrastructure",
+        request_reason="Internet access for the Paris clinic",
+    ),
+    SeedService(
+        "DI-1004",
+        "Maison Verte",
+        "Silver",
+        1000,
+        "sw01-par01",
+        "rb01-par01",
+        requested_by="Maison Verte IT",
+        request_reason="Internet access for the Paris flagship store",
+    ),
+    SeedService(
+        "DI-1005",
+        "Maison Verte",
+        "Silver",
+        100,
+        "sw02-par01",
+        "rb02-par01",
+        requested_by="Maison Verte IT",
+        request_reason="Internet access for the Paris warehouse",
+    ),
+    SeedService(
+        "DI-1006",
+        "Rapid Freight",
+        "Bronze",
+        100,
+        "sw01-par01",
+        "rb01-par01",
+        requested_by="Rapid Freight logistics IT",
+        request_reason="Internet access for the Paris depot",
+    ),
+    SeedService(
+        "DI-1007",
+        "Rapid Freight",
+        "Bronze",
+        1000,
+        "sw02-par01",
+        "rb02-par01",
+        requested_by="Rapid Freight logistics IT",
+        request_reason="Internet access for the Paris sorting centre",
+    ),
+    SeedService(
+        "DI-2001",
+        "Helix Health",
+        "Gold",
+        10000,
+        "sw01-bru01",
+        "rb01-bru01",
+        requested_by="Helix Health IT infrastructure",
+        request_reason="Primary internet access for the Brussels hospital",
+    ),
+    SeedService(
+        "DI-2002",
+        "Northbank",
+        "Gold",
+        1000,
+        "sw02-bru01",
+        "rb02-bru01",
+        requested_by="Northbank network operations",
+        request_reason="Internet access for the Brussels branch",
+    ),
+    SeedService(
+        "DI-2003",
+        "Maison Verte",
+        "Silver",
+        1000,
+        "sw01-bru01",
+        "rb01-bru01",
+        requested_by="Maison Verte IT",
+        request_reason="Internet access for the Brussels store",
+    ),
+    SeedService(
+        "DI-2004",
+        "Rapid Freight",
+        "Bronze",
+        100,
+        "sw02-bru01",
+        "rb02-bru01",
+        requested_by="Rapid Freight logistics IT",
+        request_reason="Internet access for the Brussels depot",
+    ),
+    SeedService(
+        "DI-2005",
+        "Rapid Freight",
+        "Bronze",
+        1000,
+        "sw01-bru01",
+        "rb01-bru01",
+        requested_by="Rapid Freight logistics IT",
+        request_reason="Internet access for the Brussels cross-dock",
+    ),
 )
 
 MAINTENANCE_CHANGES: tuple[MaintenanceChange, ...] = (
@@ -415,13 +528,22 @@ def seed_services(client: InfrahubClientSync) -> None:
         )
         if found:
             service = found[0]
-            print(f"{row.service_identifier}: exists, not rewritten")
+            if service.requested_by.value != row.requested_by or service.request_reason.value != row.request_reason:
+                # Only the request record is brought in line with the seed list; every other field stays as it is.
+                service.requested_by.value = row.requested_by
+                service.request_reason.value = row.request_reason
+                service.save()
+                print(f"{row.service_identifier}: exists, request record updated, nothing else rewritten")
+            else:
+                print(f"{row.service_identifier}: exists, not rewritten")
         else:
             service = client.create(
                 kind=ServiceDedicatedInternet,
                 branch=MAIN_BRANCH,
                 service_identifier=row.service_identifier,
                 account_reference=row.customer,
+                requested_by=row.requested_by,
+                request_reason=row.request_reason,
                 status="draft",
                 bandwidth=str(row.bandwidth_mbps),
                 ip_package=row.ip_package,

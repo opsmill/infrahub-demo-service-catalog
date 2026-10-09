@@ -118,6 +118,23 @@ def _assert_fields_survive(client_sync: InfrahubClientSync, branch: str) -> None
     seeded = {identifier: fields.get(identifier) for identifier in EXPECTED_FIELDS}
     OPEN_CHECKS[f"customer, tier and monthly_charge survive on {branch}"] = str(seeded == EXPECTED_FIELDS)
     assert seeded == EXPECTED_FIELDS
+    _assert_request_record_survives(client_sync, branch)
+
+
+EXPECTED_REQUEST_RECORDS = {
+    row.service_identifier: (row.requested_by, row.request_reason) for row in seed.SEED_SERVICES
+}
+
+
+def _assert_request_record_survives(client_sync: InfrahubClientSync, branch: str) -> None:
+    """The request record of each seeded service, read with the SDK because the stored query does not return it."""
+    records = {
+        str(service.service_identifier.value): (service.requested_by.value, service.request_reason.value)
+        for service in client_sync.all(kind=ServiceDedicatedInternet, branch=branch)
+    }
+    seeded = {identifier: records.get(identifier) for identifier in EXPECTED_REQUEST_RECORDS}
+    OPEN_CHECKS[f"requested_by and request_reason survive on {branch}"] = str(seeded == EXPECTED_REQUEST_RECORDS)
+    assert seeded == EXPECTED_REQUEST_RECORDS
 
 
 def _tiles(result: BlastRadius) -> dict[str, str]:
