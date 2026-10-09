@@ -107,6 +107,8 @@ Each service tier carries a rule: the minimum number of separate paths each of i
 2. On that branch, open **Services**, then **Service Tiers**, and select Silver. Set **Minimum separate paths during a change** to 2 and save.
 3. Open **Proposed Changes** and create a proposed change from `raise-silver-rule` to `main`, named "Promise two paths to Silver customers".
 
+![The Silver service tier on the raise-silver-rule branch: minimum separate paths during a change set to 2, and the change from 0 to 2 in its activities](../media/business-impact/silver-tier-rule.png)
+
 When the pipeline finishes, the Gold outage guard on the **Checks** tab has failed with this message:
 
 > Promise two paths to Silver customers raises the Silver rule from 0 to 2 separate paths during a change, and 3 active Silver services have fewer (DI-1004, DI-1005, DI-2003: 1 each). Build the paths first, or keep the rule at 0.
@@ -154,6 +156,8 @@ Select **Activity** in the menu. Select **Related Node**, choose the kind **Prop
 The demo runs on Infrahub Community. Infrahub records Emma's approval and refuses an approval from the account that opened the proposed change, but does not require an approval before merge. Infrahub Enterprise can require approvals before merge.
 
 Each service also records who requested it and why: open **Services**, then **Dedicated Internet**, and select DI-1001, where **Requested by** reads "Northbank network operations" and **Reason for the request** reads "Primary internet access for the Paris trading floor".
+
+![The DI-1001 service with its requester and the reason for the request, next to its customer and tier](../media/business-impact/request-record.png)
 
 ## Optional: change a device status yourself
 
