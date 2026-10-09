@@ -15,8 +15,8 @@ imports `service_catalog.business_impact` from the repository.
 
 It also records open checks: whether `role__values` works, whether opening a
 proposed change reruns the generator, whether `customer`, `tier` and `monthly_charge` survive the
-generator runs, and whether a customer named "Equinix" is refused by the name uniqueness that
-`OrganizationGeneric` shares with providers.
+generator runs, whether `requested_by` and `request_reason` survive the generator runs, and whether a
+customer named "Equinix" is refused by the name uniqueness that `OrganizationGeneric` shares with providers.
 The last test prints them all; run with `-rP` to see it.
 
 Marked `extended`: the proposed change pipelines alone take several minutes.

@@ -83,7 +83,7 @@ Open Infrahub at `http://localhost:8000` and sign in as `admin` / `infrahub`. Go
 
 ![The Checks tab of Paris router 1 maintenance, with the failed Gold outage guard check and its message](../media/business-impact/checks-paris-failed.png)
 
-The check reads the same data as the Business Impact page and applies the same rule for what counts as affected. The message names the services to move and where to move them. Its last sentence states the Gold tier's rule, the minimum number of separate paths during a change, and how many paths the plan leaves.
+The check reads the same data as the Business Impact page. It counts the separate paths each active service keeps during the change and compares that number with the rule of the service's tier. The message names the services to move and where to move them. Its last sentence states the Gold tier's rule, the minimum number of separate paths during a change, and how many paths the plan leaves.
 
 ## Step 5: try to merge the incomplete plan
 

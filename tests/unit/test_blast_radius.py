@@ -611,8 +611,6 @@ NOT_ON_SCREEN = {
     # `invoke seed` prints these in the terminal; the page never imports seed.py.
     ("seed.py", " --branch "),
     ("seed.py", ") on branch "),
-    # Request reason of DI-2002, written to the service in Infrahub; "branch" is the customer's office here.
-    ("seed.py", "Internet access for the Brussels branch"),
 }
 
 

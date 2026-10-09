@@ -69,7 +69,7 @@ The Gold SLA credit exposure includes affected Gold services only. The demo data
 
 ## The Gold outage guard
 
-The Gold outage guard is a check in the proposed change pipeline. It reads the same data as the Business Impact page and applies the same rule for "affected".
+The Gold outage guard is a check in the proposed change pipeline. It reads the same data as the Business Impact page. For each active service, it counts the separate paths the service keeps during the change and compares that number with the rule of the service's tier.
 
 Each service tier carries a rule: the minimum number of separate paths each of its active services keeps during a change. The guard reads the rule of each tier on the proposed change's branch and on the current network. In the demo data, Gold has 1, Silver 0 and Bronze 0. A rule of 0 means that announced maintenance may take a Silver or Bronze service down, because the demo data assumes that announced maintenance is excluded from Silver and Bronze SLAs. The guard applies the rule of every tier. Its name comes from Gold, the only tier with a rule above 0 in the demo data.
 

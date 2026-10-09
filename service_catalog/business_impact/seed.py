@@ -224,7 +224,7 @@ SEED_SERVICES: tuple[SeedService, ...] = (
         "sw02-bru01",
         "rb02-bru01",
         requested_by="Northbank network operations",
-        request_reason="Internet access for the Brussels branch",
+        request_reason="Internet access for the Brussels office",
     ),
     SeedService(
         "DI-2003",

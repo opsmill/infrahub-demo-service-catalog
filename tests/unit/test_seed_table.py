@@ -66,7 +66,7 @@ REQUEST_RECORDS: list[tuple[str, str, str]] = [
     ("DI-1006", "Rapid Freight logistics IT", "Internet access for the Paris depot"),
     ("DI-1007", "Rapid Freight logistics IT", "Internet access for the Paris sorting centre"),
     ("DI-2001", "Helix Health IT infrastructure", "Primary internet access for the Brussels hospital"),
-    ("DI-2002", "Northbank network operations", "Internet access for the Brussels branch"),
+    ("DI-2002", "Northbank network operations", "Internet access for the Brussels office"),
     ("DI-2003", "Maison Verte IT", "Internet access for the Brussels store"),
     ("DI-2004", "Rapid Freight logistics IT", "Internet access for the Brussels depot"),
     ("DI-2005", "Rapid Freight logistics IT", "Internet access for the Brussels cross-dock"),
