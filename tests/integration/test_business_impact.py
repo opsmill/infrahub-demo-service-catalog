@@ -42,7 +42,7 @@ from infrahub_sdk.testing.repository import GitRepo
 from infrahub_sdk.yaml import SchemaFile
 from service_catalog.business_impact import seed
 from service_catalog.business_impact.blast_radius import BlastRadius, build_blast_radius, format_eur, parse_devices
-from service_catalog.business_impact.gold_outage_guard import MAX_HOPS, NETWORK_KINDS
+from service_catalog.business_impact.gold_outage_guard import MAX_HOPS, NETWORK_KINDS, tier_rules
 from service_catalog.infrahub import run_query
 from service_catalog.protocols_sync import (
     DcimDevice,
@@ -227,6 +227,7 @@ class TestBusinessImpact(TestInfrahubDockerClient):  # noqa: PLR0904 - one test 
 
         assert conclusion == "failure"
         assert message in messages
+        assert "Gold requires at least 1 separate path during a change, and this change leaves 0." in messages
         # The rule lives in service_catalog.business_impact, so its message proves the worker imported it.
         OPEN_CHECKS["task worker imports service_catalog.business_impact (stock image)"] = "True"
 
@@ -359,6 +360,12 @@ class TestBusinessImpact(TestInfrahubDockerClient):  # noqa: PLR0904 - one test 
         assert roles == {"core", "edge"}
         assert len(devices) == 16
         assert all(device.site for device in devices), "every device must carry its site shortname"
+
+    def test_tier_rules_in_the_query(self, client_sync: InfrahubClientSync) -> None:
+        """The query's `ServiceTier` block reads each tier's minimum separate paths: Gold 1, Silver 0, Bronze 0."""
+        rules = tier_rules(_q1(client_sync, "main"))
+        OPEN_CHECKS["min_paths read from the ServiceTier block"] = str(rules)
+        assert rules == {"Gold": 1, "Silver": 0, "Bronze": 0}
 
     def test_blast_radius_paris(self, client_sync: InfrahubClientSync) -> None:
         # The guard's path traversal with the network kinds finds the interface path only: DI-1001 reaches

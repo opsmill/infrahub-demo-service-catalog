@@ -5,8 +5,8 @@ in `.infrahub.yml` with no `targets`, so it runs once in every proposed change
 pipeline. It runs the stored query `business_impact_services` on the proposed
 change's branch (the SDK's `collect_data`), reads the same query on main through
 `self.client`, and finds the proposed change's name by its source branch. For
-each active Gold service and each device that is not active on the branch, it
-asks Infrahub's path traversal (`traverse_paths`, Infrahub 1.10 or later)
+each active service whose tier has a rule and each device that is not active on
+the branch, it asks Infrahub's path traversal (`traverse_paths`, Infrahub 1.10 or later)
 whether a network path joins them. It hands the query results and the devices
 each service reaches to `service_catalog.business_impact.gold_outage_guard.evaluate`.
 
@@ -69,7 +69,7 @@ class GoldOutageGuard(InfrahubCheck):
         return names[0] if names else FALLBACK_CHANGE_NAME
 
     async def _reached(self, rule: ModuleType, data: dict) -> dict[str, set[str]]:
-        """Devices each active Gold service reaches through a network path, by path traversal on the branch."""
+        """Devices each active service whose tier has a rule reaches through a network path, on the branch."""
         reached: dict[str, set[str]] = {}
         for pair in rule.traversal_pairs(data):
             paths = await self.client.traverse_paths(
