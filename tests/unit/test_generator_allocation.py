@@ -198,3 +198,18 @@ async def test_release_port_from_group_leaves_the_group_alone_when_the_port_is_n
     if group is not None:
         group.members.remove.assert_not_called()
         group.save.assert_not_awaited()
+
+
+@pytest.mark.parametrize("data", [{}, {"ServiceDedicatedInternet": {"edges": []}}])
+async def test_generate_logs_an_error_and_stops_when_no_service_matches(
+    data: dict, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A run queued for a service that was deleted or renamed must stop with a message, not an IndexError."""
+    client = AsyncMock()
+    generator = make_generator(client)
+
+    with caplog.at_level("ERROR", logger="infrahub.tasks"):
+        await generator.generate(data)
+
+    assert "No Dedicated Internet service matches this run" in caplog.text
+    client.create.assert_not_awaited()

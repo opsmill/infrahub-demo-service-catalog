@@ -44,7 +44,11 @@ class DedicatedInternetGenerator(InfrahubGenerator):
     log = logging.getLogger("infrahub.tasks")
 
     async def generate(self, data: dict) -> None:
-        service_dict: dict = data["ServiceDedicatedInternet"]["edges"][0]["node"]
+        edges = data.get("ServiceDedicatedInternet", {}).get("edges") or []
+        if not edges:
+            self.log.error("No Dedicated Internet service matches this run; nothing to provision.")
+            return
+        service_dict: dict = edges[0]["node"]
 
         # Translate the dict to proper object
         self.customer_service = await InfrahubNode.from_graphql(
@@ -285,7 +289,6 @@ class DedicatedInternetGenerator(InfrahubGenerator):
             description=f"Gateway interface for service {self.customer_service.service_identifier.value}",
             enabled=True,
             service=self.customer_service,
-            untagged_vlan=self.allocated_vlan,
         )
         await gateway_interface.save(allow_upsert=True)
 
