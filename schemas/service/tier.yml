@@ -32,3 +32,12 @@ nodes:
         label: Minimum separate paths during a change
         optional: true
         order_weight: 1300
+    relationships:
+      - name: services
+        peer: ServiceGeneric
+        kind: Generic
+        cardinality: many
+        optional: true
+        identifier: service__tier
+        branch: aware
+        order_weight: 3000

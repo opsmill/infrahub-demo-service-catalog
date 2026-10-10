@@ -132,6 +132,10 @@ nodes:
             description: Provide customer with 30 IPs.
             color: "#ffa07a"
     relationships:
+      # These identifiers (service_site, service_interface, service_vlan, service_ip_address,
+      # service_prefix) do not follow the source__peer convention. They are kept because an
+      # identifier cannot change once loaded, and renaming one drops the existing links.
+      # New relationships use source__peer.
       - name: location
         peer: LocationSite
         order_weight: 1150
