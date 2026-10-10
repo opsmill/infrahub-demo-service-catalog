@@ -7,6 +7,9 @@ generator_definitions:
     targets: automated_dedicated_internet
     query: dedicated_internet_info
     class_name: DedicatedInternetGenerator
+    watch:
+      files:
+        - generators/protocols.py
     parameters:
       service_identifier: "service_identifier__value"
 

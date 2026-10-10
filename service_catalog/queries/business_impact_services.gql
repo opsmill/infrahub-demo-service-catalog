@@ -8,6 +8,7 @@ query business_impact_services {
   ServiceDedicatedInternet {
     edges {
       node {
+        __typename
         id
         service_identifier {
           value
@@ -23,6 +24,8 @@ query business_impact_services {
         }
         location {
           node {
+            __typename
+            id
             ... on LocationSite {
               shortname {
                 value
@@ -35,6 +38,8 @@ query business_impact_services {
         }
         customer {
           node {
+            __typename
+            id
             name {
               value
             }
@@ -42,6 +47,8 @@ query business_impact_services {
         }
         tier {
           node {
+            __typename
+            id
             name {
               value
             }
@@ -53,11 +60,15 @@ query business_impact_services {
         dedicated_interfaces {
           edges {
             node {
+              __typename
+              id
               name {
                 value
               }
               device {
                 node {
+                  __typename
+                  id
                   ... on DcimDevice {
                     name {
                       value
@@ -83,6 +94,7 @@ query business_impact_services {
   DcimDevice(role__values: ["core", "edge"]) {
     edges {
       node {
+        __typename
         id
         name {
           value
@@ -98,6 +110,8 @@ query business_impact_services {
         }
         location {
           node {
+            __typename
+            id
             ... on LocationSite {
               shortname {
                 value
@@ -111,6 +125,8 @@ query business_impact_services {
   ServiceTier {
     edges {
       node {
+        __typename
+        id
         name {
           value
         }

@@ -151,13 +151,6 @@ max-complexity = 17
     "PLR6301", # Method `XXXX` could be a function, class method, or static method
 ]
 
-"schemas/data.py" = [
-    "ARG001",    # Unused function argument
-    "ANN201",  # Missing return type annotation for public function
-    "B007",    # Loop control variable `node` not used within loop body
-    "ANN001",  # Missing type annotation
-]
-
 "tasks.py" = [
     "PLC0415", # `import` should be at the top-level of a file
     "PT028",   # Test function parameter has default argument
