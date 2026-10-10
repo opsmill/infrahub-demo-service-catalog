@@ -21,6 +21,7 @@ from infrahub_sdk.protocols import (
 if TYPE_CHECKING:
     from infrahub_sdk.node import RelatedNode, RelationshipManager
     from infrahub_sdk.protocols_base import (
+        Boolean,
         BooleanOptional,
         Dropdown,
         DropdownOptional,
@@ -48,7 +49,7 @@ class DcimGenericDevice(CoreNode):
 
 class DcimPhysicalDevice(CoreNode):
     position: IntegerOptional
-    rack_face: DropdownOptional
+    rack_face: Dropdown
     serial: StringOptional
     device_type: RelatedNode
     location: RelatedNode
@@ -58,7 +59,7 @@ class DcimPhysicalDevice(CoreNode):
 
 
 class DcimEndpoint(CoreNode):
-    connector: RelatedNode
+    connected_endpoint: RelatedNode
     member_of_groups: RelationshipManager
     profiles: RelationshipManager
     subscriber_of_groups: RelationshipManager
@@ -66,10 +67,12 @@ class DcimEndpoint(CoreNode):
 
 class DcimInterface(CoreNode):
     description: StringOptional
-    enabled: BooleanOptional
-    mtu: IntegerOptional
+    enabled: Boolean
+    mtu: Integer
     name: String
+    role: DropdownOptional
     speed: Integer
+    status: DropdownOptional
     device: RelatedNode
     member_of_groups: RelationshipManager
     profiles: RelationshipManager
@@ -80,10 +83,15 @@ class DcimInterface(CoreNode):
 
 class ServiceGeneric(CoreNode):
     account_reference: String
+    monthly_charge: IntegerOptional
+    request_reason: StringOptional
+    requested_by: StringOptional
     service_identifier: String
+    customer: RelatedNode
     member_of_groups: RelationshipManager
     profiles: RelationshipManager
     subscriber_of_groups: RelationshipManager
+    tier: RelatedNode
 
 
 class DcimDevice(CoreArtifactTarget, DcimGenericDevice, DcimPhysicalDevice):
@@ -92,7 +100,7 @@ class DcimDevice(CoreArtifactTarget, DcimGenericDevice, DcimPhysicalDevice):
     name: String
     os_version: StringOptional
     position: IntegerOptional
-    rack_face: DropdownOptional
+    rack_face: Dropdown
     role: DropdownOptional
     serial: StringOptional
     status: Dropdown
@@ -111,14 +119,14 @@ class DcimDevice(CoreArtifactTarget, DcimGenericDevice, DcimPhysicalDevice):
 
 class DcimInterfaceL2(DcimInterface, DcimEndpoint):
     description: StringOptional
-    enabled: BooleanOptional
+    enabled: Boolean
     l2_mode: StringOptional
-    mtu: IntegerOptional
+    mtu: Integer
     name: String
     role: DropdownOptional
     speed: Integer
     status: DropdownOptional
-    connector: RelatedNode
+    connected_endpoint: RelatedNode
     device: RelatedNode
     member_of_groups: RelationshipManager
     profiles: RelationshipManager
@@ -131,13 +139,13 @@ class DcimInterfaceL2(DcimInterface, DcimEndpoint):
 
 class DcimInterfaceL3(DcimInterface, DcimEndpoint):
     description: StringOptional
-    enabled: BooleanOptional
-    mtu: IntegerOptional
+    enabled: Boolean
+    mtu: Integer
     name: String
     role: DropdownOptional
     speed: Integer
     status: DropdownOptional
-    connector: RelatedNode
+    connected_endpoint: RelatedNode
     device: RelatedNode
     ip_addresses: RelationshipManager
     member_of_groups: RelationshipManager
@@ -207,8 +215,12 @@ class ServiceDedicatedInternet(ServiceGeneric):
     account_reference: String
     bandwidth: Dropdown
     ip_package: Dropdown
+    monthly_charge: IntegerOptional
+    request_reason: StringOptional
+    requested_by: StringOptional
     service_identifier: String
-    status: DropdownOptional
+    status: Dropdown
+    customer: RelatedNode
     dedicated_interfaces: RelationshipManager
     gateway_ip_address: RelatedNode
     location: RelatedNode
@@ -216,4 +228,5 @@ class ServiceDedicatedInternet(ServiceGeneric):
     prefix: RelatedNode
     profiles: RelationshipManager
     subscriber_of_groups: RelationshipManager
+    tier: RelatedNode
     vlan: RelatedNode

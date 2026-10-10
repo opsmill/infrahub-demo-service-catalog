@@ -33,6 +33,7 @@ generics:
         optional: true
         cardinality: many
         kind: Component
+        order_weight: 4000
       - name: tags
         peer: BuiltinTag
         optional: true
@@ -214,11 +215,13 @@ generics:
         optional: false
         cardinality: one
         kind: Parent
+        order_weight: 900
       - name: tags
         peer: BuiltinTag
         optional: true
         cardinality: many
         kind: Attribute
+        order_weight: 3000
 
   - name: Endpoint
     namespace: Dcim
@@ -245,8 +248,6 @@ nodes:
     order_by:
       - manufacturer__name__value
       - name__value
-    uniqueness_constraints:
-      - [manufacturer, name__value]
     attributes:
       - name: name
         kind: Text
@@ -307,8 +308,6 @@ nodes:
     order_by:
       - manufacturer__name__value
       - name__value
-    uniqueness_constraints:
-      - [name__value]
     attributes:
       - name: name
         kind: Text
@@ -434,7 +433,9 @@ nodes:
         peer: IpamIPAddress
         optional: true
         cardinality: many
-        kind: Component
+        kind: Attribute
+        on_delete: no-action
+        order_weight: 1800
 
   - name: InterfaceL2
     namespace: Dcim

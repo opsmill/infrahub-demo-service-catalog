@@ -59,6 +59,14 @@ uv run invoke test-integration              # requires Docker; --tier=core defau
 uv run invoke test-integration --tier=full  # adds the extended tier
 ```
 
+### Seed the Business Impact Demo
+
+```bash
+uv run invoke seed   # after invoke init; needs INFRAHUB_ADDRESS and INFRAHUB_API_TOKEN
+```
+
+Creates twelve services with customers and tiers, runs the generator for each, and opens four maintenance proposed changes (one of them moves the Paris Gold services to the other edge router first) for the Business Impact page and the Gold outage guard check. The repository is imported from the committed `main`, so the feature must be on `main` first.
+
 ### Validate Schemas
 
 ```bash

@@ -39,9 +39,6 @@ query device_info($device_name: String!) {
               speed {
                 value
               }
-              description {
-                value
-              }
               enabled {
                 value
               }

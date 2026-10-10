@@ -167,5 +167,49 @@ async def test_allocate_port_reuses_already_allocated_core_interface() -> None:
 
     await generator.allocate_port()
 
-    interface_peer.save.assert_awaited_once_with(allow_upsert=True)
+    interface_peer.save.assert_awaited_once_with(allow_upsert=True, update_group_context=False)
     assert generator.index == 1
+
+
+async def test_release_port_from_group_removes_a_port_an_earlier_run_tracked() -> None:
+    """A port saved inside the group by an earlier generator version must leave it, or the cleanup deletes it."""
+    client = AsyncMock()
+    group = MagicMock(save=AsyncMock())
+    group.members.peer_ids = ["port-id", "vlan-id"]
+    client.group_context.get_group.return_value = group
+    generator = make_generator(client)
+
+    await generator.release_port_from_group(MagicMock(id="port-id"))
+
+    group.members.remove.assert_called_once_with("port-id")
+    group.save.assert_awaited_once_with(update_group_context=False)
+
+
+@pytest.mark.parametrize("group", [None, MagicMock(save=AsyncMock(), members=MagicMock(peer_ids=["vlan-id"]))])
+async def test_release_port_from_group_leaves_the_group_alone_when_the_port_is_not_a_member(
+    group: MagicMock | None,
+) -> None:
+    client = AsyncMock()
+    client.group_context.get_group.return_value = group
+    generator = make_generator(client)
+
+    await generator.release_port_from_group(MagicMock(id="port-id"))
+
+    if group is not None:
+        group.members.remove.assert_not_called()
+        group.save.assert_not_awaited()
+
+
+@pytest.mark.parametrize("data", [{}, {"ServiceDedicatedInternet": {"edges": []}}])
+async def test_generate_logs_an_error_and_stops_when_no_service_matches(
+    data: dict, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A run queued for a service that was deleted or renamed must stop with a message, not an IndexError."""
+    client = AsyncMock()
+    generator = make_generator(client)
+
+    with caplog.at_level("ERROR", logger="infrahub.tasks"):
+        await generator.generate(data)
+
+    assert "No Dedicated Internet service matches this run" in caplog.text
+    client.create.assert_not_awaited()

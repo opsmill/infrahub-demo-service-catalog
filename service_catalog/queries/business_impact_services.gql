@@ -1,0 +1,142 @@
+# Stored query for the Blast radius view and the Gold outage guard.
+# Ships as service_catalog/queries/business_impact_services.gql and is registered under
+# `queries` in .infrahub.yml as `business_impact_services`. Run on the selected branch;
+# run on main for the "In this change" comparison.
+# The ServiceTier block gives the Gold tier's SLA credit percentage for the tile help.
+# The service and device ids are the start and end of the Gold outage guard's path traversal.
+query business_impact_services {
+  ServiceDedicatedInternet {
+    edges {
+      node {
+        __typename
+        id
+        service_identifier {
+          value
+        }
+        status {
+          value
+        }
+        bandwidth {
+          value
+        }
+        monthly_charge {
+          value
+        }
+        location {
+          node {
+            __typename
+            id
+            ... on LocationSite {
+              shortname {
+                value
+              }
+              name {
+                value
+              }
+            }
+          }
+        }
+        customer {
+          node {
+            __typename
+            id
+            name {
+              value
+            }
+          }
+        }
+        tier {
+          node {
+            __typename
+            id
+            name {
+              value
+            }
+            sla_credit_pct {
+              value
+            }
+          }
+        }
+        dedicated_interfaces {
+          edges {
+            node {
+              __typename
+              id
+              name {
+                value
+              }
+              device {
+                node {
+                  __typename
+                  id
+                  ... on DcimDevice {
+                    name {
+                      value
+                    }
+                    description {
+                      value
+                    }
+                    role {
+                      value
+                    }
+                    status {
+                      value
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  DcimDevice(role__values: ["core", "edge"]) {
+    edges {
+      node {
+        __typename
+        id
+        name {
+          value
+        }
+        description {
+          value
+        }
+        role {
+          value
+        }
+        status {
+          value
+        }
+        location {
+          node {
+            __typename
+            id
+            ... on LocationSite {
+              shortname {
+                value
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  ServiceTier {
+    edges {
+      node {
+        __typename
+        id
+        name {
+          value
+        }
+        sla_credit_pct {
+          value
+        }
+        min_paths {
+          value
+        }
+      }
+    }
+  }
+}

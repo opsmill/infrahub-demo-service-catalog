@@ -6,6 +6,8 @@
    - Entry point: `🏠_Home_Page.py` - Main portal interface
    - Service pages in `pages/` - Individual service request forms
    - `infrahub.py` - Infrahub SDK client wrapper with caching and dependency injection
+   - `pages/3_📊_Business_Impact.py` - Read-only Business Impact page for the business impact demo, from the stored query `queries/business_impact_services.gql`. Blast radius view: services with no other path during a proposed change, their customers and the Gold SLA credit exposure. Single points of failure view: on main, the Gold services that depend on a single device and what would have no path if a selected device failed now
+   - `business_impact/` - Pure functions behind the page (`blast_radius.py`, `single_points.py`) and the `invoke seed` steps (`seed.py`)
 
 2. **Infrahub Integration**
    - Uses Infrahub SDK for data management and service orchestration
@@ -14,6 +16,7 @@
 
 3. **Service Implementation**
    - `generators/` - Infrahub generators for automated service provisioning
+   - `checks/gold_outage_guard.py` - Proposed change check that fails, and so blocks the merge, when a change leaves an active Gold service with no other path; it reuses the `business_impact_services` query and `service_catalog/business_impact/blast_radius.py`
    - Example: `implement_dedicated_internet.py` allocates VLANs, IP prefixes, ports, and configures gateways
 
 4. **Data Models**
@@ -39,6 +42,7 @@
 - **Type Safety**: Comprehensive type hints with mypy validation
 - **Configuration Deployment**: Semaphore runs Ansible playbooks that pull generated artifacts from Infrahub and deploy them to devices
 - **Demo Initialization**: `invoke init` seeds Semaphore and loads repository configuration + permissions into Infrahub
+- **Business Impact Demo Seed**: `invoke seed` runs after `invoke init`. It creates twelve services on `main`, runs the generator for each one, and opens four maintenance proposed changes (Paris router 1, Brussels switch 1, New York router 1, and Paris router 1 with the Gold services moved to the other edge router first) that the Business Impact page and the Gold outage guard check read
 
 ## Environment Configuration
 

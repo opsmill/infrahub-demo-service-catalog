@@ -134,7 +134,7 @@ version: "1.0"
 generics:
   # To enable future expansions, we define a generic service object.
   # This object holds all common attributes shared across the services.
-  # Additionally, we can leverage this generic structure to simplify relationships.
+  # Relationships can point at this generic, so one relationship covers every service type.
   - name: Generic
     namespace: Service
     description: Generic service...
@@ -333,7 +333,7 @@ We now have the data model and data to support our use case. It captures everyth
 
 ## The generator
 
-The generator is a powerful feature of Infrahub that allows you to codify the rules and processes associated with your service implementation. It enables fast and consistent implementation across the board.
+A generator creates the infrastructure objects that implement a service request. The rules for that implementation are written once, in Python, and Infrahub applies them the same way every time the generator runs.
 
 :::important
 
@@ -668,7 +668,7 @@ Into fully provisioned infrastructure:
 - Switch port ge-0/0/5 configured
 - Router interface vlan_142 with IP 10.0.42.1/28
 
-All in seconds, consistently, and idempotently!
+The generator is idempotent: running it again on the same service reuses these allocations.
 
 <ReferenceLink title="Learn about Infrahub generators" url="https://docs.infrahub.app/topics/generator" openInNewTab/>
 
@@ -680,7 +680,7 @@ The demo uses [Streamlit](https://streamlit.io/) for the user interface because 
 
 - Builds web UIs with pure Python (no JavaScript required)
 - Provides ready-made components for forms and data display
-- Integrates seamlessly with the Infrahub Python SDK
+- Calls the Infrahub Python SDK directly from the page code
 - Enables rapid prototyping of service catalogs
 
 ### Portal design patterns
@@ -766,14 +766,14 @@ compose:
   location: location.name
 ```
 
-This means any device added or modified in Infrahub is automatically reflected in the Ansible inventory — no manual synchronization required.
+Any device added or modified in Infrahub appears in the Ansible inventory on the next run, because the inventory is read from Infrahub each time.
 
 ### The deployment playbook
 
 The `ansible/deploy.yml` playbook performs two tasks per device:
 
-1. **Fetch configuration artifact** — Uses `opsmill.infrahub.artifact_fetch` to retrieve the `startup-config` artifact from Infrahub, identified by the device's node ID
-2. **Save configuration** — Writes the fetched configuration to a local file (`/tmp/<hostname>_startup_config.txt`)
+1. **Fetch configuration artifact**: uses `opsmill.infrahub.artifact_fetch` to retrieve the `startup-config` artifact from Infrahub, identified by the device's node ID
+2. **Save configuration**: writes the fetched configuration to a local file (`/tmp/<hostname>_startup_config.txt`)
 
 ```yaml title="ansible/deploy.yml"
 - name: Deploy configuration to network devices
@@ -803,6 +803,69 @@ The Semaphore container (`semaphore/Dockerfile`) extends the official image with
 
 At runtime, the container mounts the `ansible/` directory as its playbook source, so any changes to playbooks or inventory are reflected immediately without rebuilding.
 
+## The business impact layer
+
+In the business impact layer, business context is stored in the same graph that provisioning uses. Two parts read it through one stored query: a page in the portal and a check in the proposed change pipeline. A seed task loads the demo data. For the concepts, see [Business impact](../business-impact/overview.mdx).
+
+### Schema additions
+
+Two nodes and three fields store the business context:
+
+- `ServiceTier` (`schemas/service/tier.yml`): Gold, Silver and Bronze, each with an SLA credit percentage and a price multiplier
+- `OrganizationCustomer` (`schemas/base/organization.yml`): a customer, which inherits `OrganizationGeneric` beside manufacturers and providers. Its name must be unique across all organizations
+- On `ServiceGeneric`: a `customer` and a `tier` relationship and a `monthly_charge` number, all optional and branch-aware. Branch-aware means you can change them in a proposed change without changing `main`
+
+```yaml title="schemas/service/service.yml (excerpt)"
+      - name: customer
+        peer: OrganizationCustomer
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: service__customer
+        branch: aware
+```
+
+Infrahub loads the three tiers and four customers from `data/10_customers_tiers.yml`. `data/08_device.yml` adds friendly descriptions such as "Paris edge router 1" to the Paris and Brussels devices.
+
+### One stored query
+
+`service_catalog/queries/business_impact_services.gql` is registered in `.infrahub.yml` as `business_impact_services`. It reads each Dedicated Internet service with its customer, tier, monthly charge and the devices behind its interfaces, every switch and edge router with its status, and the tiers. Run on a proposed change's branch and on `main`, its results show which services a change takes out of service.
+
+### The business impact page
+
+`service_catalog/pages/3_📊_Business_Impact.py` is a read-only page. It contains layout and copy only; the figures come from `service_catalog/business_impact/blast_radius.py`, so unit tests cover every figure. It shows which services, customers and Gold SLA credit a proposed change touches.
+
+The Single points of failure view comes from `service_catalog/business_impact/single_points.py`. It reads the same stored query on `main` only. `single_points` counts the active Gold services with a single point of failure and ranks the devices they depend on. `with_device_failed` copies the query result with one device set to not active, and `build_blast_radius` builds the tiles, chart and tables of the Blast radius view from that copy. The view only reads from Infrahub.
+
+### The Gold outage guard check
+
+`checks/gold_outage_guard.py` is registered under `check_definitions` in `.infrahub.yml` and runs in every proposed change pipeline. It runs the same stored query on the branch and on `main`, and reuses the logic in `blast_radius.py`. The rule comes from `ServiceTier.min_paths`, the minimum number of separate paths each active service of the tier keeps during a change; the demo data sets Gold to 1, and Silver and Bronze to 0. To find which services depend on a device that is not active on the branch, it calls `traverse_paths` in the Infrahub SDK (Infrahub path traversal, Infrahub 1.10 or later) from each active service whose tier has a rule above 0 to each such device. The kind filter limits the path to the service, its interfaces and their devices, and the maximum depth is two relationships. Without the kind filter, the traversal also finds paths through the site, the VLAN or the customer. A model where a service depends on devices further away, such as an access switch and its links to the routers, or a second path, changes the kind filter and the depth, not the query. It fails when the change leaves an active service with fewer separate paths than its tier's rule, either by setting a device on its path to not active or by deleting a device, switch port or gateway interface on its path. It also fails when the change raises a tier's `min_paths` while active services of that tier have fewer separate paths than the new value. Infrahub does not merge a proposed change while a check has failed. It has no override.
+
+#### How the check imports shared code
+
+Infrahub runs a check from a copy of the repository at the commit of the proposed change, and imports the check file as `commits.<sha>.checks.gold_outage_guard`. Only the repository directory is on the Python path, and `service_catalog` is not installed in the stock Infrahub image, so `import service_catalog` fails inside the check.
+
+The check imports the shared rule relative to its own package instead, from the same commit:
+
+```python title="checks/gold_outage_guard.py (excerpt)"
+RULE_MODULE = "service_catalog.business_impact.gold_outage_guard"
+
+
+def load_rule() -> ModuleType:
+    """Import the rule module from this file's commit worktree, or by its absolute name."""
+    worktree_package = (__package__ or "").rpartition(".")[0]
+    name = f"{worktree_package}.{RULE_MODULE}" if worktree_package else RULE_MODULE
+    return importlib.import_module(name)
+```
+
+The check always runs the rule from its own commit. When the file is imported on its own, in unit tests or with `infrahubctl check`, it falls back to the absolute module name. The rule module imports `blast_radius.py` relatively for the same reason. Apply the same pattern when a check of your own needs code that lives outside `checks/`.
+
+### The seed task
+
+`invoke seed` (`service_catalog/business_impact/seed.py`) creates twelve services on `main` and runs the provisioning generator for each, so the seeded services look like ordered ones. It then opens four maintenance proposed changes. It pins each service to a switch by linking one free customer port before the generator runs; the generator reuses that port and picks the edge router with the same index.
+
+The fourth proposed change moves DI-1001 and DI-1002 to Paris switch 2 on its branch before Paris edge router 1 goes into maintenance. The seed step frees each old switch port and links a free port on switch 2, then runs the generator on the branch, which puts the gateway on Paris edge router 2. Before it frees the old port, it removes the port from the generator's group. The generator deletes the members of its group that a run no longer saves, so without this step it would delete the switch port.
+
 ## Architecture takeaways
 
 ### Key design decisions
@@ -813,6 +876,7 @@ At runtime, the container mounts the `ansible/` directory as its playbook source
 4. **Branch-Based Workflows**: Safe testing and rollback capabilities
 5. **User-Friendly Abstractions**: Hide complexity behind clear choices
 6. **Deployment Automation**: Semaphore bridges the gap between source of truth and network devices, using dynamic inventory and artifact-based configuration delivery
+7. **Business Context in the Same Graph**: customers, tiers and charges link to the same services and devices, so one stored query serves a page and a merge-blocking check
 
 ### Extending the demo
 
@@ -834,4 +898,4 @@ Now that you understand the architecture:
 3. **Explore Further**: Modify the schema or create new service types
 4. **Build Your Own**: Apply these patterns to your infrastructure needs
 
-The combination of Infrahub's flexible schema, powerful generators, and Python-based portals enables you to build sophisticated service automation tailored to your organization's needs.
+With a schema that models your services, generators that implement them, and a Python portal for requests, you can build service automation that fits your own catalog.

@@ -181,6 +181,7 @@ loopback
 Loopback
 loopbacks
 Loopbacks
+Maison
 max_count
 Mbps
 MDX
@@ -202,6 +203,7 @@ NetPicker
 Netutils
 Newsfragment
 Nornir
+Northbank
 npm
 NumberPool
 o'brian
@@ -315,6 +317,7 @@ uv
 validator
 validators
 Version Control
+Verte
 Vite
 Vitest
 VLANs

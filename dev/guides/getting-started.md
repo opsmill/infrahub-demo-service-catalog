@@ -27,7 +27,13 @@
    invoke init
    ```
 
-4. To stop:
+4. Optional, for the business impact demo: create the demo services and the four maintenance proposed changes, then open the "Business Impact" page in the portal at <http://localhost:8501>. The repository import must include the feature on `main`; `invoke seed` waits for it:
+
+   ```bash
+   invoke seed
+   ```
+
+5. To stop:
 
    ```bash
    invoke stop
@@ -44,6 +50,7 @@
 - `invoke restart` - Restart containers
 - `invoke init` - Initialize demo (seed Semaphore, load repository and permissions)
 - `invoke init-semaphore` - Seed Semaphore only (project, keys, inventory, task template)
+- `invoke seed` - Seed the business impact demo after `invoke init` (twelve services, generator runs, four maintenance proposed changes)
 
 ### Code Quality
 

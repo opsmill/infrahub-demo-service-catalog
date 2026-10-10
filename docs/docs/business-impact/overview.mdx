@@ -1,0 +1,115 @@
+---
+title: Business impact
+description: How the demo links customers, service tiers and contract value to devices, shows which services have no other path during a planned change, and blocks a plan that leaves a Gold service without one.
+---
+
+# Business impact
+
+In this demo, each service is linked to its customer, its service tier and its monthly charge, in the same Infrahub graph as the switch, edge router and IP resources the service runs on. With that link in place, you can plan a change by its effect on customers. Before a proposed change merges, the Business Impact page shows which services have no other path while the change is in place, and Infrahub refuses to merge a plan that leaves a Gold service without one.
+
+![The Blast radius view for Paris router 1 maintenance: 3 customers and 2 Gold services affected, €2,565 Gold SLA credit exposure per month](../media/business-impact/paris-headline-tiles.png)
+
+## Why business context belongs in the source of truth
+
+Change review usually happens at the level of devices and interfaces. A maintenance window on an edge router looks the same whether a lab circuit or the main internet connection of your largest customer runs through the router. The people who plan and approve the change ask a different question: which customers depend on this device during the window, and which of them have a commitment that needs another path first?
+
+When customers, tiers and contract value are stored in a separate CRM or spreadsheet, someone answers that question manually, if at all, and usually after the window is scheduled. When they are stored in the same graph as the infrastructure, the answer is on the proposed change itself, built from the same data the automation already uses. The answer is part of the review, and you can enforce a rule such as "no plan may leave a Gold service without a path" as a check instead of a reminder.
+
+## What runs in Infrahub and what runs in the portal
+
+The Business Impact page is a small Streamlit app in this repository, not a screen that Infrahub provides. It reads one stored query from Infrahub and draws the figures. Infrahub holds the data and enforces the rule.
+
+In Infrahub:
+
+- Customers, tiers and monthly charges, linked to the services and to the switches and edge routers they run on
+- Each maintenance plan, on its own branch with a proposed change
+- The stored query `business_impact_services`, which the page reads through the Infrahub API
+- The Gold outage guard, a check written in Python in this repository. Infrahub runs it in every proposed change pipeline, refuses the merge while it fails, and keeps the record of the approval and the merge
+- The generator that allocates each service's VLAN, prefix, switch port and gateway
+
+In the portal:
+
+- The service request form
+- The Business Impact page: the headline, tiles, chart and tables. The page only reads from Infrahub
+
+The figures come from Python in this repository, in `service_catalog/business_impact/blast_radius.py`. The page and the guard use the same code, so they report the same services. Your own portal, ITSM tool or reporting tool can read the same stored query and show the same figures.
+
+## The business data
+
+The demo schema adds three pieces of business data to every Dedicated Internet service. All three are demo business inputs, chosen to be plausible, not taken from a real price list:
+
+| Data | Values in the demo | Where it is stored |
+|---|---|---|
+| Service tier | Gold, Silver, Bronze, each with an SLA credit percentage (25, 10, 5), a price multiplier and a minimum number of separate paths during a change (1, 0, 0) | `ServiceTier` node |
+| Customer | Northbank, Helix Health, Maison Verte, Rapid Freight | `OrganizationCustomer` node, beside manufacturers and providers |
+| Monthly charge | Base price by bandwidth times the tier multiplier, in euros | `monthly_charge` on the service |
+
+The customer, tier and monthly charge are branch-aware. You can change them in a proposed change without changing the current network.
+
+Each service in the demo data also records who requested it, in **Requested by**, and why, in **Reason for the request**. These two fields have the same value on every branch.
+
+## When a service counts as affected
+
+A service is affected when at least one device behind its interfaces, its switch or its edge router, has any status other than active on the proposed change. Maintenance, provisioning and drained all count as out of service. Interface status is not considered.
+
+Each service has one path in this demo, so a Gold service behind a device in maintenance is affected. A service with both of its devices out of service counts once.
+
+## Counted figures and your input
+
+Every figure on the Business Impact page has one of two labels:
+
+- **Counted**: counted from the model, such as the number of customers affected.
+- **Your input**: the model combined with a business input, such as a monthly charge or a tier's SLA credit percentage.
+
+The page does not calculate outage cost, time saved, return on investment or churn. Money appears only as contract value or as SLA credit exposure.
+
+## The SLA credit assumption
+
+The Gold SLA credit exposure includes affected Gold services only. The demo data assumes that announced maintenance is excluded from Silver and Bronze SLAs. Many real carrier SLAs exclude maintenance at every tier; on those contracts, maintenance leads to no SLA credit at all. Treat the exposure as a figure that depends on your contract terms, not as a fixed property of the change.
+
+## The Gold outage guard
+
+The Gold outage guard is a check in the proposed change pipeline. It reads the same data as the Business Impact page. For each active service, it counts the separate paths the service keeps during the change and compares that number with the rule of the service's tier.
+
+Each service tier carries a rule: the minimum number of separate paths each of its active services keeps during a change. The guard reads the rule of each tier on the proposed change's branch and on the current network. In the demo data, Gold has 1, Silver 0 and Bronze 0. A rule of 0 means that announced maintenance may take a Silver or Bronze service down, because the demo data assumes that announced maintenance is excluded from Silver and Bronze SLAs. The guard applies the rule of every tier. Its name comes from Gold, the only tier with a rule above 0 in the demo data.
+
+For each proposed change, the result is:
+
+| Situation | Result |
+|---|---|
+| An active Gold service has a device that is active on the current network and not active in the proposed change | Fails. The plan leaves the service with no other path |
+| The proposed change deletes the switch or edge router of an active Gold service, or removes its switch port or gateway interface, and the service has no other device in that role | Fails. The plan leaves the service with no other path |
+| The proposed change raises a tier's rule and active services of that tier have fewer separate paths | Fails |
+| A Gold service's device was already out of service on the current network | Passes, and logs a message naming the service |
+| Only Silver or Bronze services are affected, or none | Passes |
+
+When the plan leaves a service with fewer separate paths than its tier's rule, the message ends with the rule, for example "Gold requires at least 1 separate path during a change, and this change leaves 0." When the proposed change raises a tier's rule, the message names the services with fewer paths than the new rule, with the number of paths each one has. For a rule raised from 0, it ends with "Build the paths first, or keep the rule at 0."
+
+Infrahub does not merge a proposed change while a check has failed. The guard has no override: no tag, setting or role allows the change to merge. To merge, complete the plan first: move the Gold services to the other device at the site in the proposed change, as the plan in the tutorial's last step does.
+
+![The failed Gold outage guard check on Paris router 1 maintenance, with its message](../media/business-impact/checks-paris-failed.png)
+
+## Single points of failure
+
+A device is a single point of failure for a service when every path of the service passes through it. In the demo, each service has one path: its switch and its edge router. If either device fails, the service has no path, so each Gold service has two single points of failure.
+
+The Single points of failure view on the Business Impact page shows this for the current network, without a proposed change. It counts the active Gold services with a single point of failure, ranks the devices they depend on by Gold contract value, and shows what would have no path if a selected device failed now. For the selected device, it uses the same rule and figures as the Blast radius view, on a copy of the current network with that device not active. The view only reads data from Infrahub.
+
+## The audit record of an approved change
+
+Infrahub keeps a record of each proposed change. For an approved plan, it shows what an auditor asks for:
+
+- The plan: the proposed change's description, and its **Data** tab before the merge
+- The guard result: the Gold outage guard's conclusion and message on the **Checks** tab. When the guard passes, its message records the Gold SLA credit exposure at approval time
+- Who approved it and when: **Approved by** on the proposed change, and the approval and merge with their dates on the **Activity** page
+
+Infrahub refuses an approval from the account that opened the proposed change. In the demo, `admin` opens the plans and Emma, the change manager account, approves them; see the [tutorial's last steps](plan-maintenance.mdx#step-9-view-the-audit-record-of-the-approved-change).
+
+The demo runs on Infrahub Community. Infrahub records Emma's approval and refuses an approval from the account that opened the proposed change, but does not require an approval before merge. The Gold outage guard is what blocks a plan that fails the rule. Infrahub Enterprise can require approvals before merge.
+
+To load the demo data, run the optional seed step in the [installation guide](../getting-started/installation.mdx#step-6-seed-the-business-impact-demo-optional).
+
+## In this section
+
+- [Plan maintenance that keeps Gold services in service](plan-maintenance.mdx): Find the Gold services that depend on Paris edge router 1, move them first, and merge the plan once no Gold service depends on the router
+- [Find the Gold services that depend on a single device](find-single-points-of-failure.mdx): View which Gold services have a single point of failure, and what would have no path if a switch or edge router failed now

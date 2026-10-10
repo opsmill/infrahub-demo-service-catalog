@@ -138,9 +138,9 @@ uv run invoke init
 
 This single command performs three things:
 
-1. **Seeds Semaphore** with the project, SSH key, repository, inventory, environment, and task template (idempotent — safe to run multiple times)
-2. **Loads the repository** configuration from `bootstrap/repository.yaml` into Infrahub — a read-write `CoreRepository` that references the local checkout mounted at `/upstream` in the container
-3. **Loads permissions** from `bootstrap/permissions.yml`, creating an operator account (`john` / `infrahub`) with permissions to manage repositories, merge branches, and review proposed changes
+1. **Seeds Semaphore** with the project, SSH key, repository, inventory, environment, and task template (idempotent: you can run it more than once)
+2. **Loads the repository** configuration from `bootstrap/repository.yaml` into Infrahub. It is a read-write `CoreRepository` that references the local checkout mounted at `/upstream` in the container
+3. **Loads permissions** from `bootstrap/permissions.yml`, creating an operator account (`john` / `infrahub`) with permissions to manage repositories, merge branches, and review proposed changes, and a change manager account (`emma` / `infrahub`) that approves and merges proposed changes and changes no other data
 
 #### What the repository provides
 
@@ -169,6 +169,29 @@ The schema uses a hierarchical structure:
 - Everything is version-controlled and auditable
 :::
 
+Infrahub also loads three service tiers (Gold, Silver, Bronze), four customers and friendly device names such as "Paris edge router 1" from the repository. After `invoke init` there are no services yet: you create them by ordering through the portal, or by running Step 6.
+
+### Step 6: Seed the business impact demo (optional)
+
+Run this step only for the [business impact](../business-impact/overview.mdx) pages. You do not need it for the service request walkthrough.
+
+```shell
+uv run invoke seed
+```
+
+The command uses the `INFRAHUB_ADDRESS` and `INFRAHUB_API_TOKEN` variables from Step 2 and takes a few minutes. It runs these steps in order:
+
+1. Waits until Infrahub has imported the repository: the tiers, the customers, the `business_impact_services` query and the generator definition
+2. Creates twelve Dedicated Internet services in Paris and Brussels on `main`, each with a customer, a tier and a monthly charge, and runs the provisioning generator for each one
+3. Opens four maintenance proposed changes: "Paris router 1 maintenance", "Brussels switch 1 maintenance", "New York router 1 maintenance", and "Paris router 1 maintenance, Gold services moved first", which first moves DI-1001 and DI-1002 to Paris edge router 2 on its branch
+4. Waits for each proposed change pipeline to finish
+
+You can run it again. It creates only the services and proposed changes that are missing. It runs the provisioning generator again for every service, sets the devices to maintenance again on their branches, and waits for the pipelines again. After you merge "Paris router 1 maintenance, Gold services moved first", a rerun stops at step 2, because DI-1001 and DI-1002 no longer use Paris edge router 1 on `main`.
+
+:::note The repository is imported from `main`
+Infrahub imports the repository from the committed `main` branch of your checkout. A feature that is not on `main` yet, such as a branch that has not been merged, is not imported, and `invoke seed` then waits until it times out.
+:::
+
 ## Verify your installation
 
 Confirm everything is working by accessing both interfaces:
@@ -178,6 +201,7 @@ Confirm everything is working by accessing both interfaces:
 - **URL**: [http://localhost:8000](http://localhost:8000)
 - **Admin account**: `admin` / `infrahub`
 - **Operator account**: `john` / `infrahub` (limited permissions)
+- **Change manager account**: `emma` / `infrahub` (approves and merges proposed changes; changes no other data)
 - **What to Check**:
     - Navigate to the Schema page to see loaded models
     - Check the Objects page to verify demo data is present
@@ -191,6 +215,7 @@ Confirm everything is working by accessing both interfaces:
     - Home page displays available services
     - Service request forms are accessible
     - No connection errors appear
+    - After Step 6, the "Business Impact" page shows "2 Gold services for Northbank have no other path during this change" for "Paris router 1 maintenance"
 
 ### Semaphore automation UI
 

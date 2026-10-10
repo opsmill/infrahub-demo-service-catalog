@@ -22,6 +22,8 @@ dev = [
     "pytest-asyncio>=0.23.0,<2",
     "pytest-httpx>=0.30.0,<0.37",
     "pytest-clarity>=1.0.1",
+    # The unit tests read the schema and data YAML files.
+    "pyyaml>=6",
     # Floor and cap both come from ariadne-codegen (via infrahub-sdk[all]), which requires
     # ruff>=0.15.0,<0.17.0; recording it locally keeps a relock from crossing the boundary as a
     # side effect. ruff is lint-only here.
@@ -147,13 +149,6 @@ max-complexity = 17
     "ANN202",  # Missing return type annotation for private function
     "ANN204",  # Missing return type annotation for special method
     "PLR6301", # Method `XXXX` could be a function, class method, or static method
-]
-
-"schemas/data.py" = [
-    "ARG001",    # Unused function argument
-    "ANN201",  # Missing return type annotation for public function
-    "B007",    # Loop control variable `node` not used within loop body
-    "ANN001",  # Missing type annotation
 ]
 
 "tasks.py" = [

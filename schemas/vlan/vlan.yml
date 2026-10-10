@@ -20,13 +20,17 @@ nodes:
     attributes:
       - name: name
         kind: Text
+        order_weight: 1000
       - name: description
         kind: Text
         optional: true
+        order_weight: 2000
       - name: vlan_id
         kind: Number
+        order_weight: 1100
       - name: status
         kind: Dropdown
+        order_weight: 1300
         choices:
           - name: active
             label: Active
@@ -47,6 +51,7 @@ nodes:
       - name: role
         kind: Dropdown
         optional: true
+        order_weight: 2100
         choices:
           - name: server
             label: Server
@@ -69,17 +74,19 @@ nodes:
         peer: LocationHosting
         optional: true
         cardinality: many
+        order_weight: 3000
         identifier: location__vlans
       - name: prefixes
         peer: IpamPrefix
         optional: true
         cardinality: many
+        order_weight: 3100
         identifier: vlan__prefixes
       - name: l2domain
         peer: IpamL2Domain
         optional: false
         cardinality: one
-        kind: Attribute
+        kind: Parent
         order_weight: 1200
 
   - name: L2Domain
@@ -101,6 +108,7 @@ nodes:
         optional: true
         cardinality: many
         kind: Component
+        order_weight: 3000
 
 extensions:
   nodes:
@@ -120,14 +128,16 @@ extensions:
           peer: IpamVLAN
           optional: true
           cardinality: one
-          kind: Component
+          kind: Attribute
+          on_delete: no-action
           identifier: interface_l2__untagged_vlan
         - name: tagged_vlan
           label: Tagged VLANs
           peer: IpamVLAN
           optional: true
           cardinality: many
-          kind: Component
+          kind: Attribute
+          on_delete: no-action
           identifier: interface_l2__tagged_vlan
     - kind: LocationHosting
       relationships:
@@ -136,4 +146,5 @@ extensions:
           peer: IpamVLAN
           cardinality: many
           optional: true
+          order_weight: 3300
           identifier: location__vlans

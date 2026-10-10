@@ -44,3 +44,14 @@ with st.container(border=True):
     )
     if st.button("View", use_container_width=True, key="service_requests"):
         st.switch_page("pages/0_📦_Service_Requests.py")
+
+
+st.write("## Understand business impact")
+
+with st.container(border=True):
+    st.header("📊 Business impact")
+    st.write(
+        "See which customers, Gold services and contract value a proposed change touches before it merges.",
+    )
+    if st.button("View", use_container_width=True, key="business_impact"):
+        st.switch_page("pages/3_📊_Business_Impact.py")

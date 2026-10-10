@@ -33,6 +33,7 @@ generics:
         kind: Attribute
         optional: true
         cardinality: many
+        order_weight: 3000
 
   - name: Hosting
     namespace: Location
@@ -52,10 +53,12 @@ generics:
         peer: IpamPrefix
         cardinality: many
         optional: true
+        order_weight: 3100
         identifier: location__prefixes
       - name: devices
         label: Devices
         peer: DcimPhysicalDevice
         cardinality: many
         optional: true
+        order_weight: 3200
         identifier: location__devices

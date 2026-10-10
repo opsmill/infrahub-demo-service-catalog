@@ -1,0 +1,43 @@
+---
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+version: "1.0"
+
+nodes:
+  - name: Tier
+    namespace: Service
+    description: The promise made to a customer (Gold, Silver, Bronze); values are demo business inputs.
+    label: Service Tier
+    icon: mdi:medal-outline
+    include_in_menu: false
+    human_friendly_id:
+      - name__value
+    order_by:
+      - name__value
+    display_label: name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        order_weight: 1000
+      - name: sla_credit_pct
+        kind: Number
+        label: SLA credit (%)
+        order_weight: 1100
+      - name: price_multiplier_pct
+        kind: Number
+        label: Price multiplier (%)
+        order_weight: 1200
+      - name: min_paths
+        kind: Number
+        label: Minimum separate paths during a change
+        optional: true
+        order_weight: 1300
+    relationships:
+      - name: services
+        peer: ServiceGeneric
+        kind: Generic
+        cardinality: many
+        optional: true
+        identifier: service__tier
+        branch: aware
+        order_weight: 3000

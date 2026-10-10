@@ -26,6 +26,41 @@ generics:
         order_weight: 1010
         optional: false
         branch: agnostic
+      - name: requested_by
+        kind: Text
+        label: Requested by
+        optional: true
+        branch: agnostic
+        order_weight: 1012
+      - name: request_reason
+        kind: Text
+        label: Reason for the request
+        optional: true
+        branch: agnostic
+        order_weight: 1014
+      - name: monthly_charge
+        kind: Number
+        label: Monthly charge (EUR, demo business input)
+        optional: true
+        branch: aware
+        order_weight: 1020
+    relationships:
+      - name: customer
+        peer: OrganizationCustomer
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: service__customer
+        branch: aware
+        order_weight: 1030
+      - name: tier
+        peer: ServiceTier
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: service__tier
+        branch: aware
+        order_weight: 1040
 
 nodes:
   - name: DedicatedInternet
@@ -97,6 +132,10 @@ nodes:
             description: Provide customer with 30 IPs.
             color: "#ffa07a"
     relationships:
+      # These identifiers (service_site, service_interface, service_vlan, service_ip_address,
+      # service_prefix) do not follow the source__peer convention. They are kept because an
+      # identifier cannot change once loaded, and renaming one drops the existing links.
+      # New relationships use source__peer.
       - name: location
         peer: LocationSite
         order_weight: 1150
@@ -135,6 +174,14 @@ nodes:
 
 extensions:
   nodes:
+    - kind: OrganizationCustomer
+      relationships:
+        - name: services
+          peer: ServiceGeneric
+          cardinality: many
+          optional: true
+          identifier: service__customer
+          branch: aware
     - kind: LocationSite
       relationships:
         - name: services
