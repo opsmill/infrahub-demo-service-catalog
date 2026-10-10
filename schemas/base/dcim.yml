@@ -434,7 +434,8 @@ nodes:
         peer: IpamIPAddress
         optional: true
         cardinality: many
-        kind: Component
+        kind: Attribute
+        on_delete: no-action
 
   - name: InterfaceL2
     namespace: Dcim

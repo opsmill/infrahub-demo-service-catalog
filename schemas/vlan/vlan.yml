@@ -79,7 +79,7 @@ nodes:
         peer: IpamL2Domain
         optional: false
         cardinality: one
-        kind: Attribute
+        kind: Parent
         order_weight: 1200
 
   - name: L2Domain
@@ -120,14 +120,16 @@ extensions:
           peer: IpamVLAN
           optional: true
           cardinality: one
-          kind: Component
+          kind: Attribute
+          on_delete: no-action
           identifier: interface_l2__untagged_vlan
         - name: tagged_vlan
           label: Tagged VLANs
           peer: IpamVLAN
           optional: true
           cardinality: many
-          kind: Component
+          kind: Attribute
+          on_delete: no-action
           identifier: interface_l2__tagged_vlan
     - kind: LocationHosting
       relationships:
