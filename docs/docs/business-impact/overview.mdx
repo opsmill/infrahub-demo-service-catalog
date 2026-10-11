@@ -5,7 +5,7 @@ description: How the demo links customers, service tiers and contract value to d
 
 # Business impact
 
-In this demo, each service is linked to its customer, its service tier and its monthly charge, in the same Infrahub graph as the switch, edge router and IP resources the service runs on. With that link in place, you can plan a change by its effect on customers. Before a proposed change merges, the Business Impact page shows which services have no other path while the change is in place, and Infrahub refuses to merge a plan that leaves a Gold service without one.
+In this demo, each service is linked to its customer, its service tier and its monthly charge, in the same Infrahub graph as the switch, edge router and IP resources the service runs on. With that link in place, you can plan a change by its effect on customers. Before a proposed change merges, the Business Impact page, a small app in this repository that reads its data from Infrahub, shows which services have no other path while the change is in place, and Infrahub refuses to merge a plan that leaves a Gold service without one. For which parts run in Infrahub and which run in the portal, see the [developer walkthrough](../getting-started/developer-walkthrough.mdx#what-runs-in-infrahub-and-what-runs-in-the-portal).
 
 ![The Blast radius view for Paris router 1 maintenance: 3 customers and 2 Gold services affected, €2,565 Gold SLA credit exposure per month](../media/business-impact/paris-headline-tiles.png)
 
@@ -36,25 +36,6 @@ The demo schema adds three pieces of business data to every Dedicated Internet s
 The customer, tier and monthly charge are branch-aware. You can change them in a proposed change without changing the current network.
 
 Each service in the demo data also records who requested it, in **Requested by**, and why, in **Reason for the request**. These two fields have the same value on every branch.
-
-## What runs in Infrahub and what runs in the portal
-
-The Business Impact page is a small Streamlit app in this repository, not a screen that Infrahub provides. It reads one stored query from Infrahub and draws the figures. Infrahub holds the data and enforces the rule.
-
-In Infrahub:
-
-- Customers, tiers and monthly charges, linked to the services and to the switches and edge routers they run on
-- Each maintenance plan, on its own branch with a proposed change
-- The stored query `business_impact_services`, which the page reads through the Infrahub API
-- The Gold outage guard, a check written in Python in this repository. Infrahub runs it in every proposed change pipeline, refuses the merge while it fails, and keeps the record of the approval and the merge
-- The generator that allocates each service's VLAN, prefix, switch port and gateway
-
-In the portal:
-
-- The service request form
-- The Business Impact page: the headline, tiles, chart and tables. The page only reads from Infrahub
-
-The figures come from Python in this repository, in `service_catalog/business_impact/blast_radius.py`. The page and the guard use the same code, so they report the same services. Your own portal, ITSM tool or reporting tool can read the same stored query and show the same figures.
 
 ## When a service counts as affected
 
