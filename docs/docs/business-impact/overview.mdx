@@ -39,7 +39,7 @@ When customers, tiers and contracts are kept outside the source of truth, the re
 
 With the business context in Infrahub, the same review takes these steps:
 
-1. Open the proposed change. The Business Impact page shows the customers and services that have no other path during the change, and the Gold SLA credit exposure.
+1. Open the proposed change. The Business Impact page shows the customers and services that have no other path during the change, with their tiers.
 2. Read the Gold outage guard result. It checks the plan against each tier's rule and blocks the merge until the plan keeps the rule.
 3. Approve and merge. The proposed change keeps the guard result, the approver and the merge time.
 
@@ -86,7 +86,9 @@ The page does not calculate outage cost, time saved, return on investment or chu
 
 ## The SLA credit assumption
 
-The Gold SLA credit exposure includes affected Gold services only. The demo data assumes that announced maintenance is excluded from Silver and Bronze SLAs. Many real carrier SLAs exclude maintenance at every tier; on those contracts, maintenance leads to no SLA credit at all. Treat the exposure as a figure that depends on your contract terms, not as a fixed property of the change.
+The Gold SLA credit exposure is the monthly charge of each affected Gold service times the Gold tier's SLA credit percentage. It shows what is at stake for one month if a plan breaks the Gold commitment. The length of the maintenance window does not change it. The credits a customer actually receives come from trouble ticket data in your service management tools, which Infrahub does not hold.
+
+The Gold SLA credit exposure includes affected Gold services only. The demo assumes that Gold contracts carry credits even for announced maintenance. For Silver and Bronze, announced maintenance only needs a notice to the customer. Many real carrier contracts exclude maintenance at every tier, and on those contracts maintenance leads to no SLA credit at all. Treat the exposure as a figure that depends on your contract terms, not as a fixed property of the change.
 
 ## The Gold outage guard
 
@@ -115,6 +117,8 @@ Infrahub does not merge a proposed change while a check has failed. The guard ha
 A device is a single point of failure for a service when every path of the service passes through it. In the demo, each service has one path: its switch and its edge router. If either device fails, the service has no path, so each Gold service has two single points of failure.
 
 The Single points of failure view on the Business Impact page shows this for the current network, without a proposed change. It counts the active Gold services with a single point of failure, ranks the devices they depend on by Gold contract value, and shows what would have no path if a selected device failed now. For the selected device, it uses the same rule and figures as the Blast radius view, on a copy of the current network with that device not active. The view only reads data from Infrahub.
+
+The same view answers the questions of an unplanned outage. If a device fails without warning, it shows which customers lose service and which Gold commitments break. The length of the outage and its cost come from monitoring and trouble ticket data, outside Infrahub.
 
 ## The audit record of an approved change
 

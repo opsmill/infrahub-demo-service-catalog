@@ -6,15 +6,15 @@ description: Plan maintenance on Paris edge router 1, find the Gold services tha
 
 # Plan maintenance that keeps Gold services in service
 
-You plan maintenance on Paris edge router 1 (`rb01-par01`). The goal is that no Gold customer loses service during the window. Before the window is scheduled, you check which services depend only on this router, and you move the Gold services to Paris edge router 2.
+You plan maintenance on Paris edge router 1 (`rb01-par01`). The goal is that no Gold service loses its path during the window, and that you know which customers the plan affects before anyone approves it. Gold customers pay for a second path, so that maintenance on one router does not stop their service. In this demo, the network does not keep that promise: each service has one path. Before the window is scheduled, you check which services depend only on this router, and you move the Gold services to Paris edge router 2.
 
 The demo data contains this plan as a proposed change named "Paris router 1 maintenance". It sets the router to maintenance on its own branch. Nothing has merged.
 
-In the demo, each service has one path: one switch and one edge router. Paris edge router 2 is in the same site, but no service uses it as a second path. A service behind a device in maintenance therefore has no other path during the window.
+Each service in the demo runs through one switch and one edge router. Paris edge router 2 is in the same site, but no service uses it as a second path. A service behind a device in maintenance therefore has no other path during the window.
 
 ## Why a maintenance plan needs a check on Gold services
 
-Maintenance is usually reviewed device by device. The review shows the router, not the customers behind it, so the question "which customers lose service?" is answered manually, if at all, and often after the window is scheduled. Gold customers pay for redundancy so that maintenance causes no downtime. A plan that takes their only path out of service breaks that commitment and exposes you to SLA credits. In this tutorial, the proposed change shows the affected customers and the credit exposure before approval, and the Gold outage guard blocks the merge until the plan moves the Gold services. For the reasoning behind storing business context in the same graph as the network, see the [business impact overview](overview.mdx#why-business-context-belongs-in-the-source-of-truth).
+Maintenance is usually reviewed device by device. The review shows the router, not the customers behind it, so the question "which customers lose service?" is answered manually, if at all, and often after the window is scheduled. Gold customers pay for redundancy so that maintenance causes no downtime. If a Gold service has two paths (dual-homed), maintenance on one router leaves it in service, and the plan needs no change. The check matters where the network does not match the commitment. A plan that takes the only path of a Gold service out of service breaks that commitment. In this tutorial, the proposed change shows the affected customers and their tiers before approval, and the Gold outage guard blocks the merge until the plan moves the Gold services. For the reasoning behind storing business context in the same graph as the network, see the [business impact overview](overview.mdx#why-business-context-belongs-in-the-source-of-truth).
 
 ## Before you begin
 
@@ -24,6 +24,8 @@ Install the demo and run the optional seed step, as described in the [installati
 - "Brussels switch 1 maintenance" sets `sw01-bru01` to maintenance
 - "New York router 1 maintenance" sets `rb01-nyc01` to maintenance; no active service runs through it
 - "Paris router 1 maintenance, Gold services moved first" moves DI-1001 and DI-1002 to Paris switch 2 and Paris edge router 2, then sets `rb01-par01` to maintenance
+
+The seed step loads the customers, tiers and monthly charges as demo data. In production, this data comes from the CRM and the billing system, as [Where the business data comes from](overview.mdx#where-the-business-data-comes-from-and-where-the-results-go) describes.
 
 For when a service counts as affected and what each label on the page means, see the [business impact overview](overview.mdx).
 
@@ -47,7 +49,7 @@ The three tiles below it show:
 | Gold services affected | 2 of 5 | Counted |
 | Gold SLA credit exposure, per month | €2,565 | Your input |
 
-The exposure is the monthly charge of each affected Gold service times the Gold tier's SLA credit of 25%. It is the SLA credit the plan would cost if it went ahead as it is. It includes Gold services only, under the demo's SLA assumption.
+The third tile is built from demo business inputs. For how it is computed and the contract terms it assumes, see [The SLA credit assumption](overview.mdx#the-sla-credit-assumption).
 
 ## Step 2: find the Gold services to move first
 
@@ -165,7 +167,7 @@ On the branch of a proposed change, set another device to maintenance in the Inf
 
 ## What you did
 
-You planned maintenance on Paris edge router 1 so that no Gold customer depends on the router during the window. The Business Impact page showed which services had no other path and the SLA credit the plan would cost as it was. The Gold outage guard kept the incomplete plan from merging, and named the services to move. When you raised the Silver rule to 2 separate paths, the guard failed that proposed change too, because no Silver service has a second path. The plan that moved the Gold services first passed the guard, was approved by Emma and merged, and Infrahub kept the record of who approved it, when, and with which guard result.
+You planned maintenance on Paris edge router 1 so that no Gold customer depends on the router during the window. The Business Impact page showed which services had no other path, and their customers and tiers. The Gold outage guard kept the incomplete plan from merging, and named the services to move. When you raised the Silver rule to 2 separate paths, the guard failed that proposed change too, because no Silver service has a second path. The plan that moved the Gold services first passed the guard, was approved by Emma and merged, and Infrahub kept the record of who approved it, when, and with which guard result.
 
 The same chain, from the customer's commitment to the record of the merge:
 
