@@ -65,11 +65,9 @@ To view what would have no path if Paris edge router 1 failed without a plan, re
 
 ## Step 3: compare with the current network and the other plans
 
-Select "Current network" in the picker. The headline shows "No service is affected", the tiles show 0, 0 of 5 and €0, and no bar in the chart is marked. Compare this with the "Paris router 1 maintenance" view:
+Select "Current network" in the picker. The headline shows "No service is affected", the tiles show 0, 0 of 5 and €0, and no bar in the chart is marked. Compare this with the "Paris router 1 maintenance" view in Step 1:
 
 ![The Blast radius view for the current network: no service is affected](../media/business-impact/current-network.png)
-
-![The Blast radius view for Paris router 1 maintenance: 3 customers and 2 Gold services without another path](../media/business-impact/paris-full.png)
 
 Select "Brussels switch 1 maintenance". The headline shows "1 Gold service for Helix Health has no other path during this change", and the tiles show 3, 1 of 5 and €2,025. A switch in maintenance affects the services behind it in the same way as an edge router, so this plan also has a Gold service to move first.
 
@@ -168,3 +166,31 @@ On the branch of a proposed change, set another device to maintenance in the Inf
 ## What you did
 
 You planned maintenance on Paris edge router 1 so that no Gold customer depends on the router during the window. The Business Impact page showed which services had no other path and the SLA credit the plan would cost as it was. The Gold outage guard kept the incomplete plan from merging, and named the services to move. When you raised the Silver rule to 2 separate paths, the guard failed that proposed change too, because no Silver service has a second path. The plan that moved the Gold services first passed the guard, was approved by Emma and merged, and Infrahub kept the record of who approved it, when, and with which guard result.
+
+The same chain, from the customer's commitment to the record of the merge:
+
+```mermaid
+flowchart LR
+  intent["Business intent
+Gold keeps a path
+during a change"]
+  service["Service
+DI-1001
+for Northbank"]
+  plan["Plan
+Paris router 1
+maintenance"]
+  guard["Gold outage guard
+0 paths, rule is 1:
+merge refused"]
+  record["Fixed plan merged
+Gold services moved,
+approval recorded"]
+  intent --> service --> plan --> guard --> record
+  classDef intentNode fill:#e6f4ea,stroke:#1e8e3e,color:#0b3d1a
+  classDef guardNode fill:#fce8e6,stroke:#c5221f,color:#5c0b09
+  classDef recordNode fill:#e6f4ea,stroke:#1e8e3e,color:#0b3d1a
+  class intent intentNode
+  class guard guardNode
+  class record recordNode
+```

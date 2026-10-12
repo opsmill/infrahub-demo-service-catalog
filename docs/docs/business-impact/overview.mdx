@@ -5,9 +5,13 @@ description: How the demo links customers, service tiers and contract value to d
 
 # Business impact
 
-In this demo, each service is linked to its customer, its service tier and its monthly charge, in the same Infrahub graph as the switch, edge router and IP resources the service runs on. With that link in place, you can plan a change by its effect on customers. Before a proposed change merges, the Business Impact page, a small app in this repository that reads its data from Infrahub, shows which services have no other path while the change is in place, and Infrahub refuses to merge a plan that leaves a Gold service without one. For which parts run in Infrahub and which run in the portal, see the [developer walkthrough](../getting-started/developer-walkthrough.mdx#what-runs-in-infrahub-and-what-runs-in-the-portal).
+In this demo, each service is linked to its customer, its service tier and its monthly charge, in the same Infrahub graph as the switch, edge router and IP resources the service runs on. The business intent, what each customer was promised, sits on top of the design and the network built from it.
 
-![The Blast radius view for Paris router 1 maintenance: 3 customers and 2 Gold services affected, €2,565 Gold SLA credit exposure per month](../media/business-impact/paris-headline-tiles.png)
+With that link in place, you plan a change by its effect on customers. Before a proposed change merges, the Business Impact page, a small app in this repository that reads its data from Infrahub, shows which services have no other path while the change is in place, and Infrahub refuses to merge a plan that leaves a Gold service without one. To plan maintenance on an edge router, view the guard fail on the incomplete plan and merge the complete one, follow [Plan maintenance that keeps Gold services in service](plan-maintenance.mdx). For which parts run in Infrahub and which run in the portal, see the [developer walkthrough](../getting-started/developer-walkthrough.mdx#what-runs-in-infrahub-and-what-runs-in-the-portal).
+
+Infrahub draws this link from the stored data. In **Object Management**, **Path Traversal** from the customer Northbank to Paris edge router 1 finds two paths, one through each of the two services Northbank has there, DI-1001 and DI-1002, and their gateway interfaces on the router:
+
+![Path Traversal from the customer Northbank to Paris edge router 1: two paths, through DI-1001 and DI-1002 and their gateway interfaces](../media/business-impact/path-traversal-customer-router.png)
 
 ## Why business context belongs in the source of truth
 
@@ -75,6 +79,8 @@ Every figure on the Business Impact page has one of two labels:
 
 - **Counted**: counted from the model, such as the number of customers affected.
 - **Your input**: the model combined with a business input, such as a monthly charge or a tier's SLA credit percentage.
+
+![The Blast radius view for Paris router 1 maintenance: 3 customers and 2 Gold services affected, €2,565 Gold SLA credit exposure per month](../media/business-impact/paris-headline-tiles.png)
 
 The page does not calculate outage cost, time saved, return on investment or churn. Money appears only as contract value or as SLA credit exposure.
 
