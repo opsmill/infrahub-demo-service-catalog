@@ -1,16 +1,20 @@
 from __future__ import annotations
 
 import logging
-import random
+import re
+from typing import TYPE_CHECKING
 
 from infrahub_sdk.generator import InfrahubGenerator
-from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import CoreIPPrefixPool, CoreNumberPool
+
+if TYPE_CHECKING:
+    from infrahub_sdk.node import InfrahubNode
 
 try:
     # When imported as part of a package (e.g., within Infrahub)
     from .protocols import (
         DcimDevice,
+        DcimInterfaceL2,
         DcimInterfaceL3,
         IpamIPAddress,
         IpamPrefix,
@@ -21,6 +25,7 @@ except ImportError:
     # When imported directly (e.g., in unit tests)
     from protocols import (  # type: ignore[no-redef]
         DcimDevice,
+        DcimInterfaceL2,
         DcimInterfaceL3,
         IpamIPAddress,
         IpamPrefix,
@@ -29,10 +34,60 @@ except ImportError:
     )
 
 ACTIVE_STATUS = "active"
+FREE_STATUS = "free"
+CORE_ROLE = "core"
+EDGE_ROLE = "edge"
+CUSTOMER_ROLE = "customer"
+
+# The data the generator allocates from, by the names the object files give it. Renaming one of them in
+# data/05_resource_pools.yml or data/03_ipam_domain.yml means changing it here too. A unit test checks
+# that each name below exists in those files.
 SERVICE_VLAN_POOL: str = "Customer vlan pool"
 SERVICE_PREFIX_POOL: str = "Customer prefixes pool"
+SERVICE_L2_DOMAIN: str = "default"
 
 IP_PACKAGE_TO_PREFIX_SIZE: dict[str, int] = {"small": 29, "medium": 28, "large": 27}
+
+
+def natural_key(name: str) -> tuple[int | str, ...]:
+    """Sort key that puts Ethernet2 before Ethernet10."""
+    return tuple(int(part) if part.isdigit() else part for part in re.split(r"(\d+)", name))
+
+
+def _device_index(interface: InfrahubNode, role: str) -> int | None:
+    """The index of the interface's device when the device has this role, or None.
+
+    The device comes from the generator query result, which the SDK converts into SDK nodes.
+    """
+    if not interface.device.id:
+        return None
+    device = interface.device.peer
+    index = device.index.value
+    return int(index) if device.role.value == role and index is not None else None
+
+
+def existing_core_ports(service: InfrahubNode) -> dict[int, DcimInterfaceL2]:
+    """The service's port on each core switch, by switch index, from the generator query result.
+
+    When a switch has more than one port of the service, the first one the query returns is kept.
+    """
+    ports: dict[int, DcimInterfaceL2] = {}
+    for related in service.dedicated_interfaces.peers:
+        interface = related.peer
+        index = _device_index(interface, CORE_ROLE)
+        if index is not None:
+            ports.setdefault(index, interface)
+    return ports
+
+
+def gateway_router_index(service: InfrahubNode) -> int | None:
+    """The index of the edge router whose interface holds the service's gateway IP address, or None."""
+    if not service.gateway_ip_address.id:
+        return None
+    gateway_ip = service.gateway_ip_address.peer
+    if not gateway_ip.interface.id:
+        return None
+    return _device_index(gateway_ip.interface.peer, EDGE_ROLE)
 
 
 class DedicatedInternetGenerator(InfrahubGenerator):
@@ -40,26 +95,22 @@ class DedicatedInternetGenerator(InfrahubGenerator):
     allocated_vlan: IpamVLAN
     allocated_prefix: IpamPrefix
     gateway_ip: IpamIPAddress
+    # The index of the switch that holds the service's port, which also picks the edge router of the gateway.
+    index: int
 
     log = logging.getLogger("infrahub.tasks")
 
-    async def generate(self, data: dict) -> None:
-        edges = data.get("ServiceDedicatedInternet", {}).get("edges") or []
-        if not edges:
+    async def generate(self, data: dict) -> None:  # noqa: ARG002 - the SDK passes `data` by name; the nodes are read
+        # `convert_query_response` in .infrahub.yml makes the SDK convert the query result into nodes:
+        # the service in `self.nodes`, and its ports, devices and gateway IP address in the client store.
+        if not self.nodes:
             self.log.error("No Dedicated Internet service matches this run; nothing to provision.")
             return
-        service_dict: dict = edges[0]["node"]
-
-        # Translate the dict to proper object
-        self.customer_service = await InfrahubNode.from_graphql(
-            client=self.client,
-            data=service_dict,
-            branch=self.branch,
-        )
+        self.customer_service = self.nodes[0]
 
         # Move the service as active
         # TODO: Not happy with having this one here...
-        self.customer_service.status.value = "active"
+        self.customer_service.status.value = ACTIVE_STATUS
         await self.customer_service.save(allow_upsert=True)
 
         # Allocate the VLAN to the service
@@ -92,11 +143,8 @@ class DedicatedInternetGenerator(InfrahubGenerator):
         )
         if existing_vlans:
             self.allocated_vlan = existing_vlans[0]
-            # Saved, not just returned. A generator run's group holds what that run produced, and
-            # Infrahub deletes members that a later run stops producing. Reading the VLAN back does
-            # not put it in this run's group, so returning here left it out and the cleanup after the
-            # next run deleted it -- the VLAN this branch exists to preserve. Every other allocation
-            # below already re-saves on each run, which is why only this one was pruned.
+            # Saved, not just returned: a generator run's group holds what that run saved, and Infrahub
+            # deletes the members a later run does not save, so a VLAN only read back would be deleted.
             #
             # `allow_upsert=True` is safe here, unlike at creation: `vlan_id` is part of the HFID and
             # now holds the concrete value the pool allocated, so the HFID resolves.
@@ -117,8 +165,8 @@ class DedicatedInternetGenerator(InfrahubGenerator):
             vlan_id=resource_pool,  # Here we get the vlan ID from the pool
             description=f"VLAN allocated to service {self.customer_service.service_identifier.value}",
             status=ACTIVE_STATUS,
-            role="customer",
-            l2domain=["default"],
+            role=CUSTOMER_ROLE,
+            l2domain=[SERVICE_L2_DOMAIN],
             service=self.customer_service,
             location=[self.customer_service.location.id],
         )
@@ -143,9 +191,9 @@ class DedicatedInternetGenerator(InfrahubGenerator):
         # attribute assignment instead: the pool-allocation mutation's `data` input does not reliably
         # persist relationships, only plain attributes.
         prefix_data: dict = {
-            "status": "active",
+            "status": ACTIVE_STATUS,
             "description": f"Prefix allocated to service {self.customer_service.service_identifier.value}",
-            "role": "customer",
+            "role": CUSTOMER_ROLE,
         }
 
         # Create resource from the pool
@@ -166,77 +214,28 @@ class DedicatedInternetGenerator(InfrahubGenerator):
         await self.allocated_prefix.save(allow_upsert=True)
 
     async def allocate_port(self) -> None:
-        """Allocate a port to the service."""
-        allocated_port = None
-
+        """Allocate a port to the service: the port it already has, or the first free port at its site."""
         self.log.info("Allocating port to this service...")
 
-        # Fetch interfaces records
-        await self.customer_service.dedicated_interfaces.fetch()
-        self.log.info(
-            f"There are {len(self.customer_service.dedicated_interfaces.peers)} interfaces attached to this service.",
-        )
-
-        # If we have any interface attached to the service
-        if len(self.customer_service.dedicated_interfaces.peers) > 0:
-            # Loop over interfaces attached to the service
-            for interface in self.customer_service.dedicated_interfaces.peers:
-                # Get device related to the interface
-                await interface.peer.device.fetch()
-                # If the device is "core"
-                if interface.peer.device.peer.role.value == "core":
-                    self.log.info(f"Port `{interface.peer.display_label}` already allocated to the service.")
-                    # Big assomption but we assume port is already allocated
-                    self.index = interface.peer.device.peer.index.value
-                    allocated_port = interface
-                    break
-
-        # If we don't have yet a port, we need to find one
-        if allocated_port is None:
+        core_ports = existing_core_ports(self.customer_service)
+        allocated_port: DcimInterfaceL2
+        if core_ports:
+            # A service can have a port on each switch (a second path). A re-run keeps the first path:
+            # the switch with the index of the edge router that holds the gateway IP, else the lowest index.
+            gateway_index = gateway_router_index(self.customer_service) if len(core_ports) > 1 else None
+            self.index = gateway_index if gateway_index in core_ports else min(core_ports)
+            allocated_port = core_ports[self.index]
+            self.log.info(f"Port `{allocated_port.display_label}` already allocated to the service.")
+        else:
             self.log.info("Haven't found any port allocated to this service.")
-
-            # Here, we pick randomly. In a real-life scenario, we might want to give this more thought
-            self.index = random.randint(1, 2)
-
-            # Find the switch on the site
-            switch = await self.client.get(
-                kind=DcimDevice,
-                location__ids=[self.customer_service.location.id],
-                role__value="core",
-                index__value=self.index,
-            )
-            self.log.info(f"Looking for port on {switch}...")
-
-            # Fetch switch interface data
-            await switch.interfaces.fetch()
-
-            # Find first interface on that switch that is free
-            selected_interface = next(
-                (
-                    interface
-                    for interface in switch.interfaces.peers
-                    if interface.peer.role.value == "customer"
-                    and interface.peer.status.value == "free"
-                    and interface.peer.service.id is None
-                ),
-                None,  # Default value if no match is found
-            )
-
-            # If we don't have any interface available
-            if selected_interface is None:
-                msg: str = f"There is no physical port to allocate to customer on {switch}"
-                self.log.error(msg)
-                raise RuntimeError(msg)
-            self.log.info(f"Found port {selected_interface.peer.display_label} to allocate to the service.")
-            allocated_port = selected_interface
-
-        allocated_port = allocated_port.peer
+            self.index, allocated_port = await self.free_port()
+            self.log.info(f"Found port {allocated_port.display_label} to allocate to the service.")
 
         # Enforce all params of this interface
         allocated_port.enabled.value = True
-        allocated_port.status.value = "active"
+        allocated_port.status.value = ACTIVE_STATUS
         allocated_port.l2_mode.value = "Access"
-        allocated_port.role.value = "customer"
+        allocated_port.role.value = CUSTOMER_ROLE
         allocated_port.description.value = f"Port allocated to service {self.customer_service.service_identifier.value}"
         allocated_port.speed.value = int(self.customer_service.bandwidth.value)
         allocated_port.service = self.customer_service
@@ -246,6 +245,48 @@ class DedicatedInternetGenerator(InfrahubGenerator):
         # tracking group, or a later run where the service uses another port would delete it.
         await allocated_port.save(allow_upsert=True, update_group_context=False)
         await self.release_port_from_group(allocated_port)
+        await self.check_port_kept(allocated_port.id)
+
+    async def free_port(self) -> tuple[int, DcimInterfaceL2]:
+        """The first free customer port at the service's site, with its switch index: lowest switch index first,
+        then lowest port name.
+
+        Infrahub filters the ports by role and status, so a port another service already took is not offered.
+        """
+        switches = await self.client.filters(
+            kind=DcimDevice, location__ids=[self.customer_service.location.id], role__value=CORE_ROLE
+        )
+        indexed = sorted((int(switch.index.value), switch) for switch in switches if switch.index.value is not None)
+        for index, switch in indexed:
+            ports = await self.client.filters(
+                kind=DcimInterfaceL2, device__ids=[switch.id], role__value=CUSTOMER_ROLE, status__value=FREE_STATUS
+            )
+            free: list[DcimInterfaceL2] = [port for port in ports if port.service.id is None]
+            if free:
+                chosen: DcimInterfaceL2 = min(free, key=lambda port: natural_key(str(port.name.value)))
+                return index, chosen
+
+        identifier = self.customer_service.service_identifier.value
+        msg = f"There is no physical port to allocate to customer on the core switches of the site of {identifier}"
+        self.log.error(msg)
+        raise RuntimeError(msg)
+
+    async def check_port_kept(self, port_id: str) -> None:
+        """Fail the run when another service took the port between the choice and the save.
+
+        Two generator runs on the same branch can pick the same free port, and the last save wins. Reading
+        the port back makes the run that lost fail with a message, instead of passing with a port it does
+        not have; running the generator again picks another port. Runs on separate branches, as the portal
+        creates them, do not see each other's ports: Infrahub shows two changes to the same port as a
+        conflict in the proposed change of the second one.
+        """
+        port = await self.client.get(kind=DcimInterfaceL2, id=port_id)
+        if port.service.id != self.customer_service.id:
+            msg = (
+                f"Port {port.display_label} was allocated to another service during this run. Run the generator again."
+            )
+            self.log.error(msg)
+            raise RuntimeError(msg)
 
     async def release_port_from_group(self, port: InfrahubNode) -> None:
         """Take the port out of this generator's tracking group if an earlier run put it there.
@@ -268,24 +309,18 @@ class DedicatedInternetGenerator(InfrahubGenerator):
         router = await self.client.get(
             kind=DcimDevice,
             location__ids=[self.customer_service.location.id],
-            role__value="edge",
+            role__value=EDGE_ROLE,
             index__value=self.index,
         )
-
-        # Work around issue
-        if isinstance(self.allocated_vlan.vlan_id.value, int):
-            vlan_id: int = self.allocated_vlan.vlan_id.value
-        else:
-            vlan_id = self.allocated_vlan.vlan_id.value["value"]
 
         # Create interface
         gateway_interface = await self.client.create(
             kind=DcimInterfaceL3,
-            name=f"vlan_{vlan_id!s}",
+            name=f"vlan_{self.allocated_vlan.vlan_id.value}",
             speed=1000,
             device=router,
-            status="active",
-            role="customer",
+            status=ACTIVE_STATUS,
+            role=CUSTOMER_ROLE,
             description=f"Gateway interface for service {self.customer_service.service_identifier.value}",
             enabled=True,
             service=self.customer_service,
@@ -295,7 +330,9 @@ class DedicatedInternetGenerator(InfrahubGenerator):
         # Compute the gateway ip
         address: str = f"{next(self.allocated_prefix.prefix.value.hosts())!s}/{self.prefix_length!s}"
 
-        # Create IP object
+        # Create the IP object. Its `service` relationship is the service's `gateway_ip_address`: the
+        # authoritative link from a service to its gateway. The prefix's `gateway` below points to the same
+        # IP address for IPAM views; the generator sets both from the same node on each run.
         self.gateway_ip = await self.client.create(
             kind=IpamIPAddress,
             address=address,

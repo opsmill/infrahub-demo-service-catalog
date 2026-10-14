@@ -65,7 +65,7 @@ uv run invoke test-integration --tier=full  # adds the extended tier
 uv run invoke seed   # after invoke init; needs INFRAHUB_ADDRESS and INFRAHUB_API_TOKEN
 ```
 
-Creates twelve services with customers and tiers, runs the generator for each, and opens four maintenance proposed changes (one of them moves the Paris Gold services to the other edge router first) for the Business Impact page and the Gold outage guard check. The repository is imported from the committed `main`, so the feature must be on `main` first.
+Describes the check, generator, artifact definitions and stored queries in Infrahub, creates twelve services with customers and tiers, runs the generator for each, gives the three Paris Gold services a second path, and opens three maintenance proposed changes (Paris router 1, which the Gold outage guard passes; Brussels switch 1, which it blocks; New York router 1, which it passes). The data feeds the Planned maintenance, Single points of failure, Customer notification and Cost of service pages and the Gold outage guard check, which applies each tier's `min_paths` rule. The repository is imported from the committed `main`, so the feature must be on `main` first.
 
 ### Validate Schemas
 

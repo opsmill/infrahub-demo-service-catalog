@@ -7,106 +7,104 @@ Registered under `check_definitions`
 in `.infrahub.yml` with no `targets`, so it runs once in every proposed change
 pipeline. It runs the stored query `business_impact_services` on the proposed
 change's branch (the SDK's `collect_data`), reads the same query on main through
-`self.client`, and finds the proposed change's name by its source branch. For
-each active service whose tier has a rule and each device that is not active on
-the branch, it asks Infrahub's path traversal (`traverse_paths`, Infrahub 1.10 or later)
-whether a network path joins them. It hands the query results and the devices
-each service reaches to `service_catalog.business_impact.gold_outage_guard.evaluate`.
+`self.client`, and finds the proposed change's name by its source branch. On each
+side it adds the footprint of each active service: the core and edge devices that
+Infrahub's path traversal (`traverse_paths`) reaches from the service through its
+interfaces (`service_catalog.business_impact.footprint`). Then it applies the guard
+rule (`service_catalog.business_impact.gold_outage_guard.evaluate`). A traversal
+that fails is logged as an error, so the check fails. The two transforms that
+reuse the guard run the same module.
 
 How the rule is imported: Infrahub 1.11.4 imports a check file as
 `commits.<sha>.checks.gold_outage_guard`, with only the repository directory on
 `sys.path` (`infrahub/git/integrator.py`, `execute_python_check`). An absolute
 `import service_catalog` therefore fails in the stock Infrahub image, where the
-package is not installed. `load_rule` imports the rule from the same commit
-worktree as this file, so the check always runs the rule of the commit it came
-from, and falls back to the absolute name when this file is imported on its own
-(unit tests, `infrahubctl check`).
+package is not installed. `load_impact` imports the module with `worktree.load`,
+the helper the transforms use too, from the same commit worktree as this file.
+So the check always runs the rule of the commit it came from. The helper falls
+back to the absolute name when this file is imported on its own (unit tests,
+`infrahubctl check`). The stored query's name comes from the same module.
 """
 
 from __future__ import annotations
 
-import importlib
+import textwrap
 from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.checks import InfrahubCheck
 from infrahub_sdk.exceptions import Error as SdkError
 from infrahub_sdk.protocols import CoreProposedChange
 
+try:
+    # Infrahub imports this file as `commits.<sha>.checks.gold_outage_guard`.
+    from ..transforms.worktree import IMPACT_MODULE, load  # noqa: TID252 - the commit worktree import
+except ImportError:
+    # Imported on its own, as `checks.gold_outage_guard`.
+    from transforms.worktree import IMPACT_MODULE, load
+
 if TYPE_CHECKING:
     from types import ModuleType
 
-QUERY_NAME = "business_impact_services"
-MAIN_BRANCH = "main"
-RULE_MODULE = "service_catalog.business_impact.gold_outage_guard"
-FALLBACK_CHANGE_NAME = "This change"
+
+# Infrahub shows a check message in a box that does not wrap lines, about 80 characters wide next to its
+# "Message: " label, so the check breaks each message into lines of at most this width.
+MESSAGE_WIDTH = 72
 
 
-def load_rule() -> ModuleType:
-    """Import the rule module from this file's commit worktree, or by its absolute name."""
-    worktree_package = (__package__ or "").rpartition(".")[0]
-    name = f"{worktree_package}.{RULE_MODULE}" if worktree_package else RULE_MODULE
-    return importlib.import_module(name)
+def lines(message: str) -> str:
+    """The message on lines of at most MESSAGE_WIDTH characters, broken at spaces only, so "DI-2001" stays whole."""
+    return textwrap.fill(message, width=MESSAGE_WIDTH, break_long_words=False, break_on_hyphens=False)
 
 
-def _query_errors(body: dict[str, Any]) -> list[str]:
-    errors = body.get("errors") or []
-    return [str(error.get("message", error)) if isinstance(error, dict) else str(error) for error in errors]
+def load_impact() -> ModuleType:
+    """The module that runs the guard, from this file's commit worktree."""
+    module: ModuleType = load(IMPACT_MODULE)
+    return module
 
 
 class GoldOutageGuard(InfrahubCheck):
-    query = QUERY_NAME
+    query = load_impact().QUERY_NAME
     # Errors of the branch query. `InfrahubCheck.run` hands `validate` only the `data` part of the
     # response when it is not empty, so errors next to partial data are kept here.
     _branch_errors: tuple[str, ...] = ()
 
     async def collect_data(self) -> dict:
         body: dict[str, Any] = await super().collect_data()
-        self._branch_errors = tuple(_query_errors(body))
+        self._branch_errors = tuple(load_impact().query_errors(body))
         return body
 
     async def _change_name(self) -> str:
+        impact = load_impact()
         changes = await self.client.filters(
-            kind=CoreProposedChange, source_branch__value=self.branch_name, state__value="open", branch=MAIN_BRANCH
+            kind=CoreProposedChange,
+            source_branch__value=self.branch_name,
+            state__value="open",
+            branch=impact.MAIN_BRANCH,
         )
         names = sorted(str(change.name.value) for change in changes if change.name.value)
-        return names[0] if names else FALLBACK_CHANGE_NAME
-
-    async def _reached(self, rule: ModuleType, data: dict) -> dict[str, set[str]]:
-        """Devices each active service whose tier has a rule reaches through a network path, on the branch."""
-        reached: dict[str, set[str]] = {}
-        for pair in rule.traversal_pairs(data):
-            paths = await self.client.traverse_paths(
-                pair.service_id,
-                pair.device_id,
-                kind_filter=list(rule.NETWORK_KINDS),
-                max_depth=rule.MAX_HOPS,
-                max_paths=1,
-                branch=self.branch_name,
-            )
-            if paths.count:
-                reached.setdefault(pair.service, set()).add(pair.device)
-        return reached
+        return names[0] if names else str(impact.FALLBACK_CHANGE_NAME)
 
     async def validate(self, data: dict) -> None:
+        impact = load_impact()
         # A rejected query must fail the check, not read as "no Gold service affected".
-        if errors := [*self._branch_errors, *_query_errors(data)]:
-            self.log_error(message=f"Gold outage guard could not read the proposed change: {'; '.join(errors)}")
+        if errors := [*self._branch_errors, *impact.query_errors(data)]:
+            self.log_error(message=lines(f"Gold outage guard could not read the proposed change: {'; '.join(errors)}"))
             return
-        main_body = await self.client.query_gql_query(name=QUERY_NAME, branch_name=MAIN_BRANCH, update_group=False)
-        if errors := _query_errors(main_body):
-            self.log_error(message=f"Gold outage guard could not read the current network: {'; '.join(errors)}")
+        try:
+            main_data, branch_data = await impact.read_main_and_branch(self.client, data, self.branch_name)
+        except impact.QueryError as exc:
+            self.log_error(
+                message=lines(f"Gold outage guard could not read the current network: {'; '.join(exc.messages)}")
+            )
+            return
+        except SdkError as exc:
+            self.log_error(message=lines(f"Gold outage guard could not trace the service paths: {exc}"))
             return
 
-        rule = load_rule()
-        try:
-            reached = await self._reached(rule, data)
-        except SdkError as exc:
-            self.log_error(message=f"Gold outage guard could not trace the service paths: {exc}")
-            return
-        result = rule.evaluate(data, main_body.get("data") or {}, await self._change_name(), reached)
+        result = impact.evaluate(branch_data, main_data, await self._change_name())
         for message in result.errors:
-            self.log_error(message=message)
+            self.log_error(message=lines(message))
         for message in result.warnings:
-            self.log_info(message=message)
+            self.log_info(message=lines(message))
         if result.summary:
-            self.log_info(message=result.summary)
+            self.log_info(message=lines(result.summary))

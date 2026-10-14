@@ -10,11 +10,20 @@ consult.
 from __future__ import annotations
 
 import os
+from typing import TYPE_CHECKING
 
 import pytest
 from infrahub_testcontainers import __version__ as testcontainers_version
 
-from .stack_config import StackImage, resolve_stack_image
+from infrahub_sdk.spec.object import ObjectFile
+from infrahub_sdk.yaml import SchemaFile
+
+from .stack_config import resolve_stack_image
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from infrahub_sdk.schema.repository import InfrahubRepositoryConfig
 
 # Resolved and applied at import time, before any fixture starts the stack. Nothing is passed beyond
 # the packaged version: this repository's integration tests run *vanilla* Infrahub, so it takes the
@@ -34,11 +43,15 @@ os.environ.update(_STACK_IMAGE.as_env())
 
 
 @pytest.fixture(scope="session")
-def stack_image() -> StackImage:
-    """Image and tag the integration stack runs.
+def repository_schemas(root_dir: Path, repository_config: InfrahubRepositoryConfig) -> list[SchemaFile]:
+    """The schema files `.infrahub.yml` lists, as the repository import loads them.
 
-    Returns:
-        The resolved image. See ``stack_config`` for why this does not read
-        ``PROJECT_ENV_VARIABLES``.
+    The circuit schema is commented out there, so it is not among them: `invoke seed` loads it.
     """
-    return _STACK_IMAGE
+    return list(SchemaFile.load_from_disk(paths=[root_dir / path for path in repository_config.schemas]))
+
+
+@pytest.fixture(scope="session")
+def repository_object_files(root_dir: Path, repository_config: InfrahubRepositoryConfig) -> list[ObjectFile]:
+    """The object files `.infrahub.yml` lists, in its order. The upstream circuits are not among them."""
+    return list(ObjectFile.load_from_disk(paths=[root_dir / path for path in repository_config.objects]))

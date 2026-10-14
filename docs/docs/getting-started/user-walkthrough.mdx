@@ -82,7 +82,7 @@ When you submit the request:
 ### Track your service requests
 
 1. **View All Requests**
-   - Navigate to "📦 Service Requests" in the sidebar
+   - Select "Service Requests" under "Service catalog" in the sidebar
    - You'll see a table of all service requests with their current status
 
 2. **Monitor Request Progress**
@@ -99,7 +99,7 @@ When you submit the request:
    - **In Delivery**: Resources allocated, implementation in progress
    - **Active**: Service fully provisioned and operational
 
-In this example, the Service Request is in Draft state.
+In this example, DI-1001 is active, and its assets list the VLAN, gateway IP address, prefix and dedicated interfaces that the generator allocated.
 
 ![Service Requests](./../media/service_requests.png)
 
@@ -129,11 +129,11 @@ Infrahub serves as the "source of truth" for your network infrastructure, mainta
 
    The left sidebar organizes infrastructure data by category:
 
-   **Locations**
+   **Location**
    - Countries, metros, and sites
    - Geographic hierarchy for service placement
 
-   **DCIM (Data Center Infrastructure Management)**
+   **Device Management**
    - Devices (switches, routers, servers)
    - Interfaces and connections
    - Hardware specifications
@@ -260,7 +260,7 @@ This review process provides:
    - Your service should now show "Active" status
 
 2. **Review Allocated Resources**
-   - In Infrahub, navigate to the service under `Service` > `Dedicated Internet`
+   - In Infrahub, navigate to the service under `Services` > `Dedicated Internet`
    - Click on your service to see all allocated components
    - Verify relationships to VLANs, interfaces, and IP addresses
 

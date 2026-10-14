@@ -1,11 +1,38 @@
 ---
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 version: '1.0'
+
+# Copied from the OpsMill schema library (github.com/opsmill/schema-library), file
+# `extensions/circuit/circuit.yml`.
+# Library version: not known. The repository does not record the library commit or release. First
+# committed here on 2024-12-24 (6bce96e), removed on 2024-12-31 (fec0afa) and copied again on
+# 2026-03-30 (2bd2622). The edits below start from the 2026-03-30 copy.
+# Taken: the file as a whole. The repository does not record whether parts were left out when it
+# was copied.
+# Re-check on upgrade: this copy is no longer refreshed from the library. Reconcile library
+# changes by hand and keep the local edits below.
+# Local edits, from the git history of this file (date, commit, change and reason):
+# - 2026-03-31 a1c2c43: list indentation changed, and DcimCircuitEndpoint display label set to the
+#   circuit ID and the endpoint name.
+# - 2026-03-31 2168b13: DcimCircuitContract node (a file object) and DcimCircuit `contract`, to
+#   attach the contract file to a circuit.
+# - 2026-10-12 c8dc92c and 88833f5: `monthly_cost` attribute on DcimCircuit, for the cost of
+#   service.
+# - 2026-10-13 90f399a: `include_in_menu: false` on DcimCircuit, because `menu_circuit.yml` holds
+#   its sidebar item.
+# - 2026-10-13 3d476e9: the schema line for the editor, `order_weight` values, the endpoint
+#   display label `Endpoint <name>`, a unique `reference` attribute and human-friendly ID on
+#   DcimCircuitContract, and the reverse relationship LocationHosting `circuit_endpoints`, so each
+#   cardinality-one relationship has its reverse.
+
 nodes:
   - name: Circuit
     namespace: Dcim
     description: A Circuit represents a service operated by a provider.
     label: Circuit
     icon: mdi:cable-data
+    # The sidebar item is in menu_circuit.yml, which `invoke seed` loads with this schema.
+    include_in_menu: false
     human_friendly_id:
       - circuit_id__value
     order_by:
@@ -15,12 +42,15 @@ nodes:
       - name: circuit_id
         kind: Text
         unique: true
+        order_weight: 1000
       - name: description
         kind: Text
         optional: true
+        order_weight: 1700
       - name: circuit_type
         kind: Dropdown
         description: Specifies the type of circuit.
+        order_weight: 1100
         choices:
           - name: upstream
             label: Upstream
@@ -41,6 +71,7 @@ nodes:
             color: '#7f00ff'
       - name: status
         kind: Dropdown
+        order_weight: 1200
         choices:
           - name: active
             label: Active
@@ -58,12 +89,19 @@ nodes:
             label: Drained
             description: Temporarily taken out of service.
             color: '#bfbfbf'
+      - name: monthly_cost
+        kind: Number
+        label: Monthly cost (EUR)
+        description: What the provider charges for this circuit each month. Demo input, set in data/business_impact/upstream_circuits.yml.
+        optional: true
+        order_weight: 1600
     relationships:
       - name: provider
         peer: OrganizationProvider
         optional: false
         cardinality: one
         kind: Attribute
+        order_weight: 1300
       - name: location
         label: Location
         peer: LocationHosting
@@ -76,11 +114,13 @@ nodes:
         optional: true
         cardinality: many
         kind: Component
+        order_weight: 3000
       - name: contract
         peer: DcimCircuitContract
         optional: true
         cardinality: one
         kind: Attribute
+        order_weight: 1800
   - name: CircuitEndpoint
     namespace: Dcim
     description: A circuit endpoint, could be a position in a MMR...
@@ -97,7 +137,10 @@ nodes:
         - name__value
     order_by:
       - name__value
-    display_label: "{{ circuit__circuit_id__value }} - {{ name__value }}"
+    # Built from the endpoint's own attribute only. A label that reads the parent circuit is cached
+    # when the endpoint is saved, and is empty when the endpoint is loaded before its circuit. The
+    # human-friendly ID still names the circuit.
+    display_label: "Endpoint {{ name__value }}"
     attributes:
       - name: name
         kind: Text
@@ -106,6 +149,7 @@ nodes:
       - name: status
         kind: Dropdown
         optional: true
+        order_weight: 1100
         choices:
           - name: active
             label: Active
@@ -126,6 +170,7 @@ nodes:
       - name: description
         kind: Text
         optional: true
+        order_weight: 1600
     relationships:
       - name: circuit
         peer: DcimCircuit
@@ -140,23 +185,34 @@ nodes:
         cardinality: one
         kind: Attribute
         order_weight: 1500
+        identifier: dcimcircuitendpoint__locationhosting
   - name: CircuitContract
     namespace: Dcim
     inherit_from:
       - CoreFileObject
-    display_label: file_name__value
+    human_friendly_id:
+      - reference__value
+    display_label: reference__value
     description: Contract file associated with a circuit.
     label: Circuit Contract
     icon: mdi:file-document
     attributes:
+      - name: reference
+        kind: Text
+        unique: true
+        description: The provider's reference for the contract, for example its contract number.
+        order_weight: 1000
       - name: contract_start_date
         kind: DateTime
+        order_weight: 1100
       - name: contract_end_date
         kind: DateTime
+        order_weight: 1200
     relationships:
       - name: circuit
         peer: DcimCircuit
         cardinality: one
+        order_weight: 1300
 
 extensions:
   nodes:
@@ -166,9 +222,18 @@ extensions:
           peer: DcimCircuit
           cardinality: many
           optional: true
+          order_weight: 3500
     - kind: LocationHosting
       relationships:
         - name: circuits
           peer: DcimCircuit
           cardinality: many
           optional: true
+          order_weight: 3300
+        - name: circuit_endpoints
+          label: Circuit Endpoints
+          peer: DcimCircuitEndpoint
+          cardinality: many
+          optional: true
+          order_weight: 3400
+          identifier: dcimcircuitendpoint__locationhosting

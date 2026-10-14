@@ -1,9 +1,11 @@
-# Stored query for the Blast radius view and the Gold outage guard.
+# Stored query for the Planned maintenance page, the Single points of failure page and the Gold outage guard.
 # Ships as service_catalog/queries/business_impact_services.gql and is registered under
-# `queries` in .infrahub.yml as `business_impact_services`. Run on the selected branch;
-# run on main for the "In this change" comparison.
-# The ServiceTier block gives the Gold tier's SLA credit percentage for the tile help.
-# The service and device ids are the start and end of the Gold outage guard's path traversal.
+# `queries` in .infrahub.yml as `business_impact_services`. Run on the selected branch,
+# and on main to compare the paths each service has on the current network.
+# The ServiceTier block gives each tier's rule, the separate paths its services keep during a change.
+# The DcimDevice block gives the devices at each site: the code asks Infrahub's path traversal which of
+# them each active service reaches (service_catalog/business_impact/footprint.py).
+# The device index and site pair a switch with the edge router of the same index at the same site into one path.
 query business_impact_services {
   ServiceDedicatedInternet {
     edges {
@@ -17,9 +19,6 @@ query business_impact_services {
           value
         }
         bandwidth {
-          value
-        }
-        monthly_charge {
           value
         }
         location {
@@ -52,11 +51,11 @@ query business_impact_services {
             name {
               value
             }
-            sla_credit_pct {
-              value
-            }
           }
         }
+        # The paths come from Infrahub's path traversal, not from here. The interfaces keep the
+        # service's links in the query result, so Infrahub generates the "Affected customers"
+        # artifact again when one of them changes.
         dedicated_interfaces {
           edges {
             node {
@@ -64,26 +63,6 @@ query business_impact_services {
               id
               name {
                 value
-              }
-              device {
-                node {
-                  __typename
-                  id
-                  ... on DcimDevice {
-                    name {
-                      value
-                    }
-                    description {
-                      value
-                    }
-                    role {
-                      value
-                    }
-                    status {
-                      value
-                    }
-                  }
-                }
               }
             }
           }
@@ -108,6 +87,9 @@ query business_impact_services {
         status {
           value
         }
+        index {
+          value
+        }
         location {
           node {
             __typename
@@ -128,9 +110,6 @@ query business_impact_services {
         __typename
         id
         name {
-          value
-        }
-        sla_credit_pct {
           value
         }
         min_paths {

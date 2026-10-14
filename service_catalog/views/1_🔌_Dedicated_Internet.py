@@ -8,7 +8,6 @@ from service_catalog.infrahub import (
     create_branch,
     filter_nodes,
     get_dropdown_label_mapping,
-    get_dropdown_options,
 )
 from service_catalog.protocols_sync import LocationSite, ServiceDedicatedInternet
 
@@ -43,26 +42,18 @@ with st.form("new_dedicated_internet_form"):
     )
 
     # Bandwidth
-    bandwidth_options: list = get_dropdown_options(
-        kind=ServiceDedicatedInternet,
-        attribute_name="bandwidth",
-    )
     bandwidth_label_mapping: dict[str, str] = get_dropdown_label_mapping(
         kind=ServiceDedicatedInternet,
         attribute_name="bandwidth",
     )
     bandwidth = st.selectbox(
         "Bandwidth",
-        options=bandwidth_options,
-        format_func=lambda x: bandwidth_label_mapping.get(x, x),
+        options=list(bandwidth_label_mapping),
+        format_func=lambda x: bandwidth_label_mapping[x],
         key="select-bandwidth",
     )
 
     # IP package
-    ip_package_options: list = get_dropdown_options(
-        kind=ServiceDedicatedInternet,
-        attribute_name="ip_package",
-    )
     ip_package_label_mapping: dict[str, str] = get_dropdown_label_mapping(
         kind=ServiceDedicatedInternet,
         attribute_name="ip_package",
@@ -70,8 +61,8 @@ with st.form("new_dedicated_internet_form"):
 
     ip_package = st.select_slider(
         "IP Package",
-        options=ip_package_options,
-        format_func=lambda x: ip_package_label_mapping.get(x, x),
+        options=list(ip_package_label_mapping),
+        format_func=lambda x: ip_package_label_mapping[x],
         key="select-ip-package",
     )
 

@@ -1,6 +1,6 @@
 """Unit tests for the Gold outage guard rule.
 
-Runs `evaluate` on the seed-shaped query fixture of `test_blast_radius.py`: the
+Runs `evaluate` on the seed-shaped query fixture of `builders.py`: the
 same twelve services and sixteen devices, with every device active unless a
 test sets its status. The last tests import the check file the way the
 Infrahub task worker does, from a commit worktree, to prove that the check
@@ -18,19 +18,32 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from checks.gold_outage_guard import GoldOutageGuard
-from infrahub_sdk.exceptions import GraphQLError
-from service_catalog.business_impact.blast_radius import DeviceRow, ServiceRow, parse_devices, parse_services
-from service_catalog.business_impact.gold_outage_guard import (
-    MAX_HOPS,
-    NETWORK_KINDS,
-    GuardResult,
-    evaluate,
-    move_to_device,
-    path_count,
-    traversal_pairs,
+from checks.gold_outage_guard import MESSAGE_WIDTH, GoldOutageGuard
+from service_catalog.business_impact.blast_radius import (
+    DeviceRow,
+    parse_devices,
+    paths,
+    paths_up,
 )
-from tests.unit.test_blast_radius import FORBIDDEN_COPY, REPO_ROOT, SEED, SeedRow, build_q1
+from service_catalog.business_impact.gold_outage_guard import GuardResult, evaluate, move_to_device
+from tests.unit.builders import (
+    BRUSSELS,
+    BRUSSELS_MESSAGE,
+    FORBIDDEN_COPY,
+    MONEY_WORDS,
+    NEW_YORK,
+    PARIS,
+    RAISE_SILVER,
+    RAISE_SILVER_MESSAGE,
+    REPO_ROOT,
+    SEED,
+    QueryClient,
+    SeedRow,
+    build_q1,
+    build_seeded_q1,
+    service_row,
+    traced,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Collection
@@ -38,20 +51,10 @@ if TYPE_CHECKING:
 
     from infrahub_sdk import InfrahubClient
 
-PARIS = "Paris router 1 maintenance"
-BRUSSELS = "Brussels switch 1 maintenance"
-NEW_YORK = "New York router 1 maintenance"
-
 PARIS_MESSAGE = (
     "Paris router 1 maintenance leaves 2 Gold services for Northbank with no other path (DI-1001, DI-1002). "
-    "Gold SLA credit exposure: €2,565 per month (demo business input). "
+    "Each has 1 separate path on the current network and 0 during this change. "
     "Move these services to Paris edge router 2 first. "
-    "Gold requires at least 1 separate path during a change, and this change leaves 0."
-)
-BRUSSELS_MESSAGE = (
-    "Brussels switch 1 maintenance leaves 1 Gold service for Helix Health with no other path (DI-2001). "
-    "Gold SLA credit exposure: €2,025 per month (demo business input). "
-    "Move this service to Brussels switch 2 first. "
     "Gold requires at least 1 separate path during a change, and this change leaves 0."
 )
 
@@ -89,17 +92,10 @@ def test_main_passes() -> None:
     assert _passed_clean(evaluate(main, main, "Implement service DI-3001"))
 
 
-def test_silver_or_bronze_only_passes() -> None:
-    """No Gold service behind the device."""
-    rows = tuple(replace(row, tier="Silver") if row.tier == "Gold" else row for row in SEED)
-
-    result = evaluate(build_q1({"rb01-par01": "maintenance"}, rows=rows), build_q1(rows=rows), PARIS)
-
-    assert _passed_clean(result)
-
-
-def test_unassigned_tier_passes() -> None:
-    rows = tuple(replace(row, tier=None) if row.tier == "Gold" else row for row in SEED)
+@pytest.mark.parametrize("tier", ["Silver", None], ids=["silver-or-bronze-only", "unassigned-tier"])
+def test_no_gold_service_behind_the_device_passes(tier: str | None) -> None:
+    """The Gold services become Silver, or have no tier: no Gold service is behind the device."""
+    rows = tuple(replace(row, tier=tier) if row.tier == "Gold" else row for row in SEED)
 
     result = evaluate(build_q1({"rb01-par01": "maintenance"}, rows=rows), build_q1(rows=rows), PARIS)
 
@@ -148,7 +144,7 @@ def test_two_customers_joined_with_and_in_name_order() -> None:
 
     assert result.errors == [
         "Two sites leaves 3 Gold services for Helix Health and Northbank with no other path (DI-1001, DI-1002, DI-2001). "
-        "Gold SLA credit exposure: €4,590 per month (demo business input). "
+        "Each has 1 separate path on the current network and 0 during this change. "
         "Move these services to Brussels switch 2 and Paris edge router 2 first. "
         "Gold requires at least 1 separate path during a change, and this change leaves 0."
     ]
@@ -180,12 +176,14 @@ def test_move_to_device_is_none_without_a_peer_at_the_site() -> None:
 
 
 def test_message_without_a_peer_device_names_the_device_to_clear() -> None:
-    data = build_q1({"rb01-par01": "maintenance"})
+    """Paris has no edge router 2 here, and no service depends on it."""
+    rows = tuple(row for row in SEED if row.router != "rb02-par01")
+    data = build_q1({"rb01-par01": "maintenance"}, rows=rows)
     data["DcimDevice"]["edges"] = [
         edge for edge in data["DcimDevice"]["edges"] if edge["node"]["name"]["value"] != "rb02-par01"
     ]
 
-    result = evaluate(data, build_q1(), PARIS)
+    result = evaluate(traced(data), build_q1(rows=rows), PARIS)
 
     assert result.errors[0].endswith(
         "Move these services off Paris edge router 1 first. "
@@ -194,7 +192,10 @@ def test_message_without_a_peer_device_names_the_device_to_clear() -> None:
 
 
 def _without_device(data: dict[str, Any], device: str, services: Collection[str] | None = None) -> dict[str, Any]:
-    """Drop the interfaces on `device` from the services (all of them by default), as deleting it would."""
+    """Drop the interfaces on `device` from the services (all of them by default), as deleting it would.
+
+    The footprints are traced again, so the services no longer reach the device.
+    """
     for edge in data["ServiceDedicatedInternet"]["edges"]:
         node = edge["node"]
         if services is None or node["service_identifier"]["value"] in services:
@@ -208,7 +209,7 @@ def _without_device(data: dict[str, Any], device: str, services: Collection[str]
         data["DcimDevice"]["edges"] = [
             edge for edge in data["DcimDevice"]["edges"] if edge["node"]["name"]["value"] != device
         ]
-    return data
+    return traced(data)
 
 
 def test_deleting_a_device_in_the_path_of_gold_services_fails() -> None:
@@ -225,17 +226,16 @@ def test_removing_the_switch_port_of_a_gold_service_fails() -> None:
 
 
 def test_moving_gold_services_to_the_other_router_passes() -> None:
-    """The services still have an edge router: the change only replaces it."""
+    """The services move to switch 2 and edge router 2, so each keeps a path: the change only replaces it."""
     branch = build_q1({"rb01-par01": "maintenance"})
+    moves = {"rb01-par01": "rb02-par01", "sw01-par01": "sw02-par01"}
     for edge in branch["ServiceDedicatedInternet"]["edges"]:
         for interface in edge["node"]["dedicated_interfaces"]["edges"]:
             device = interface["node"]["device"]["node"]
-            if device["name"]["value"] == "rb01-par01":
-                device["name"]["value"] = "rb02-par01"
-                device["description"]["value"] = "Paris edge router 2"
-                device["status"]["value"] = "active"
+            if device["name"]["value"] in moves:
+                device["name"]["value"] = moves[device["name"]["value"]]
 
-    assert _passed_clean(evaluate(branch, build_q1(), PARIS))
+    assert _passed_clean(evaluate(traced(branch), build_q1(), PARIS))
 
 
 def test_decommissioning_a_gold_service_passes() -> None:
@@ -288,11 +288,19 @@ def test_move_to_device_skips_a_peer_that_is_not_active() -> None:
     ids=["empty", "null blocks", "no services and no tiers"],
 )
 def test_missing_data_passes_without_crashing(data: dict[str, Any]) -> None:
-    assert _passed_clean(evaluate(data, {}, PARIS))
+    assert _passed_clean(evaluate(traced(data), traced({}), PARIS))
+
+
+def test_data_without_footprints_is_refused() -> None:
+    """Each service's devices come from its footprint, so a query result without footprints cannot be read."""
+    plain = {key: block for key, block in build_q1().items() if key != "footprints"}
+
+    with pytest.raises(ValueError, match="no service footprints"):
+        evaluate(plain, build_q1(), PARIS)
 
 
 def test_empty_tier_block_still_uses_each_service_tier() -> None:
-    """The guard reads tier and credit percentage from each service, so an empty `ServiceTier` block changes nothing."""
+    """The guard reads the tier from each service, so an empty `ServiceTier` block changes nothing."""
     result = evaluate(build_q1({"rb01-par01": "maintenance"}, tiers={}), build_q1(), PARIS)
 
     assert result.errors == [PARIS_MESSAGE]
@@ -334,23 +342,19 @@ def test_rule_comes_from_the_tier() -> None:
     )
 
 
-def _service(data: dict[str, Any], identifier: str) -> ServiceRow:
-    return next(service for service in parse_services(data) if service.identifier == identifier)
-
-
 def test_path_count() -> None:
     """1 path with an active switch and router; 0 when either is not active or the router's interface is gone."""
-    active = _service(build_q1(), "DI-2001")
-    switch_down = _service(build_q1({"sw01-bru01": "maintenance"}), "DI-2001")
-    router_down = _service(build_q1({"rb01-bru01": "maintenance"}), "DI-2001")
-    no_router = _service(_without_device(build_q1(), "rb01-bru01"), "DI-2001")
+    active = service_row(build_q1(), "DI-2001")
+    switch_down = service_row(build_q1({"sw01-bru01": "maintenance"}), "DI-2001")
+    router_down = service_row(build_q1({"rb01-bru01": "maintenance"}), "DI-2001")
+    no_router = service_row(_without_device(build_q1(), "rb01-bru01"), "DI-2001")
 
-    assert path_count(active, active.devices) == 1
-    assert path_count(switch_down, switch_down.devices) == 0
-    assert path_count(router_down, router_down.devices) == 0
-    assert path_count(no_router, no_router.devices) == 0
-    # The roles come from the row as queried, so an empty set of dependent devices still counts the path.
-    assert path_count(active, ()) == 1
+    assert paths_up(active) == 1
+    assert paths_up(switch_down) == 0
+    assert paths_up(router_down) == 0
+    assert paths_up(no_router) == 0
+    # The roles come from the row as queried, so the path counts without reading the device statuses.
+    assert len(paths(active)) == 1
 
 
 def test_silver_with_rule_one_fails() -> None:
@@ -362,7 +366,7 @@ def test_silver_with_rule_one_fails() -> None:
     assert len(result.errors) == 2
     assert result.errors[1] == (
         "Brussels switch 1 maintenance leaves 1 Silver service for Maison Verte with no other path (DI-2003). "
-        "Silver SLA credit exposure: €156 per month (demo business input). "
+        "It has 1 separate path on the current network and 0 during this change. "
         "Move this service to Brussels switch 2 first. "
         "Silver requires at least 1 separate path during a change, and this change leaves 0."
     )
@@ -390,16 +394,33 @@ def test_second_device_behind_a_service_already_without_path_only_warns() -> Non
 
 def test_service_new_on_the_branch_is_checked_against_the_branch_rule() -> None:
     """A service missing on main counts as meeting the rule on main, so it fails on the branch rule alone."""
-    new = SeedRow("DI-1008", "Northbank", "Gold", "1000", "sw02-par01", "rb01-par01", 2160)
+    new = SeedRow("DI-1008", "Northbank", "Gold", "1000", "sw02-par01", "rb01-par01")
 
     result = evaluate(build_q1({"rb01-par01": "maintenance"}, rows=(new,)), build_q1(rows=()), PARIS)
 
     assert result.errors == [
         "Paris router 1 maintenance leaves 1 Gold service for Northbank with no other path (DI-1008). "
-        "Gold SLA credit exposure: €540 per month (demo business input). "
+        "It becomes active in this change and has 0 separate paths. "
         "Move this service to Paris edge router 2 first. "
         "Gold requires at least 1 separate path during a change, and this change leaves 0."
     ]
+
+
+def test_service_not_active_on_main_is_checked_against_the_branch_rule() -> None:
+    """A draft service on main has no paths to lose: a change that activates it short of the rule fails."""
+    main = build_q1()
+    service = next(
+        edge["node"]
+        for edge in main["ServiceDedicatedInternet"]["edges"]
+        if edge["node"]["service_identifier"]["value"] == "DI-1001"
+    )
+    service["status"]["value"] = "draft"
+
+    result = evaluate(build_q1({"rb01-par01": "maintenance"}), main, PARIS)
+
+    assert result.warnings == []
+    assert [error for error in result.errors if "DI-1001" in error]
+    assert "becomes active in this change" in next(error for error in result.errors if "DI-1001" in error)
 
 
 def _without_interfaces(data: dict[str, Any], identifier: str) -> dict[str, Any]:
@@ -412,14 +433,14 @@ def _without_interfaces(data: dict[str, Any], identifier: str) -> dict[str, Any]
 
 def test_service_new_on_the_branch_without_interfaces_fails_with_no_move_sentence() -> None:
     """No device sits behind the new service, so the message names none and goes on to the rule."""
-    new = SeedRow("DI-1008", "Northbank", "Gold", "1000", "sw02-par01", "rb01-par01", 2160)
+    new = SeedRow("DI-1008", "Northbank", "Gold", "1000", "sw02-par01", "rb01-par01")
     branch = _without_interfaces(build_q1(rows=(new,)), "DI-1008")
 
     result = evaluate(branch, build_q1(rows=()), "Order DI-1008")
 
     assert result.errors == [
         "Order DI-1008 leaves 1 Gold service for Northbank with no other path (DI-1008). "
-        "Gold SLA credit exposure: €540 per month (demo business input). "
+        "It becomes active in this change and has 0 separate paths. "
         "Gold requires at least 1 separate path during a change, and this change leaves 0."
     ]
     assert result.warnings == []
@@ -435,19 +456,11 @@ def test_service_without_a_switch_or_edge_router_on_main_and_the_branch_is_left_
     assert result.errors == []
     assert result.warnings == []
     assert result.summary == (
-        "New York router 1 maintenance leaves no active Gold service without a path. "
-        "Gold SLA credit exposure: €0 per month (demo business input)."
+        "New York router 1 maintenance leaves every active Gold service with at least 1 separate path."
     )
 
 
 # A change that raises a tier rule.
-
-RAISE_SILVER = "Promise two paths to Silver customers"
-RAISE_SILVER_MESSAGE = (
-    "Promise two paths to Silver customers raises the Silver rule from 0 to 2 separate paths during a change, "
-    "and 3 active Silver services have fewer (DI-1004, DI-1005, DI-2003: 1 each). "
-    "Build the paths first, or keep the rule at 0."
-)
 
 
 def _rules(silver: int, gold: int = 1) -> dict[str, int | None]:
@@ -496,10 +509,7 @@ def test_lowering_a_rule_passes() -> None:
     result = evaluate(build_q1(min_paths=_rules(0, gold=0)), build_q1(min_paths=_rules(0)), "Lower the Gold rule")
 
     assert _passed_clean(result)
-    assert result.summary == (
-        "Lower the Gold rule leaves no active Gold service without a path. "
-        "Gold SLA credit exposure: €0 per month (demo business input)."
-    )
+    assert result.summary == ("Lower the Gold rule leaves every active Gold service with at least 0 separate paths.")
 
 
 def test_raising_silver_to_one_passes() -> None:
@@ -511,7 +521,7 @@ def test_raising_silver_to_one_passes() -> None:
 
 def test_new_tier_is_not_a_tightening() -> None:
     """Silver is missing on main, so its branch rule applies on both sides and the router gives a path error."""
-    main_tiers = {"Gold": 25, "Bronze": 5}
+    main_tiers = ("Gold", "Bronze")
     branch = build_q1({"rb01-par01": "maintenance"}, min_paths=_rules(1))
 
     result = evaluate(branch, build_q1(tiers=main_tiers, min_paths=_rules(0)), PARIS)
@@ -525,70 +535,48 @@ def test_new_tier_is_not_a_tightening() -> None:
 # The check file, as the Infrahub task worker imports it.
 
 
-class _Client:
-    """Stand-in for the SDK client: the stored query by branch, and one open proposed change."""
-
-    def __init__(self, data_by_branch: dict[str, dict[str, Any]], change_name: str | None) -> None:
-        self.data_by_branch = data_by_branch
-        self.change_name = change_name
-        self.reads: list[tuple[str, str]] = []
-        self.traversals: list[tuple[str, str, dict[str, object]]] = []
-        self.traversal_error: Exception | None = None
-        # Service ids the traversal finds no path from, whatever the query says.
-        self.no_path_from: set[str] = set()
-
-    async def query_gql_query(self, name: str, branch_name: str, **_: object) -> dict[str, Any]:
-        self.reads.append((name, branch_name))
-        body = self.data_by_branch[branch_name]
-        return body if "errors" in body else {"data": body}
-
-    async def traverse_paths(self, source: str, destination: str, **kwargs: object) -> object:
-        """Answer from the branch data: a path exists when the service has an interface on the device."""
-        self.traversals.append((source, destination, kwargs))
-        if self.traversal_error is not None:
-            raise self.traversal_error
-        body = self.data_by_branch[str(kwargs["branch"])]
-        data = body.get("data", body)
-        devices = {
-            interface["node"]["device"]["node"]["id"]
-            for edge in data["ServiceDedicatedInternet"]["edges"]
-            if edge["node"]["id"] == source
-            for interface in edge["node"]["dedicated_interfaces"]["edges"]
-        }
-        reachable = destination in devices and source not in self.no_path_from
-        return type("PathTraversalResult", (), {"count": 1 if reachable else 0})()
-
-    async def filters(self, **_: object) -> list[object]:
-        if self.change_name is None:
-            return []
-        name = type("Attr", (), {"value": self.change_name})()
-        return [type("ProposedChange", (), {"name": name})()]
+def _text(log: dict) -> str:
+    """A logged message with its line breaks turned back into spaces."""
+    return str(log["message"]).replace("\n", " ")
 
 
-def _run_check(client: _Client, branch: str) -> GoldOutageGuard:
+def _run_check(client: QueryClient, branch: str) -> GoldOutageGuard:
     check = GoldOutageGuard(branch=branch, client=cast("InfrahubClient", client))
     asyncio.run(check.run())
     return check
 
 
 def test_check_logs_errors_and_reads_main_through_the_client() -> None:
-    client = _Client({"maint-rb01-par01": build_q1({"rb01-par01": "maintenance"}), "main": build_q1()}, PARIS)
+    client = QueryClient({"maint-rb01-par01": build_q1({"rb01-par01": "maintenance"}), "main": build_q1()}, PARIS)
 
     check = _run_check(client, "maint-rb01-par01")
 
     assert not check.passed
-    assert [log["message"] for log in check.errors] == [PARIS_MESSAGE]
+    assert [_text(log) for log in check.errors] == [PARIS_MESSAGE]
     assert client.reads == [("business_impact_services", "maint-rb01-par01"), ("business_impact_services", "main")]
+
+
+def test_check_messages_fit_the_infrahub_message_box() -> None:
+    """Infrahub does not wrap a check message, so each line stays short and the service IDs stay whole."""
+    client = QueryClient({"maint-rb01-par01": build_q1({"rb01-par01": "maintenance"}), "main": build_q1()}, PARIS)
+
+    check = _run_check(client, "maint-rb01-par01")
+
+    lines = [line for log in check.logs for line in str(log["message"]).splitlines()]
+    assert len(lines) > 1
+    assert all(len(line) <= MESSAGE_WIDTH for line in lines)
+    assert any("DI-" in line for line in lines)
+    assert not [line for line in lines if line.endswith("DI-")]
 
 
 def test_check_logs_warnings_as_info_and_passes() -> None:
     main = build_q1({"sw01-bru01": "maintenance"})
-    client = _Client({"maint-rb01-nyc01": build_q1({"sw01-bru01": "maintenance"}), "main": main}, None)
+    client = QueryClient({"maint-rb01-nyc01": build_q1({"sw01-bru01": "maintenance"}), "main": main}, None)
 
     check = _run_check(client, "maint-rb01-nyc01")
 
     assert check.passed
-    infos = [log["message"] for log in check.logs if log["level"] == "INFO"]
+    infos = [_text(log) for log in check.logs if log["level"] == "INFO"]
     assert any("DI-2001" in message for message in infos)
 
 
@@ -598,18 +586,17 @@ def test_check_fails_when_a_query_returns_errors(failing: str) -> None:
     data = {"maint-rb01-par01": build_q1({"rb01-par01": "maintenance"}), "main": build_q1()}
     data[failing] = {"errors": [{"message": "query refused"}]}
 
-    check = _run_check(_Client(data, PARIS), "maint-rb01-par01")
+    check = _run_check(QueryClient(data, PARIS), "maint-rb01-par01")
 
     assert not check.passed
-    assert any("query refused" in log["message"] for log in check.errors)
+    assert any("query refused" in _text(log) for log in check.errors)
 
 
 def test_pass_summary_records_the_exposure_at_approval_time() -> None:
     result = evaluate(build_q1({"rb01-nyc01": "maintenance"}), build_q1(), NEW_YORK)
 
     assert result.summary == (
-        "New York router 1 maintenance leaves no active Gold service without a path. "
-        "Gold SLA credit exposure: €0 per month (demo business input)."
+        "New York router 1 maintenance leaves every active Gold service with at least 1 separate path."
     )
 
 
@@ -623,117 +610,146 @@ def test_no_pass_summary_on_a_failure_or_a_warning() -> None:
 
 
 def test_check_logs_the_pass_summary() -> None:
-    client = _Client({"maint-rb01-nyc01": build_q1({"rb01-nyc01": "maintenance"}), "main": build_q1()}, NEW_YORK)
+    client = QueryClient({"maint-rb01-nyc01": build_q1({"rb01-nyc01": "maintenance"}), "main": build_q1()}, NEW_YORK)
 
     check = _run_check(client, "maint-rb01-nyc01")
 
     assert check.passed
-    infos = [log["message"] for log in check.logs if log["level"] == "INFO"]
-    assert any(message.startswith("New York router 1 maintenance leaves no active Gold service") for message in infos)
-
-
-def test_traversal_pairs_join_each_active_gold_service_to_each_device_out_of_service() -> None:
-    pairs = traversal_pairs(build_q1({"rb01-par01": "maintenance"}))
-
-    assert {(pair.service, pair.device) for pair in pairs} == {
-        (service, "rb01-par01") for service in ("DI-1001", "DI-1002", "DI-1003", "DI-2001", "DI-2002")
-    }
-    assert all(pair.service_id == f"service-{pair.service}" for pair in pairs)
-    assert all(pair.device_id == "device-rb01-par01" for pair in pairs)
-
-
-def test_traversal_pairs_follow_the_tier_rules() -> None:
-    """With Silver 1, Silver services are paired too; with the seeded rules, only Gold services are."""
-    seeded = traversal_pairs(build_q1({"sw01-bru01": "maintenance"}))
-    silver = traversal_pairs(build_q1({"sw01-bru01": "maintenance"}, min_paths={"Gold": 1, "Silver": 1, "Bronze": 0}))
-
-    gold = {"DI-1001", "DI-1002", "DI-1003", "DI-2001", "DI-2002"}
-    assert {pair.service for pair in seeded} == gold
-    assert {pair.service for pair in silver} == gold | {"DI-1004", "DI-1005", "DI-2003"}
-    assert {pair.device for pair in silver} == {"sw01-bru01"}
-
-
-def test_traversal_pairs_are_empty_when_every_device_is_active() -> None:
-    assert traversal_pairs(build_q1()) == []
-
-
-def test_reached_devices_decide_which_services_depend_on_the_device() -> None:
-    """With `reached`, the devices behind the service's interfaces in the query are not used."""
-    branch = build_q1({"rb01-par01": "maintenance"})
-
-    assert evaluate(branch, build_q1(), PARIS, {"DI-1001": {"rb01-par01"}, "DI-1002": {"rb01-par01"}}).errors == [
-        PARIS_MESSAGE
-    ]
-    assert evaluate(branch, build_q1(), PARIS, {}).passed
-
-
-def test_check_traces_each_pair_on_the_branch_with_the_network_kinds() -> None:
-    client = _Client({"maint-rb01-par01": build_q1({"rb01-par01": "maintenance"}), "main": build_q1()}, PARIS)
-
-    _run_check(client, "maint-rb01-par01")
-
-    assert len(client.traversals) == 5
-    assert {kwargs["branch"] for _, _, kwargs in client.traversals} == {"maint-rb01-par01"}
-    assert {tuple(cast("list[str]", kwargs["kind_filter"])) for _, _, kwargs in client.traversals} == {NETWORK_KINDS}
-    assert {kwargs["max_depth"] for _, _, kwargs in client.traversals} == {MAX_HOPS}
-
-
-def test_check_passes_when_the_traversal_finds_no_path() -> None:
-    """The traversal, not the interface list in the query, decides whether a Gold service depends on the device."""
-    client = _Client({"maint-rb01-par01": build_q1({"rb01-par01": "maintenance"}), "main": build_q1()}, PARIS)
-    client.no_path_from = {"service-DI-1001", "service-DI-1002"}
-
-    check = _run_check(client, "maint-rb01-par01")
-
-    assert check.passed
-
-
-def test_check_fails_when_the_traversal_raises() -> None:
-    client = _Client({"maint-rb01-par01": build_q1({"rb01-par01": "maintenance"}), "main": build_q1()}, PARIS)
-    client.traversal_error = GraphQLError(errors=[{"message": "path traversal refused"}])
-
-    check = _run_check(client, "maint-rb01-par01")
-
-    assert not check.passed
-    assert next(log["message"] for log in check.errors).startswith(
-        "Gold outage guard could not trace the service paths:"
+    infos = [_text(log) for log in check.logs if log["level"] == "INFO"]
+    assert any(
+        message.startswith("New York router 1 maintenance leaves every active Gold service") for message in infos
     )
 
 
 def test_check_fails_when_the_branch_query_returns_errors_next_to_partial_data() -> None:
     """Errors next to partial data must fail the check: the SDK passes only `data` to `validate`."""
     partial = {"data": build_q1(), "errors": [{"message": "DcimDevice could not be read"}]}
-    client = _Client({"maint-rb01-par01": partial, "main": build_q1()}, PARIS)
+    client = QueryClient({"maint-rb01-par01": partial, "main": build_q1()}, PARIS)
 
     check = _run_check(client, "maint-rb01-par01")
 
     assert not check.passed
-    assert [log["message"] for log in check.errors] == [
+    assert [_text(log) for log in check.errors] == [
         "Gold outage guard could not read the proposed change: DcimDevice could not be read"
     ]
 
 
-def test_worker_imports_the_rule_from_the_commit_worktree(tmp_path: Path) -> None:
+def test_worker_imports_the_rule_from_the_commit_worktree(commit_worktree: Path) -> None:
     """Infrahub 1.11.4 imports `commits.<sha>.checks.gold_outage_guard` with only the repository directory on
     sys.path (git/integrator.py `execute_python_check`, git/base.py `extract_repo_file_information`), so the
     check must reach `service_catalog` inside the same worktree, not an installed copy.
     """
-    worktree = tmp_path / "commits" / "0f1e2d3c"
+    worktree = commit_worktree
+    package = f"commits.{worktree.name}"
     shutil.copytree(REPO_ROOT / "checks", worktree / "checks")
+    shutil.copytree(REPO_ROOT / "transforms", worktree / "transforms", ignore=shutil.ignore_patterns("__pycache__"))
     shutil.copytree(
         REPO_ROOT / "service_catalog" / "business_impact",
         worktree / "service_catalog" / "business_impact",
         ignore=shutil.ignore_patterns("__pycache__"),
     )
-    (worktree / "service_catalog" / "__init__.py").write_text("")
-    sys.path.append(str(tmp_path))
-    try:
-        module = importlib.import_module("commits.0f1e2d3c.checks.gold_outage_guard")
-        rule = module.load_rule()
+    for name in ("network.py", "protocols_async.py"):
+        shutil.copy(REPO_ROOT / "service_catalog" / name, worktree / "service_catalog" / name)
+    module = importlib.import_module(f"{package}.checks.gold_outage_guard")
+    impact = module.load_impact()
 
-        assert rule.__name__ == "commits.0f1e2d3c.service_catalog.business_impact.gold_outage_guard"
-        assert rule.__file__.startswith(str(worktree))
-    finally:
-        sys.path.remove(str(tmp_path))
-        for name in [name for name in sys.modules if name == "commits" or name.startswith("commits.")]:
-            del sys.modules[name]
+    assert impact.__name__ == f"{package}.service_catalog.business_impact.change_impact"
+    assert impact.__file__.startswith(str(worktree))
+    for name in ("gold_outage_guard", "blast_radius", "footprint"):
+        loaded = sys.modules[f"{package}.service_catalog.business_impact.{name}"]
+        assert str(loaded.__file__).startswith(str(worktree))
+    assert str(sys.modules[f"{package}.service_catalog.network"].__file__).startswith(str(worktree))
+
+
+# Services with two separate paths, as `invoke seed` builds the Paris Gold services.
+
+
+def test_path_count_with_two_paths() -> None:
+    """Each switch and edge router pair with the same index is a path; one device out leaves the other."""
+    both = service_row(build_seeded_q1(), "DI-1001")
+    one_out = service_row(build_seeded_q1({"rb01-par01": "maintenance"}), "DI-1001")
+    both_out = service_row(build_seeded_q1({"rb01-par01": "maintenance", "sw02-par01": "maintenance"}), "DI-1001")
+
+    assert paths_up(both) == 2
+    assert paths_up(one_out) == 1
+    assert paths_up(both_out) == 0
+    # Without the device statuses, both paths count.
+    assert len(paths(one_out)) == 2
+
+
+def test_two_paths_with_one_device_out_passes() -> None:
+    result = evaluate(build_seeded_q1({"rb01-par01": "maintenance"}), build_seeded_q1(), PARIS)
+
+    assert _passed_clean(result)
+    assert (
+        result.summary == "Paris router 1 maintenance leaves every active Gold service with at least 1 separate path."
+    )
+
+
+def test_two_paths_with_both_devices_out_fails() -> None:
+    branch = build_seeded_q1({"rb01-par01": "maintenance", "rb02-par01": "maintenance"})
+
+    result = evaluate(branch, build_seeded_q1(), "Both Paris routers")
+
+    assert result.errors == [
+        "Both Paris routers leaves 3 Gold services for Helix Health and Northbank with no other path "
+        "(DI-1001, DI-1002, DI-1003). "
+        "Each has 2 separate paths on the current network and 0 during this change. "
+        "Move these services off Paris edge router 1 and Paris edge router 2 first. "
+        "Gold requires at least 1 separate path during a change, and this change leaves 0."
+    ]
+
+
+def test_branch_that_deletes_one_of_two_switch_ports_passes() -> None:
+    """DI-1001 keeps the path through switch 2 and edge router 2."""
+    branch = _without_device(build_seeded_q1(), "sw01-par01", {"DI-1001"})
+
+    assert len(paths(service_row(branch, "DI-1001"))) == 1
+    assert _passed_clean(evaluate(branch, build_seeded_q1(), "Remove a port of DI-1001"))
+
+
+def test_branch_that_deletes_both_switch_ports_fails() -> None:
+    branch = _without_device(_without_device(build_seeded_q1(), "sw01-par01", {"DI-1001"}), "sw02-par01", {"DI-1001"})
+
+    result = evaluate(branch, build_seeded_q1(), "Remove the ports of DI-1001")
+
+    assert len(result.errors) == 1
+    assert result.errors[0].startswith(
+        "Remove the ports of DI-1001 leaves 1 Gold service for Northbank with no other path (DI-1001). "
+        "It has 2 separate paths on the current network and 0 during this change. "
+    )
+    assert result.errors[0].endswith(
+        "Gold requires at least 1 separate path during a change, and this change leaves 0."
+    )
+
+
+def test_messages_contain_no_money_or_sla_figure() -> None:
+    results = [
+        evaluate(build_q1({"sw01-bru01": "maintenance"}), build_q1(), BRUSSELS),
+        evaluate(build_seeded_q1({"rb01-par01": "maintenance", "rb02-par01": "maintenance"}), build_seeded_q1(), PARIS),
+        evaluate(build_seeded_q1({"rb01-par01": "maintenance"}), build_seeded_q1(), PARIS),
+        evaluate(build_q1({"sw01-bru01": "maintenance"}), build_q1({"sw01-bru01": "maintenance"}), NEW_YORK),
+        evaluate(build_q1(min_paths=_rules(2)), build_q1(min_paths=_rules(0)), RAISE_SILVER),
+    ]
+    messages = [
+        message
+        for result in results
+        for message in (*result.errors, *result.warnings, *([result.summary] if result.summary else []))
+    ]
+
+    assert len(messages) == 5
+    for word in ("EUR", "€", "SLA", "credit"):
+        assert not [message for message in messages if word in message]
+    assert not [message for message in messages if MONEY_WORDS.search(message)]
+
+
+def test_check_passes_on_the_seeded_paris_router_1_maintenance() -> None:
+    client = QueryClient(
+        {"maint-rb01-par01": build_seeded_q1({"rb01-par01": "maintenance"}), "main": build_seeded_q1()}, PARIS
+    )
+
+    check = _run_check(client, "maint-rb01-par01")
+
+    assert check.passed
+    infos = [_text(log) for log in check.logs if log["level"] == "INFO"]
+    assert "Paris router 1 maintenance leaves every active Gold service with at least 1 separate path." in infos

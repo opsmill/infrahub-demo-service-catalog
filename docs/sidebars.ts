@@ -21,6 +21,8 @@ const sidebars: SidebarsConfig = {
       items: [
         'business-impact/plan-maintenance',
         'business-impact/find-single-points-of-failure',
+        'business-impact/notify-gold-customers',
+        'business-impact/cost-of-service',
       ],
     },
   ]

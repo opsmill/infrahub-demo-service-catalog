@@ -16,42 +16,76 @@ st.markdown(
     """,
 )
 
+
+def card(header: str, text: str, button: str, key: str, page: str) -> None:
+    """A bordered card with a header, a text and a button that opens `page`."""
+    with st.container(border=True):
+        st.header(header)
+        st.write(text)
+        if st.button(button, use_container_width=True, key=key):
+            st.switch_page(page)
+
+
 st.write("## Request new service")
 
 col1, col2 = st.columns(2)
 
 with col1:
-    with st.container(border=True):
-        st.header("🔌 Dedicated Internet")
-        st.write("This form will allow you to request the implementation of a new dedicated internet service..")
-        if st.button("Create", use_container_width=True, key="dedicated_internet"):
-            st.switch_page("pages/1_🔌_Dedicated_Internet.py")
+    card(
+        "🔌 Dedicated Internet",
+        "This form will allow you to request the implementation of a new dedicated internet service..",
+        "Create",
+        "dedicated_internet",
+        "views/1_🔌_Dedicated_Internet.py",
+    )
 
 with col2:
-    with st.container(border=True):
-        st.header("🛜 Wireless")
-        st.write("This form will allow you to request the implementation of a new wireless service.")
-        if st.button("Create", use_container_width=True, key="wireless"):
-            st.switch_page("pages/2_🛜_Wireless.py")
+    card(
+        "🛜 Wireless",
+        "This form will allow you to request the implementation of a new wireless service.",
+        "Create",
+        "wireless",
+        "views/2_🛜_Wireless.py",
+    )
 
 
 st.write("## View current requests")
 
-with st.container(border=True):
-    st.header("📦 Service requests")
-    st.write(
-        "You will find on this page all services requests opened. For the one delivered you'll also find allocated assets.",
-    )
-    if st.button("View", use_container_width=True, key="service_requests"):
-        st.switch_page("pages/0_📦_Service_Requests.py")
+card(
+    "📦 Service requests",
+    "You will find on this page all services requests opened. For the one delivered you'll also find allocated assets.",
+    "View",
+    "service_requests",
+    "views/0_📦_Service_Requests.py",
+)
 
 
 st.write("## Understand business impact")
 
-with st.container(border=True):
-    st.header("📊 Business impact")
-    st.write(
-        "See which customers, Gold services and contract value a proposed change touches before it merges.",
-    )
-    if st.button("View", use_container_width=True, key="business_impact"):
-        st.switch_page("pages/3_📊_Business_Impact.py")
+for header, text, key, page in (
+    (
+        "📊 Planned maintenance",
+        "See which customers and Gold services a proposed change puts at risk or takes down before it merges.",
+        "planned_maintenance",
+        "views/3_📊_Planned_Maintenance.py",
+    ),
+    (
+        "📍 Single points of failure",
+        "See which Gold services depend on a single device, and which would have no path if that device failed now.",
+        "single_points_of_failure",
+        "views/6_📍_Single_Points_of_Failure.py",
+    ),
+    (
+        "📣 Customer notification",
+        "See the customers a proposed change affects, grouped by status, and which ones are notified.",
+        "customer_notification",
+        "views/4_📣_Customer_Notification.py",
+    ),
+    (
+        "💶 Cost of service",
+        "See what each service costs to deliver, by path and part, from demo inputs.",
+        "cost_of_service",
+        "views/5_💶_Cost_of_Service.py",
+    ),
+):
+    card(header, text, "View", key, page)

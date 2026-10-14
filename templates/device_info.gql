@@ -1,3 +1,7 @@
+# The startup configuration of one device. Infrahub generates the "Startup Config" artifact again when
+# a node this query returns changes: the device, its interfaces and their VLANs and IP addresses, or the
+# VLANs of its site. A new service changes these nodes on the devices it uses, so the query does not
+# need to read the services.
 query device_info($device_name: String!) {
   DcimDevice(name__value: $device_name) {
     edges {
@@ -68,7 +72,7 @@ query device_info($device_name: String!) {
                   edges {
                     node {
                       address {
-                        ip
+                        value
                       }
                     }
                   }
@@ -77,14 +81,6 @@ query device_info($device_name: String!) {
             }
           }
         }
-      }
-    }
-  }
-  ServiceGeneric {
-    edges {
-      node {
-        __typename
-        id
       }
     }
   }

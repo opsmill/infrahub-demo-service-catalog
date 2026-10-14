@@ -1,0 +1,187 @@
+---
+# The upstream circuits of the cost of service. `invoke seed` loads this file
+# after it loads the circuit schema (schemas/circuit). It is not listed in
+# .infrahub.yml, so the repository import works without the circuit schema.
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: DcimCircuit
+  data:
+    # One upstream circuit per edge router. Endpoint A lands on the router's
+    # Ethernet4. The inline interface block sets that Ethernet4 to active,
+    # because it carries the circuit.
+    # ------------------------------------------------------------
+    # Paris
+    # ------------------------------------------------------------
+    - circuit_id: "COG-PAR-TR-1001"
+      circuit_type: upstream
+      status: active
+      description: "Cogent upstream transit for Paris edge router 1"
+      provider: "Cogent Communications"
+      location: "par01"
+      monthly_cost: 2500  # demo input
+      endpoints:
+        kind: DcimCircuitEndpoint
+        data:
+          - name: "A"
+            status: active
+            location: "par01"
+            connected_endpoint:
+              kind: DcimInterfaceL3
+              data:
+                device: "rb01-par01"
+                name: "Ethernet4"
+                speed: 1000
+                status: active
+    - circuit_id: "COLT-PAR-TR-2001"
+      circuit_type: upstream
+      status: active
+      description: "Colt upstream transit for Paris edge router 2"
+      provider: "Colt Technology Services"
+      location: "par01"
+      monthly_cost: 2500  # demo input
+      endpoints:
+        kind: DcimCircuitEndpoint
+        data:
+          - name: "A"
+            status: active
+            location: "par01"
+            connected_endpoint:
+              kind: DcimInterfaceL3
+              data:
+                device: "rb02-par01"
+                name: "Ethernet4"
+                speed: 1000
+                status: active
+
+    # ------------------------------------------------------------
+    # Brussels
+    # ------------------------------------------------------------
+    - circuit_id: "ZAYO-BRU-TR-1001"
+      circuit_type: upstream
+      status: active
+      description: "Zayo upstream transit for Brussels edge router 1"
+      provider: "Zayo Group"
+      location: "bru01"
+      monthly_cost: 2000  # demo input
+      endpoints:
+        kind: DcimCircuitEndpoint
+        data:
+          - name: "A"
+            status: active
+            location: "bru01"
+            connected_endpoint:
+              kind: DcimInterfaceL3
+              data:
+                device: "rb01-bru01"
+                name: "Ethernet4"
+                speed: 1000
+                status: active
+    - circuit_id: "COLT-BRU-TR-2001"
+      circuit_type: upstream
+      status: active
+      description: "Colt upstream transit for Brussels edge router 2"
+      provider: "Colt Technology Services"
+      location: "bru01"
+      monthly_cost: 2000  # demo input
+      endpoints:
+        kind: DcimCircuitEndpoint
+        data:
+          - name: "A"
+            status: active
+            location: "bru01"
+            connected_endpoint:
+              kind: DcimInterfaceL3
+              data:
+                device: "rb02-bru01"
+                name: "Ethernet4"
+                speed: 1000
+                status: active
+
+    # ------------------------------------------------------------
+    # New York
+    # ------------------------------------------------------------
+    - circuit_id: "COG-NYC-TR-1001"
+      circuit_type: upstream
+      status: active
+      description: "Cogent upstream transit for New York edge router 1"
+      provider: "Cogent Communications"
+      location: "nyc01"
+      monthly_cost: 3000  # demo input
+      endpoints:
+        kind: DcimCircuitEndpoint
+        data:
+          - name: "A"
+            status: active
+            location: "nyc01"
+            connected_endpoint:
+              kind: DcimInterfaceL3
+              data:
+                device: "rb01-nyc01"
+                name: "Ethernet4"
+                speed: 1000
+                status: active
+    - circuit_id: "LUMEN-NYC-TR-2001"
+      circuit_type: upstream
+      status: active
+      description: "Lumen upstream transit for New York edge router 2"
+      provider: "Lumen Technologies"
+      location: "nyc01"
+      monthly_cost: 3000  # demo input
+      endpoints:
+        kind: DcimCircuitEndpoint
+        data:
+          - name: "A"
+            status: active
+            location: "nyc01"
+            connected_endpoint:
+              kind: DcimInterfaceL3
+              data:
+                device: "rb02-nyc01"
+                name: "Ethernet4"
+                speed: 1000
+                status: active
+
+    # ------------------------------------------------------------
+    # Dallas
+    # ------------------------------------------------------------
+    - circuit_id: "ZAYO-DAL-TR-1001"
+      circuit_type: upstream
+      status: active
+      description: "Zayo upstream transit for Dallas edge router 1"
+      provider: "Zayo Group"
+      location: "dal01"
+      monthly_cost: 3000  # demo input
+      endpoints:
+        kind: DcimCircuitEndpoint
+        data:
+          - name: "A"
+            status: active
+            location: "dal01"
+            connected_endpoint:
+              kind: DcimInterfaceL3
+              data:
+                device: "rb01-dal01"
+                name: "Ethernet4"
+                speed: 1000
+                status: active
+    - circuit_id: "LUMEN-DAL-TR-2001"
+      circuit_type: upstream
+      status: active
+      description: "Lumen upstream transit for Dallas edge router 2"
+      provider: "Lumen Technologies"
+      location: "dal01"
+      monthly_cost: 3000  # demo input
+      endpoints:
+        kind: DcimCircuitEndpoint
+        data:
+          - name: "A"
+            status: active
+            location: "dal01"
+            connected_endpoint:
+              kind: DcimInterfaceL3
+              data:
+                device: "rb02-dal01"
+                name: "Ethernet4"
+                speed: 1000
+                status: active

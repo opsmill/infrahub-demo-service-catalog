@@ -1,4 +1,7 @@
 ---
+# Shared values of the router interfaces of the Generic router template (data/07_device_template.yml).
+# A profile value applies only where the interface does not set the attribute itself, so the template
+# interfaces leave role, MTU and enabled to these profiles. Speed stays on each interface.
 apiVersion: infrahub.app/v1
 kind: Object
 spec:
@@ -13,5 +16,4 @@ spec:
       profile_priority: 1000
       role: backbone
       mtu: 9000
-      speed: 10000
       enabled: true

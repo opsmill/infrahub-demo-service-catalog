@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/menu/latest.json
+#
+# The Circuit menu item, apart from menu.yml because the circuit schema is optional.
+# `invoke seed` loads this file with `infrahubctl menu load` after it loads schemas/circuit.
+# A menu item for a kind the instance does not have opens a broken list, so this file must
+# not be loaded without the circuit schema.
+#
+# To load it with the repository instead, register it next to the circuit schema in .infrahub.yml:
+#
+#   menus:
+#     - menu.yml
+#     - menu_circuit.yml
+#
+# DcimCircuit sets `include_in_menu: false` in schemas/circuit/circuit.yml, so this item is its
+# only sidebar entry.
+---
+apiVersion: infrahub.app/v1
+kind: Menu
+spec:
+  data:
+    - namespace: Dcim
+      name: Circuit
+      label: Circuit
+      kind: DcimCircuit
+      icon: "mdi:cable-data"
+      # Under "Device Management" in menu.yml, after Platform.
+      parent: ["Dcim", "DeviceManagementMenu"]
+      order_weight: 4000

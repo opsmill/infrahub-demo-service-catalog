@@ -1,0 +1,12 @@
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: ServiceReport
+  data:
+    - name: "Affected customers"
+      description: "Each customer affected by a maintenance change, with its tier, its affected services and its status."
+      member_of_groups: ["affected_customers_report"]
+    - name: "Cost of service"
+      description: "Cost of each service as a CSV file, one row per service, path and part, with the input, the divisor and the share."
+      member_of_groups: ["cost_of_service_report"]

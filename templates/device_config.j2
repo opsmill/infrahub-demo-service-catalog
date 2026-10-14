@@ -51,8 +51,8 @@ interface {{ intf.name.value }}
   no switchport
   {% if intf.ip_addresses and intf.ip_addresses.edges %}
     {% for ip_addr in intf.ip_addresses.edges %}
-      {% if ip_addr.node and ip_addr.node.address and ip_addr.node.address.ip %}
-  ip address {{ ip_addr.node.address.ip }}
+      {% if ip_addr.node and ip_addr.node.address and ip_addr.node.address.value %}
+  ip address {{ ip_addr.node.address.value }}
       {% endif %}
     {% endfor %}
   {% endif %}

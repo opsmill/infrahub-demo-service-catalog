@@ -1,28 +1,22 @@
 """The Gold outage guard rule.
 
 `checks/gold_outage_guard.py` runs the stored query `business_impact_services`
-on the proposed change's branch and on main. For each active service whose
-tier has a rule and each device that is not active on the branch
-(`traversal_pairs`), it asks
-Infrahub's path traversal whether a network path joins the two, then calls
-`evaluate` with the devices each service reaches. The rule reuses the parsing
-and the "out of service = device not active" rule of `blast_radius.py`.
-
-The traversal only passes through `NETWORK_KINDS` and at most `MAX_HOPS`
-relationships: service, interface, device. That is the same dependency the
-Blast radius view reads from the query, so the view and the check agree. A
-model where a service depends on devices further away (an access switch and
-its uplinks, or a second path) raises `MAX_HOPS` and adds the link kinds,
-without a new query.
+on the proposed change's branch and on main, adds the footprint of each active
+service on each side (`footprint.service_footprints`, Infrahub's path traversal
+from the service through its interfaces to the core and edge devices at its
+site), then calls `evaluate`. The devices in a service's footprint are the
+devices the service depends on. The rule reuses the parsing and the "out of
+service = device not active" rule of `blast_radius.py`, so the Planned
+maintenance page and the check read the same dependency.
 
 Each service tier carries a rule, `min_paths`: the separate paths each of its
 active services must keep during a change. An empty value counts as 0, and a
 tier with rule 0 is never checked. With the seeded values only Gold has a rule
-(1). `path_count` counts a service's separate paths: 1 when a switch and an
-edge router sit behind its dedicated interfaces and none of the devices it
-depends on is out of service, otherwise 0. The demo model has at most one path
-per service. A deleted device, switch port or gateway interface removes a role,
-so the service has 0 paths.
+(1). A separate path is the route through a switch and the edge router with the
+same number at the same site, both in the service's footprint
+(`blast_radius.paths`). `blast_radius.paths_up` counts the paths with no device that the
+service depends on out of service. A deleted device, switch port or gateway
+interface removes the paths it was on.
 
 A change fails when an active service has fewer separate paths on the branch
 than its tier's rule on the branch, and had at least as many on main as the
@@ -32,7 +26,7 @@ not an error, so an existing problem does not block unrelated work. A change
 that raises a tier's rule fails when an active service of that tier has fewer
 separate paths on the branch than the new rule, in one tightening error per
 tier; those services get no path error. A service with neither a switch nor an
-edge router behind it on the branch and on main is left out: it has no path to
+edge router in its footprint on the branch and on main is left out: it has no path to
 lose, and the change took none away. Nothing here imports Streamlit or calls
 Infrahub.
 
@@ -43,115 +37,25 @@ absolute `service_catalog` import does not resolve (see the check file).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, replace
-from decimal import Decimal
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from ..network import CORE_ROLE, EDGE_ROLE  # noqa: TID252 - the commit worktree import
 from .blast_radius import (
-    CORE_ROLE,
-    EDGE_ROLE,
     GOLD,
     DeviceRow,
     ServiceRow,
     active_services,
-    format_eur,
     join_names,
     parse_devices,
     parse_services,
+    paths_up,
+    tier_key,
+    tier_rules,
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Collection, Iterable, Mapping
-
-CREDIT_LABEL = "demo business input"
-# Kinds a dependency path may pass through: the service, its interfaces and the devices they sit on.
-NETWORK_KINDS = ("ServiceDedicatedInternet", "DcimInterfaceL2", "DcimInterfaceL3", "DcimDevice")
-# Relationships from a service to a device it depends on: service > interface > device.
-MAX_HOPS = 2
-
-
-@dataclass(frozen=True)
-class TraversalPair:
-    """An active service whose tier has a rule and a device that is not active on the branch: the path to look for."""
-
-    service: str
-    service_id: str
-    device: str
-    device_id: str
-
-
-def _edges(data: Mapping[str, object], kind: str) -> list[Mapping[str, object]]:
-    block = data.get(kind)
-    edges = block.get("edges") if isinstance(block, dict) else None
-    return [edge["node"] for edge in edges or [] if isinstance(edge, dict) and isinstance(edge.get("node"), dict)]
-
-
-def _value(node: Mapping[str, object], field_name: str) -> object:
-    attribute = node.get(field_name)
-    return attribute.get("value") if isinstance(attribute, dict) else None
-
-
-def tier_rules(data: Mapping[str, object]) -> dict[str, int]:
-    """Each tier's minimum separate paths during a change, by tier name, from the `ServiceTier` block.
-
-    An empty or unreadable value counts as 0. A tier that is not in the block is not in the result.
-    """
-    rules: dict[str, int] = {}
-    for node in _edges(data, "ServiceTier"):
-        name = _value(node, "name")
-        if name in {None, ""}:
-            continue
-        value = _value(node, "min_paths")
-        rules[str(name)] = value if isinstance(value, int) and not isinstance(value, bool) else 0
-    return rules
-
-
-def path_count(service: ServiceRow, dependent: Iterable[DeviceRow]) -> int:
-    """The service's separate paths during the change: 1 or 0, as the demo model has at most one path.
-
-    `service` is the row as the query returns it, before path traversal replaces its devices, so the roles
-    behind its dedicated interfaces are known. `dependent` is the devices the service depends on. The service
-    has 1 path when a switch and an edge router sit behind it and no device in `dependent` is out of service.
-    """
-    roles = {device.role for device in service.devices}
-    if CORE_ROLE not in roles or EDGE_ROLE not in roles:
-        return 0
-    return 0 if any(device.out_of_service for device in dependent) else 1
-
-
-def _tier_order(tier: str) -> tuple[bool, str]:
-    """Gold first, then the other tiers in name order."""
-    return (tier != GOLD, tier)
-
-
-def traversal_pairs(branch_data: Mapping[str, object]) -> list[TraversalPair]:
-    """Each active service whose tier rule on the branch is above 0, paired with each core or edge device
-    that is not active on the branch.
-
-    Services of a tier with rule 0 are left out, because no path count can fail them.
-    """
-    rules = tier_rules(branch_data)
-    checked = {
-        service.identifier
-        for service in active_services(parse_services(branch_data))
-        if service.tier is not None and rules.get(service.tier, 0) > 0
-    }
-    services = [
-        (str(_value(node, "service_identifier")), str(node.get("id")))
-        for node in _edges(branch_data, "ServiceDedicatedInternet")
-        if _value(node, "service_identifier") in checked and node.get("id")
-    ]
-    out = {device.name for device in parse_devices(branch_data) if device.out_of_service}
-    devices = [
-        (str(_value(node, "name")), str(node.get("id")))
-        for node in _edges(branch_data, "DcimDevice")
-        if _value(node, "name") in out and node.get("id")
-    ]
-    return [
-        TraversalPair(service, service_id, device, device_id)
-        for service, service_id in services
-        for device, device_id in devices
-    ]
+    from collections.abc import Iterable, Mapping
 
 
 @dataclass
@@ -197,8 +101,8 @@ def _already_out(device: DeviceRow, main_devices: Mapping[str, DeviceRow]) -> bo
 def removed_devices(service: ServiceRow, main_services: Mapping[str, ServiceRow]) -> tuple[DeviceRow, ...]:
     """The devices the service had on main in a role it has no device for on the branch.
 
-    `service` is the row the query returns on the branch, before path traversal replaces its devices.
-    A role is still covered when the branch has any device of that role behind the service, so moving
+    `service` is the row `blast_radius.parse_services` reads on the branch.
+    A role is still covered when the service's footprint on the branch has any device of that role, so moving
     a service to the other edge router is not a removal.
     """
     on_main = main_services.get(service.identifier)
@@ -220,6 +124,24 @@ def _paths(count: int) -> str:
     return f"{count} separate path" if count == 1 else f"{count} separate paths"
 
 
+def _counts_sentence(services: list[tuple[ServiceRow, int, int | None]]) -> str:
+    """The paths of each short service on the current network and during the change, in one sentence."""
+
+    def counts(on_main: int | None, during: int) -> str:
+        if on_main is None:
+            return f"becomes active in this change and has {_paths(during)}"
+        return f"has {_paths(on_main)} on the current network and {during} during this change"
+
+    if len(services) == 1:
+        _, during, on_main = services[0]
+        return f"It {counts(on_main, during)}."
+    if len({(during, on_main) for _, during, on_main in services}) == 1:
+        _, during, on_main = services[0]
+        return f"Each {counts(on_main, during)}."
+    listed = "; ".join(f"{service.identifier} {counts(on_main, during)}" for service, during, on_main in services)
+    return f"{listed}."
+
+
 def _rule_sentence(tier: str, need: int, left: int) -> str:
     return f"{tier} requires at least {_paths(need)} during a change, and this change leaves {left}."
 
@@ -230,27 +152,25 @@ class _ShortTier:
 
     tier: str
     need: int
-    # Each service with its path count on the branch.
-    services: list[tuple[ServiceRow, int]] = field(default_factory=list)
-    # The devices the change takes out of service or removes behind those services.
+    # Each service with its path count on the branch and on main (None when the service is not active on main).
+    services: list[tuple[ServiceRow, int, int | None]] = field(default_factory=list)
+    # The devices the change takes out of service or removes from the footprints of those services.
     devices_out: list[DeviceRow] = field(default_factory=list)
 
 
 def _error_message(
     change_name: str, short: _ShortTier, branch_devices: tuple[DeviceRow, ...], main_devices: Mapping[str, DeviceRow]
 ) -> str:
-    services = [service for service, _ in short.services]
-    left = min(count for _, count in short.services)
+    services = [service for service, _, _ in short.services]
+    left = min(count for _, count, _ in short.services)
     one = len(services) == 1
     noun = "service" if one else "services"
     names = join_names({service.customer for service in services if service.customer})
     customers = f" for {names}" if names else ""
     identifiers = ", ".join(service.identifier for service in services)
-    credit = sum((service.monthly_sla_credit for service in services), Decimal(0))
     without = "with no other path" if left == 0 else f"with fewer separate paths than the {short.tier} rule requires"
 
-    # Devices behind a service carry no site in the query; the `DcimDevice` block does. A device the change
-    # deleted is only in the block on main.
+    # Take each device from the `DcimDevice` block, on the branch or, for a device the change deleted, on main.
     by_name = {**main_devices, **{device.name: device for device in branch_devices}}
     unique: list[DeviceRow] = []
     for device in short.devices_out:
@@ -258,7 +178,7 @@ def _error_message(
             unique.append(by_name.get(device.name) or device)
     targets = [move_to_device(device, branch_devices) for device in unique]
     pronoun = "this service" if one else "these services"
-    # A service new on the branch with no dedicated interfaces yet has no device to name, so no Move sentence.
+    # A service not active on main with an empty footprint has no device to name, so no Move sentence.
     action = ""
     if unique and all(target is not None for target in targets):
         action = f"Move {pronoun} to {join_names({target.label for target in targets if target is not None})} first. "
@@ -267,8 +187,7 @@ def _error_message(
 
     return (
         f"{change_name} leaves {len(services)} {short.tier} {noun}{customers} {without} ({identifiers}). "
-        f"{short.tier} SLA credit exposure: {format_eur(credit)} per month ({CREDIT_LABEL}). "
-        f"{action}{_rule_sentence(short.tier, short.need, left)}"
+        f"{_counts_sentence(short.services)} {action}{_rule_sentence(short.tier, short.need, left)}"
     )
 
 
@@ -305,16 +224,25 @@ class _Guard:
 
     branch_data: Mapping[str, object]
     main_data: Mapping[str, object]
-    reached: Mapping[str, Collection[str]] | None
     short: dict[str, _ShortTier] = field(default_factory=dict)
     # Each raised tier's services with fewer paths on the branch than the new rule, with their path counts.
     tightened: dict[str, list[tuple[ServiceRow, int]]] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
+    # Read from `branch_data` and `main_data` when the guard is built.
+    branch_devices: tuple[DeviceRow, ...] = field(init=False)
+    main_devices: dict[str, DeviceRow] = field(init=False)
+    main_services: dict[str, ServiceRow] = field(init=False)
+    branch_rules: dict[str, int] = field(init=False)
+    main_rules: dict[str, int] = field(init=False)
 
     def __post_init__(self) -> None:
         self.branch_devices = parse_devices(self.branch_data)
         self.main_devices = {device.name: device for device in parse_devices(self.main_data)}
-        self.main_services = {service.identifier: service for service in parse_services(self.main_data)}
+        # Only services active on main: one that is new, draft or pending there has no paths to lose, so a
+        # change that makes it active is checked against the branch rule, not reported as already down.
+        self.main_services = {
+            service.identifier: service for service in parse_services(self.main_data) if service.active
+        }
         self.branch_rules = tier_rules(self.branch_data)
         self.main_rules = tier_rules(self.main_data)
 
@@ -323,24 +251,16 @@ class _Guard:
         need_b = self.branch_rules.get(tier, self.main_rules.get(tier, 0))
         return need_b, self.main_rules.get(tier, need_b)
 
-    def depends_on(self, service: ServiceRow) -> ServiceRow:
-        """The service with the devices it depends on: those path traversal reached, when it ran."""
-        if self.reached is None:
-            return service
-        by_name = {device.name: device for device in self.branch_devices}
-        names = sorted(self.reached.get(service.identifier, ()))
-        return replace(service, devices=tuple(by_name[name] for name in names if name in by_name))
-
     def main_paths(self, service: ServiceRow, need_m: int) -> int:
-        """The service's path count on main. A service missing on main meets the rule on main."""
+        """The service's path count on main. A service not active on main meets the rule on main."""
         on_main = self.main_services.get(service.identifier)
-        return need_m if on_main is None else path_count(on_main, on_main.devices)
+        return need_m if on_main is None else paths_up(on_main)
 
     def has_no_roles(self, service: ServiceRow) -> bool:
-        """True when neither a switch nor an edge router sits behind the service on the branch and on main.
+        """True when the service's footprint has neither a switch nor an edge router on the branch and on main.
 
         Such a service has no path to lose, and the change took none away, so the guard leaves it out.
-        A service missing on main does not qualify: it is checked against the branch rule.
+        A service not active on main does not qualify: it is checked against the branch rule.
         """
         on_main = self.main_services.get(service.identifier)
         if on_main is None:
@@ -351,34 +271,34 @@ class _Guard:
         if self.has_no_roles(service):
             return
         need_b, need_m = self.needs(tier)
-        depends_on = self.depends_on(service)
-        # The roles come from the row as queried, before path traversal replaces its devices.
-        paths_b = path_count(service, depends_on.devices)
+        paths_b = paths_up(service)
         if paths_b >= need_b:
             return
         if need_b > need_m:
             self.tightened.setdefault(tier, []).append((service, paths_b))
             return
         lost = removed_devices(service, self.main_services)
-        if self.main_paths(service, need_m) < need_m:
-            self.warnings.append(_warning_message(service, (*depends_on.out_of_service_devices, *lost)))
+        paths_m = self.main_paths(service, need_m)
+        if paths_m < need_m:
+            self.warnings.append(_warning_message(service, (*service.out_of_service_devices, *lost)))
             return
         short = self.short.setdefault(tier, _ShortTier(tier, need_b))
-        short.services.append((service, paths_b))
-        caused = _caused_by_change(depends_on, lost, self.main_devices)
-        short.devices_out.extend(caused or (*depends_on.out_of_service_devices, *lost))
+        on_main = paths_m if service.identifier in self.main_services else None
+        short.services.append((service, paths_b, on_main))
+        caused = _caused_by_change(service, lost, self.main_devices)
+        short.devices_out.extend(caused or (*service.out_of_service_devices, *lost))
 
     def errors(self, change_name: str) -> list[str]:
         """One path error per tier with services short of the rule, then one tightening error per raised tier.
 
-        Each group lists Gold first, then the tiers in name order.
+        Each group lists Gold, Silver and Bronze first, then any other tier in name order.
         """
         path_errors = [
             _error_message(change_name, self.short[tier], self.branch_devices, self.main_devices)
-            for tier in sorted(self.short, key=_tier_order)
+            for tier in sorted(self.short, key=tier_key)
         ]
         tightening_errors = []
-        for tier in sorted(self.tightened, key=_tier_order):
+        for tier in sorted(self.tightened, key=tier_key):
             need_b, need_m = self.needs(tier)
             tightening_errors.append(_tightening_message(change_name, tier, need_m, need_b, self.tightened[tier]))
         return path_errors + tightening_errors
@@ -388,31 +308,29 @@ def evaluate(
     branch_data: Mapping[str, object],
     main_data: Mapping[str, object],
     change_name: str,
-    reached: Mapping[str, Collection[str]] | None = None,
 ) -> GuardResult:
-    """Apply the guard to the query result on the proposed change's branch and on main.
+    """Apply the guard to the query result, with footprints, on the proposed change's branch and on main.
 
     For each active service with a tier, the rule on the branch and on main comes from `tier_rules`. A tier
     missing from one side's `ServiceTier` block uses the other side's rule, and a tier missing from both has
-    rule 0. The path count on the branch comes from `path_count`; on main it uses the devices behind the
-    service on main, and a service missing on main counts as meeting the rule on main. When the branch raises
+    rule 0. The path count on the branch comes from `blast_radius.paths_up`; on main it uses the footprint of the
+    service on main, and a service not active on main counts as meeting the rule on main. When the branch raises
     a tier's rule, its services with fewer paths than the new rule go into one tightening error for the tier
     instead of a path error or a warning.
 
-    `reached` maps a service identifier to the names of the devices that path traversal reached from it.
-    When it is given, those devices are the ones each service depends on; when it is None, the devices
-    behind the service's interfaces in the query are. There is no override: no tag, setting or threshold
-    changes the result.
+    Each service depends on the devices in its footprint (`footprint.with_footprints`). There is no override:
+    no tag, setting or threshold changes the result.
     """
-    guard = _Guard(branch_data, main_data, reached)
+    guard = _Guard(branch_data, main_data)
     for service in active_services(parse_services(branch_data)):
         if service.tier is not None:
             guard.check(service, service.tier)
 
-    result = GuardResult(errors=guard.errors(change_name), warnings=guard.warnings)
-    if not result.errors and not result.warnings:
-        result.summary = (
-            f"{change_name} leaves no active Gold service without a path. "
-            f"Gold SLA credit exposure: {format_eur(Decimal(0))} per month ({CREDIT_LABEL})."
-        )
-    return result
+    errors = guard.errors(change_name)
+    need_gold, _ = guard.needs(GOLD)
+    summary = (
+        None
+        if errors or guard.warnings
+        else f"{change_name} leaves every active Gold service with at least {_paths(need_gold)}."
+    )
+    return GuardResult(errors=errors, warnings=guard.warnings, summary=summary)

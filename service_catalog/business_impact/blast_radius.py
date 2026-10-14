@@ -1,18 +1,44 @@
-"""Figures for the Blast radius view.
+"""Figures for the Planned maintenance page.
 
 Plain functions over the `data` dict that the stored query
-`business_impact_services` returns. The page runs the query on the selected
-branch and again on main (the main read uses its `DcimDevice` block), reads the Gold
-SLA credit percentage from its `ServiceTier` block, then calls
-`build_blast_radius`. Nothing here imports Streamlit or writes to Infrahub,
-so every figure on the page is unit-tested offline.
+`business_impact_services` returns, with the footprint of each service added
+(`footprint.with_footprints`). The page runs the query and the path traversal on
+the selected branch and again on main, then calls `build_blast_radius`. Nothing
+here imports Streamlit or writes to Infrahub, so every figure on the page is
+unit-tested offline.
+
+A path is the route a service's traffic takes through the network at a site:
+it enters through a switch port, goes through a switch (role `core`), and leaves
+through the edge router (role `edge`) with the same number, as the order
+generator pairs them. Both devices must be in the service's footprint: the
+devices Infrahub's path traversal reaches from the service through its
+interfaces. Each pair is one separate path. A path is up when neither device is out of service. For each
+active service, the page compares the paths that are up on main with the paths
+that are up during the change: fewer, but more than 0, is "at risk"; 0 is
+"down".
 """
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass
-from decimal import ROUND_HALF_UP, Decimal
+from itertools import starmap
+from typing import TYPE_CHECKING, Final, Literal
+
+from ..network import (  # noqa: TID252 - the commit worktree import
+    CORE_ROLE,
+    EDGE_ROLE,
+    attr,
+    integer,
+    nodes,
+    pair_paths,
+    peer,
+    text,
+)
+from .footprint import FOOTPRINTS, Footprint
+
+if TYPE_CHECKING:
+    from collections.abc import Collection, Iterable
 
 CURRENT_NETWORK = "Current network"
 MAIN_BRANCH = "main"
@@ -20,34 +46,45 @@ DEFAULT_CHANGE = "Paris router 1 maintenance"
 SERVICE_REQUEST_TAG = "service_request"
 
 ACTIVE = "active"
+# The tier names of data/10_customers_tiers.yml. The rule of each tier (`min_paths`) comes from the data,
+# but the order of the lists and the Gold-only behavior (notification, the outage guard, single points of
+# failure) follow these names. A unit test fails when the names here and in the data differ.
 GOLD = "Gold"
-CORE_ROLE = "core"
-EDGE_ROLE = "edge"
+# Tiers in the order lists show them: Gold, Silver, Bronze, then any other tier by name.
+TIER_ORDER: tuple[str, ...] = (GOLD, "Silver", "Bronze")
 UNASSIGNED = "Unassigned"
 NOT_SET = "Not set"
 
+# A service's status during a change: fewer separate paths than on main but at least 1, or none left.
+ImpactStatus = Literal["at risk", "down"]
+STATUS_AT_RISK: Final = "at risk"
+STATUS_DOWN: Final = "down"
+
 NO_SERVICES_FOUND = "No services were found"
 NO_SERVICE_AFFECTED = "No service is affected"
-IN_THIS_CHANGE = "In this change"
-SEGMENT_AFFECTED = "Affected"
-SEGMENT_NOT_AFFECTED = "Not affected"
 
 TILE_CUSTOMERS = "Customers affected"
-TILE_GOLD = "Gold services affected"
-TILE_CREDIT = "Gold SLA credit exposure, per month"
+TILE_GOLD_AT_RISK = "Gold services at risk"
+TILE_DOWN = "Services down"
+HELP_CUSTOMERS = "Customers with at least one active service at risk or down during this change."
+HELP_GOLD_AT_RISK = (
+    "Active Gold services with fewer separate paths during this change than on the current network, "
+    "and at least 1 left."
+)
+HELP_DOWN = "Active services with no separate path during this change."
 COUNTED = "Counted"
-YOUR_INPUT = "Your input"
 
 
 @dataclass(frozen=True)
 class DeviceRow:
-    """A device as the query reads it, behind a service or in the `DcimDevice` block."""
+    """A device as the query reads it in the `DcimDevice` block."""
 
     name: str
     description: str | None
     role: str | None
     status: str | None
     site: str | None = None
+    index: int | None = None
 
     @property
     def label(self) -> str:
@@ -67,11 +104,9 @@ class ServiceRow:
     identifier: str
     status: str | None
     bandwidth_mbps: int | None
-    monthly_charge: int | None
     site: str | None
     customer: str | None
     tier: str | None
-    sla_credit_pct: int | None
     devices: tuple[DeviceRow, ...]
 
     @property
@@ -80,12 +115,12 @@ class ServiceRow:
 
     @property
     def out_of_service_devices(self) -> tuple[DeviceRow, ...]:
-        """The devices behind the service's dedicated interfaces that are not active."""
+        """The devices the service's paths go through that are not active."""
         return tuple(device for device in self.devices if device.out_of_service)
 
     @property
     def affected(self) -> bool:
-        """True when any device behind the service's dedicated interfaces is not active."""
+        """True when any device the service's paths go through is not active."""
         return bool(self.out_of_service_devices)
 
     @property
@@ -101,20 +136,32 @@ class ServiceRow:
     def tier_label(self) -> str:
         return self.tier or UNASSIGNED
 
-    @property
-    def annual_contract_value(self) -> int:
-        """Monthly charge x 12; a missing charge counts as 0."""
-        return (self.monthly_charge or 0) * 12
-
-    @property
-    def monthly_sla_credit(self) -> Decimal:
-        """Monthly charge x the tier's SLA credit percentage / 100; missing values count as 0."""
-        return Decimal((self.monthly_charge or 0) * (self.sla_credit_pct or 0)) / 100
-
     def device_label(self, role: str) -> str:
-        """Friendly name of the device with `role` behind the service, or "Not set"."""
+        """Friendly names of the service's devices with `role`, or "Not set"."""
         labels = sorted({device.label for device in self.devices if device.role == role})
         return ", ".join(labels) if labels else NOT_SET
+
+
+@dataclass(frozen=True)
+class ServicePath:
+    """One separate path of a service: a switch and the edge router with the same index at the same site."""
+
+    switch: DeviceRow
+    edge_router: DeviceRow
+
+    @property
+    def names(self) -> frozenset[str]:
+        return frozenset({self.switch.name, self.edge_router.name})
+
+
+@dataclass(frozen=True)
+class ServiceImpact:
+    """An active service that has fewer paths during the change than on main, or none."""
+
+    service: ServiceRow
+    paths_on_main: int
+    paths_during_change: int
+    status: ImpactStatus
 
 
 @dataclass(frozen=True)
@@ -122,25 +169,7 @@ class Tile:
     label: str
     value: str
     help: str
-    marker: str  # Counted or Your input, shown under the tile
-
-
-@dataclass(frozen=True)
-class CustomerValue:
-    """One bar of the per-customer chart: annual contract value and its affected part."""
-
-    customer: str
-    annual: int
-    affected_annual: int
-
-
-@dataclass(frozen=True)
-class ChartSegment:
-    """One stacked segment of a customer's bar: the affected or the not-affected part."""
-
-    customer: str
-    segment: str
-    annual: int
+    marker: str  # shown under the tile
 
 
 @dataclass(frozen=True)
@@ -153,30 +182,22 @@ class AffectedServiceRow:
     bandwidth: str
     switch: str
     edge_router: str
-    monthly_charge: str
-
-
-@dataclass(frozen=True)
-class RouterRank:
-    """One edge router in the ranking by Gold annual contract value."""
-
-    name: str
-    label: str
-    gold_annual: int
-    in_this_change: bool
+    paths_on_main: int
+    paths_during_change: int
+    status: str
+    # The tier's rule: the separate paths its services must keep during a change.
+    rule: int
 
 
 @dataclass(frozen=True)
 class BlastRadius:
-    """Everything the Blast radius view shows for one selected change."""
+    """Everything the Planned maintenance page shows for one selected change."""
 
     no_services: bool
     headline: str
     gold_headline: bool
     tiles: tuple[Tile, ...]
-    customer_values: tuple[CustomerValue, ...]
     affected_rows: tuple[AffectedServiceRow, ...]
-    routers: tuple[RouterRank, ...]
 
 
 @dataclass(frozen=True)
@@ -188,78 +209,47 @@ class PickerEntry:
 # Parsing the query `data`
 
 
-def _mapping(value: object) -> Mapping[str, object]:
-    return value if isinstance(value, Mapping) else {}
-
-
-def _edges(container: object) -> list[Mapping[str, object]]:
-    edges = _mapping(container).get("edges")
-    if not isinstance(edges, list):
-        return []
-    return [_mapping(_mapping(edge).get("node")) for edge in edges]
-
-
-def _peer(node: Mapping[str, object], name: str) -> Mapping[str, object]:
-    return _mapping(_mapping(node.get(name)).get("node"))
-
-
-def _attr(node: Mapping[str, object], name: str) -> object:
-    return _mapping(node.get(name)).get("value")
-
-
-def _text(node: Mapping[str, object], name: str) -> str | None:
-    value = _attr(node, name)
-    return str(value) if value not in {None, ""} else None
-
-
-def _integer(node: Mapping[str, object], name: str) -> int | None:
-    value = _attr(node, name)
-    if isinstance(value, bool) or value in {None, ""}:
-        return None
-    if isinstance(value, int):
-        return value
-    try:
-        return int(str(value))
-    except ValueError:
-        return None
-
-
 def _device(node: Mapping[str, object]) -> DeviceRow | None:
-    name = _text(node, "name")
+    name = text(node, "name")
     if name is None:
         return None
     return DeviceRow(
         name=name,
-        description=_text(node, "description"),
-        role=_text(node, "role"),
-        status=_text(node, "status"),
-        site=_text(_peer(node, "location"), "shortname"),
+        description=text(node, "description"),
+        role=text(node, "role"),
+        status=text(node, "status"),
+        site=text(peer(node, "location"), "shortname"),
+        index=integer(node, "index"),
     )
 
 
 def parse_services(data: Mapping[str, object]) -> tuple[ServiceRow, ...]:
-    """Read every service of the query, in service identifier order."""
+    """Read every service of the query, in service identifier order, with the devices its paths go through.
+
+    The devices come from the service's footprint (`footprint.with_footprints`), read from the `DcimDevice`
+    block. A service with no footprint, such as one that is not active, has no device. Raises `ValueError`
+    when `data` holds no footprints.
+    """
+    footprints = data.get(FOOTPRINTS)
+    if not isinstance(footprints, Mapping):
+        message = "The query result holds no service footprints: add them with footprint.with_footprints"
+        raise ValueError(message)
+    by_name = {device.name: device for device in parse_devices(data)}
     services = []
-    for node in _edges(data.get("ServiceDedicatedInternet")):
-        identifier = _text(node, "service_identifier")
+    for node in nodes(data.get("ServiceDedicatedInternet")):
+        identifier = text(node, "service_identifier")
         if identifier is None:
             continue
-        tier = _peer(node, "tier")
-        devices = tuple(
-            device
-            for interface in _edges(node.get("dedicated_interfaces"))
-            if (device := _device(_peer(interface, "device"))) is not None
-        )
+        footprint = footprints.get(identifier) or Footprint()
+        devices = tuple(by_name[name] for name in sorted(footprint.devices) if name in by_name)
         services.append(
             ServiceRow(
                 identifier=identifier,
-                status=_text(node, "status"),
-                bandwidth_mbps=_integer(node, "bandwidth"),
-                monthly_charge=_integer(node, "monthly_charge"),
-                site=_text(_peer(node, "location"), "shortname"),
-                customer=_text(_peer(node, "customer"), "name"),
-                tier=_text(tier, "name"),
-                sla_credit_pct=_integer(tier, "sla_credit_pct"),
+                status=text(node, "status"),
+                bandwidth_mbps=integer(node, "bandwidth"),
+                site=text(peer(node, "location"), "shortname"),
+                customer=text(peer(node, "customer"), "name"),
+                tier=text(peer(node, "tier"), "name"),
                 devices=devices,
             )
         )
@@ -268,28 +258,88 @@ def parse_services(data: Mapping[str, object]) -> tuple[ServiceRow, ...]:
 
 def parse_devices(data: Mapping[str, object]) -> tuple[DeviceRow, ...]:
     """Read the `DcimDevice` block of the query (on the selected branch or on main)."""
-    return tuple(device for node in _edges(data.get("DcimDevice")) if (device := _device(node)) is not None)
+    return tuple(device for node in nodes(data.get("DcimDevice")) if (device := _device(node)) is not None)
+
+
+def tier_rules(data: Mapping[str, object]) -> dict[str, int]:
+    """Each tier's minimum separate paths during a change, by tier name, from the `ServiceTier` block.
+
+    An empty or unreadable value counts as 0. A tier that is not in the block is not in the result.
+    """
+    rules: dict[str, int] = {}
+    for node in nodes(data.get("ServiceTier")):
+        name = text(node, "name")
+        if name is None:
+            continue
+        value = attr(node, "min_paths")
+        rules[name] = value if isinstance(value, int) and not isinstance(value, bool) else 0
+    return rules
+
+
+def tier_key(tier: str) -> tuple[int, str]:
+    """Sort key for tiers: Gold, Silver, Bronze, then any other tier in name order."""
+    return (TIER_ORDER.index(tier) if tier in TIER_ORDER else len(TIER_ORDER), tier)
 
 
 def active_services(services: Iterable[ServiceRow]) -> tuple[ServiceRow, ...]:
     return tuple(service for service in services if service.active)
 
 
+# Paths
+
+
+def paths(service: ServiceRow) -> tuple[ServicePath, ...]:
+    """The separate paths of the service: each switch with the edge router of the same index at the same site."""
+    return tuple(starmap(ServicePath, pair_paths(service.devices)))
+
+
+def count_paths(service: ServiceRow, out_of_service: Collection[str]) -> int:
+    """The service's paths with no device named in `out_of_service`."""
+    return sum(1 for path in paths(service) if not path.names & set(out_of_service))
+
+
+def paths_up(service: ServiceRow) -> int:
+    """The service's paths with no device out of service, by the statuses of its devices."""
+    return count_paths(service, {device.name for device in service.out_of_service_devices})
+
+
+def service_status(service: ServiceRow, paths_on_main: int, paths_during_change: int) -> ImpactStatus | None:
+    """ "down" with no path left, "at risk" with fewer paths than on main but at least 1, otherwise None.
+
+    A service with no path on main and none during the change is down only when a device behind it is out of
+    service; a service with no device pair at all, such as one whose order has not run yet, is not affected.
+    """
+    if paths_during_change == 0:
+        return STATUS_DOWN if paths_on_main > 0 or service.affected else None
+    if paths_during_change < paths_on_main:
+        return STATUS_AT_RISK
+    return None
+
+
+def service_impacts(active: Iterable[ServiceRow], main_data: Mapping[str, object]) -> tuple[ServiceImpact, ...]:
+    """Each active service that is at risk or down during the change, compared with main.
+
+    A service missing on main counts every device pair behind it as a path on main.
+    """
+    main_services = {service.identifier: service for service in parse_services(main_data)}
+    impacts = []
+    for service in active:
+        on_main = main_services.get(service.identifier)
+        main_count = len(paths(service)) if on_main is None else paths_up(on_main)
+        during = paths_up(service)
+        status = service_status(service, main_count, during)
+        if status is not None:
+            impacts.append(
+                ServiceImpact(service=service, paths_on_main=main_count, paths_during_change=during, status=status)
+            )
+    return tuple(impacts)
+
+
 # Formatting
-
-
-def format_eur(amount: float | Decimal) -> str:
-    """Whole euros with thousands separators, for example "€2,565"."""
-    rounded = Decimal(str(amount)).quantize(Decimal(1), rounding=ROUND_HALF_UP)
-    return f"€{int(rounded):,}"
 
 
 def format_bandwidth(mbps: int | None) -> str:
     return f"{mbps:,} Mbps" if mbps is not None else NOT_SET
-
-
-def format_monthly_charge(charge: int | None) -> str:
-    return format_eur(charge) if charge is not None else NOT_SET
 
 
 def join_names(names: Iterable[str]) -> str:
@@ -300,28 +350,32 @@ def join_names(names: Iterable[str]) -> str:
     return f"{', '.join(ordered[:-1])} and {ordered[-1]}"
 
 
+def _gold_phrase(impacts: list[ServiceImpact]) -> str:
+    """ "2 Gold services for Northbank" or "2 Gold services": only real customers are named."""
+    noun = "service" if len(impacts) == 1 else "services"
+    names = join_names({impact.service.customer for impact in impacts if impact.service.customer})
+    return f"{len(impacts)} Gold {noun} for {names}" if names else f"{len(impacts)} Gold {noun}"
+
+
 # Figures
 
 
-def headline_text(active: Iterable[ServiceRow]) -> str:
-    """Headline for the active services of the selected change."""
-    active = tuple(active)
-    if not active:
-        return NO_SERVICES_FOUND
-    affected = [service for service in active if service.affected]
-    if not affected:
+def headline_text(impacts: Iterable[ServiceImpact]) -> str:
+    """Headline for the active services of the selected change: Gold services down first, then at risk."""
+    impacts = tuple(impacts)
+    if not impacts:
         return NO_SERVICE_AFFECTED
-    gold = [service for service in affected if service.gold]
-    if gold:
-        noun, verb = ("service", "has") if len(gold) == 1 else ("services", "have")
-        # Only real customers are named; a Gold service with no customer is counted but not named.
-        names = join_names({service.customer for service in gold if service.customer})
-        if not names:
-            return f"{len(gold)} Gold {noun} {verb} no other path during this change"
-        return f"{len(gold)} Gold {noun} for {names} {verb} no other path during this change"
-    if len(affected) == 1:
-        return "1 service has no other path during this change, and it is not Gold"
-    return f"{len(affected)} services have no other path during this change, and none of them is Gold"
+    gold_down = [impact for impact in impacts if impact.service.gold and impact.status == STATUS_DOWN]
+    if gold_down:
+        verb = "has" if len(gold_down) == 1 else "have"
+        return f"{_gold_phrase(gold_down)} {verb} no path during this change"
+    gold_at_risk = [impact for impact in impacts if impact.service.gold]
+    if gold_at_risk:
+        verb = "has" if len(gold_at_risk) == 1 else "have"
+        return f"{_gold_phrase(gold_at_risk)} {verb} fewer separate paths during this change"
+    if len(impacts) == 1:
+        return "1 service is affected by this change, and it is not Gold"
+    return f"{len(impacts)} services are affected by this change, and none of them is Gold"
 
 
 def headline_caption(change_label: str, result: BlastRadius) -> str:
@@ -333,116 +387,50 @@ def headline_caption(change_label: str, result: BlastRadius) -> str:
     return f"{change_label} · seen in a proposed change, before merge"
 
 
-def gold_credit_pct(data: Mapping[str, object]) -> int | None:
-    """SLA credit percentage of the Gold tier node, from the `ServiceTier` block of the query.
-
-    None when no tier is named Gold, so the help text reads "Not set".
-    """
-    return next(
-        (_integer(node, "sla_credit_pct") for node in _edges(data.get("ServiceTier")) if _text(node, "name") == GOLD),
-        None,
-    )
-
-
-def tiles(active: Iterable[ServiceRow], gold_pct: int | None) -> tuple[Tile, ...]:
-    active = tuple(active)
-    affected = [service for service in active if service.affected]
-    customers = {service.customer for service in affected if service.customer}
-    gold_total = sum(1 for service in active if service.gold)
-    gold_affected = [service for service in affected if service.gold]
-    credit = sum((service.monthly_sla_credit for service in gold_affected), Decimal(0))
-    pct_text = f"{gold_pct}%" if gold_pct is not None else NOT_SET
+def tiles(impacts: Iterable[ServiceImpact]) -> tuple[Tile, ...]:
+    impacts = tuple(impacts)
+    customers = {impact.service.customer for impact in impacts if impact.service.customer}
+    gold_at_risk = sum(1 for impact in impacts if impact.service.gold and impact.status == STATUS_AT_RISK)
+    down = sum(1 for impact in impacts if impact.status == STATUS_DOWN)
     return (
-        Tile(TILE_CUSTOMERS, str(len(customers)), COUNTED, COUNTED),
-        Tile(TILE_GOLD, f"{len(gold_affected)} of {gold_total}", COUNTED, COUNTED),
-        Tile(TILE_CREDIT, format_eur(credit), f"{YOUR_INPUT}. Gold tier credit: {pct_text}", YOUR_INPUT),
+        Tile(TILE_CUSTOMERS, str(len(customers)), HELP_CUSTOMERS, COUNTED),
+        Tile(TILE_GOLD_AT_RISK, str(gold_at_risk), HELP_GOLD_AT_RISK, COUNTED),
+        Tile(TILE_DOWN, str(down), HELP_DOWN, COUNTED),
     )
 
 
-def customer_values(active: Iterable[ServiceRow]) -> tuple[CustomerValue, ...]:
-    """Annual contract value per customer and its affected part; "Unassigned" last."""
-    annual: dict[str, int] = {}
-    affected: dict[str, int] = {}
-    for service in active:
-        name = service.customer_label
-        annual[name] = annual.get(name, 0) + service.annual_contract_value
-        affected[name] = affected.get(name, 0) + (service.annual_contract_value if service.affected else 0)
-    order = sorted(annual, key=lambda name: (name == UNASSIGNED, name))
-    return tuple(CustomerValue(name, annual[name], affected[name]) for name in order)
-
-
-def chart_segments(values: Iterable[CustomerValue]) -> tuple[ChartSegment, ...]:
-    """Split each customer's annual contract value into its affected and not-affected parts, in bar order."""
-    segments: list[ChartSegment] = []
-    for value in values:
-        segments.extend(
-            (
-                ChartSegment(value.customer, SEGMENT_AFFECTED, value.affected_annual),
-                ChartSegment(value.customer, SEGMENT_NOT_AFFECTED, value.annual - value.affected_annual),
-            )
-        )
-    return tuple(segments)
-
-
-def affected_service_rows(active: Iterable[ServiceRow]) -> tuple[AffectedServiceRow, ...]:
+def affected_service_rows(impacts: Iterable[ServiceImpact], rules: Mapping[str, int]) -> tuple[AffectedServiceRow, ...]:
     return tuple(
         AffectedServiceRow(
-            service=service.identifier,
-            customer=service.customer_label,
-            tier=service.tier_label,
-            bandwidth=format_bandwidth(service.bandwidth_mbps),
-            switch=service.device_label(CORE_ROLE),
-            edge_router=service.device_label(EDGE_ROLE),
-            monthly_charge=format_monthly_charge(service.monthly_charge),
+            service=impact.service.identifier,
+            customer=impact.service.customer_label,
+            tier=impact.service.tier_label,
+            bandwidth=format_bandwidth(impact.service.bandwidth_mbps),
+            switch=impact.service.device_label(CORE_ROLE),
+            edge_router=impact.service.device_label(EDGE_ROLE),
+            paths_on_main=impact.paths_on_main,
+            paths_during_change=impact.paths_during_change,
+            status=impact.status,
+            rule=rules.get(impact.service.tier or "", 0),
         )
-        for service in active
-        if service.affected
+        for impact in impacts
     )
-
-
-def router_ranking(
-    active: Iterable[ServiceRow],
-    devices: Iterable[DeviceRow],
-    main_devices: Iterable[DeviceRow],
-) -> tuple[RouterRank, ...]:
-    """Edge routers at sites with an active service, by Gold annual contract value.
-
-    The value counts every active Gold service with an interface on the router,
-    whatever the selected change, so only the "In this change" marker moves
-    between changes. Ties go to the router whose first active service has the
-    lowest service identifier, then to the router name.
-    """
-    active = tuple(active)
-    sites = {service.site for service in active if service.site}
-    main_status = {device.name: device.status for device in main_devices}
-    ranks: list[tuple[int, str, RouterRank]] = []
-    for router in devices:
-        if router.role != EDGE_ROLE or router.site not in sites:
-            continue
-        on_router = [service for service in active if any(device.name == router.name for device in service.devices)]
-        gold_annual = sum(service.annual_contract_value for service in on_router if service.gold)
-        first_service = min((service.identifier for service in on_router), default="￿")
-        changed = router.name not in main_status or main_status[router.name] != router.status
-        ranks.append((gold_annual, first_service, RouterRank(router.name, router.label, gold_annual, changed)))
-    ranks.sort(key=lambda item: (-item[0], item[1], item[2].name))
-    return tuple(rank for _, _, rank in ranks)
 
 
 def build_blast_radius(data: Mapping[str, object], main_data: Mapping[str, object]) -> BlastRadius:
-    """All figures of the Blast radius view from the query on the selected branch and on main."""
-    services = parse_services(data)
-    active = active_services(services)
-    headline = headline_text(active)
+    """All figures of the Planned maintenance page from the query on the selected branch and on main."""
+    active = active_services(parse_services(data))
     if not active:
-        return BlastRadius(True, headline, False, (), (), (), ())
+        return BlastRadius(
+            no_services=True, headline=NO_SERVICES_FOUND, gold_headline=False, tiles=(), affected_rows=()
+        )
+    impacts = service_impacts(active, main_data)
     return BlastRadius(
         no_services=False,
-        headline=headline,
-        gold_headline=any(service.affected and service.gold for service in active),
-        tiles=tiles(active, gold_credit_pct(data)),
-        customer_values=customer_values(active),
-        affected_rows=affected_service_rows(active),
-        routers=router_ranking(active, parse_devices(data), parse_devices(main_data)),
+        headline=headline_text(impacts),
+        gold_headline=any(impact.service.gold for impact in impacts),
+        tiles=tiles(impacts),
+        affected_rows=affected_service_rows(impacts, tier_rules(data)),
     )
 
 

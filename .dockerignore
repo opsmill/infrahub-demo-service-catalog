@@ -1,0 +1,11 @@
+# Python caches: a leftover service_catalog/pages/__pycache__ folder would make Streamlit treat
+# the portal as a folder-pages app and show "Page not found" for the first direct link.
+**/__pycache__
+**/*.pyc
+
+# Not used by the image build.
+.git
+.venv
+.dev
+docs/node_modules
+specs

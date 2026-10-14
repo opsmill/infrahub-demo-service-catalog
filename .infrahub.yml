@@ -7,6 +7,8 @@ generator_definitions:
     targets: automated_dedicated_internet
     query: dedicated_internet_info
     class_name: DedicatedInternetGenerator
+    # The SDK converts the query result into SDK nodes: the service in `self.nodes`, its peers in the store.
+    convert_query_response: true
     watch:
       files:
         - generators/protocols.py
@@ -28,10 +30,13 @@ queries:
     file_path: "templates/device_info.gql"
   - name: business_impact_services
     file_path: "service_catalog/queries/business_impact_services.gql"
+  - name: cost_of_service
+    file_path: "service_catalog/queries/cost_of_service.gql"
 
 # MENU
 menus:
   - menu.yml
+  # - menu_circuit.yml  # with schemas/circuit: the Circuit menu item
 
 # SCHEMAS
 schemas:
@@ -53,15 +58,61 @@ objects:
   - data/06_device_type.yml
   - data/07_device_template.yml
   - data/08_device.yml
-  - data/10_customers_tiers.yml
   # - data/09_circuit.yml
+  - data/10_customers_tiers.yml
+  - data/11_reports.yml
 
 # TRANSFORMS
 jinja2_transforms:
   - name: device_config
-    description: Template to generate startup configuration for devices
+    description: Builds a device's startup configuration from its site's VLANs and its interfaces.
     query: device_info
     template_path: "templates/device_config.j2"
+
+# `watch` lists every repository file a Python transform imports or reads besides its own file, so
+# Infrahub generates the artifact again when one of them changes, and not on every commit.
+python_transforms:
+  - name: affected_customers
+    description: Lists each customer a proposed change affects, with its tier, its services and whether it is notified.
+    class_name: AffectedCustomers
+    file_path: "transforms/affected_customers.py"
+    watch:
+      files:
+        - transforms/worktree.py
+        - service_catalog/network.py
+        - service_catalog/protocols_async.py
+        - service_catalog/business_impact/change_impact.py
+        - service_catalog/business_impact/footprint.py
+        - service_catalog/business_impact/blast_radius.py
+        - service_catalog/business_impact/gold_outage_guard.py
+        - service_catalog/business_impact/notification.py
+  - name: cost_of_service
+    description: Writes one CSV row for each part of each path of each active service, with its share of the cost.
+    class_name: CostOfService
+    file_path: "transforms/cost_of_service.py"
+    watch:
+      files:
+        - transforms/worktree.py
+        - service_catalog/network.py
+        - service_catalog/protocols_async.py
+        - service_catalog/business_impact/footprint.py
+        - service_catalog/cost_of_service/cost.py
+        - service_catalog/cost_of_service/circuits.py
+        - service_catalog/queries/cost_of_service_circuits.gql
+  - name: outreach_payload
+    description: Builds the request that sends the at-risk Gold customers of a new proposed change to the CRM.
+    class_name: OutreachPayload
+    file_path: "transforms/outreach_payload.py"
+    watch:
+      files:
+        - transforms/worktree.py
+        - service_catalog/network.py
+        - service_catalog/protocols_async.py
+        - service_catalog/business_impact/change_impact.py
+        - service_catalog/business_impact/footprint.py
+        - service_catalog/business_impact/blast_radius.py
+        - service_catalog/business_impact/gold_outage_guard.py
+        - service_catalog/business_impact/notification.py
 
 # ARTIFACTS
 artifact_definitions:
@@ -72,3 +123,21 @@ artifact_definitions:
     content_type: text/plain
     targets: generic_devices
     transformation: device_config
+  - name: Affected customers
+    artifact_name: affected-customers
+    # `parameters` is required. The query declares no variable and reads every service, so this
+    # parameter filters nothing: the report object is the artifact's only target.
+    parameters:
+      name: name__value
+    content_type: application/json
+    targets: affected_customers_report
+    transformation: affected_customers
+  - name: Cost of service
+    artifact_name: cost-of-service
+    # `parameters` is required. The query declares no variable and reads every service, so this
+    # parameter filters nothing: the report object is the artifact's only target.
+    parameters:
+      name: name__value
+    content_type: text/csv
+    targets: cost_of_service_report
+    transformation: cost_of_service

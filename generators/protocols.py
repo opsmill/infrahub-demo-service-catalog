@@ -83,7 +83,6 @@ class DcimInterface(CoreNode):
 
 class ServiceGeneric(CoreNode):
     account_reference: String
-    monthly_charge: IntegerOptional
     request_reason: StringOptional
     requested_by: StringOptional
     service_identifier: String
@@ -159,10 +158,12 @@ class IpamIPAddress(BuiltinIPAddress):
     address: IPHost
     description: StringOptional
     fqdn: StringOptional
+    gateway_of: RelationshipManager
     interface: RelatedNode
     ip_namespace: RelatedNode
     ip_prefix: RelatedNode
     member_of_groups: RelationshipManager
+    primary_address_of: RelationshipManager
     profiles: RelationshipManager
     service: RelatedNode
     subscriber_of_groups: RelationshipManager
@@ -209,13 +210,13 @@ class IpamVLAN(CoreNode):
     profiles: RelationshipManager
     service: RelatedNode
     subscriber_of_groups: RelationshipManager
+    untagged_interfaces: RelationshipManager
 
 
 class ServiceDedicatedInternet(ServiceGeneric):
     account_reference: String
     bandwidth: Dropdown
     ip_package: Dropdown
-    monthly_charge: IntegerOptional
     request_reason: StringOptional
     requested_by: StringOptional
     service_identifier: String

@@ -1,0 +1,29 @@
+---
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+version: "1.0"
+
+nodes:
+  - name: Report
+    namespace: Service
+    description: A report that Infrahub generates as an artifact.
+    label: Report
+    icon: mdi:file-chart-outline
+    include_in_menu: false
+    inherit_from:
+      - CoreArtifactTarget
+    human_friendly_id:
+      - name__value
+    order_by:
+      - name__value
+    display_label: name__value
+    attributes:
+      - name: name
+        kind: Text
+        description: The name of the report, which its artifact definition targets.
+        unique: true
+        order_weight: 1000
+      - name: description
+        kind: Text
+        description: What the report lists.
+        optional: true
+        order_weight: 1100

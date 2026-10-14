@@ -6,7 +6,7 @@ import streamlit as st
 from service_catalog.infrahub import filter_nodes
 from service_catalog.protocols_sync import ServiceDedicatedInternet
 
-st.set_page_config(page_title="Service Requests", page_icon="📦")
+st.set_page_config(page_title="Service Requests", page_icon="📦", layout="wide")
 
 st.markdown("# Service Requests")
 st.write(
@@ -64,7 +64,7 @@ def render_details_table(data: ServiceDedicatedInternet) -> None:
             ),
             column_config={
                 "service_id": "Service Identifier",
-                "account_id": "Account Identifier",
+                "account_ref": "Account Reference",
                 "status": "Status",
                 "location": "Location",
                 "bandwidth": "Bandwidth",

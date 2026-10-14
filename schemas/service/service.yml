@@ -8,7 +8,7 @@ generics:
     description: Generic service...
     label: Service
     icon: mdi:package-variant
-    include_in_menu: true
+    include_in_menu: false
     human_friendly_id:
       - service_identifier__value
     order_by:
@@ -38,12 +38,6 @@ generics:
         optional: true
         branch: agnostic
         order_weight: 1014
-      - name: monthly_charge
-        kind: Number
-        label: Monthly charge (EUR, demo business input)
-        optional: true
-        branch: aware
-        order_weight: 1020
     relationships:
       - name: customer
         peer: OrganizationCustomer
@@ -71,7 +65,7 @@ nodes:
     menu_placement: ServiceGeneric
     inherit_from:
       - ServiceGeneric
-    include_in_menu: true
+    include_in_menu: false
     branch: agnostic
     attributes:
       - name: status
@@ -159,6 +153,7 @@ nodes:
         direction: inbound
         identifier: service_vlan
       - name: gateway_ip_address
+        description: The service's gateway IP address, the authoritative value. The gateway of the service's prefix is a copy.
         peer: IpamIPAddress
         order_weight: 1350
         cardinality: one

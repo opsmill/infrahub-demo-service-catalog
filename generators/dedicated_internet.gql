@@ -1,3 +1,6 @@
+# Every node selects `id` and `__typename`: the generator definition sets `convert_query_response`, and
+# the SDK needs both to turn each node into an SDK node and resolve it as a peer from the client store.
+# The store keeps one copy of a node that the result holds twice, so both places select what the generator reads.
 query DedicatedInternetQuery($service_identifier: String!) {
   ServiceDedicatedInternet(service_identifier__value: $service_identifier) {
     edges {
@@ -9,6 +12,7 @@ query DedicatedInternetQuery($service_identifier: String!) {
         service_identifier {
           value
         }
+        # Not read by the generator. The service save writes back the attributes this query read.
         account_reference {
           value
         }
@@ -43,7 +47,26 @@ query DedicatedInternetQuery($service_identifier: String!) {
               description {
                 value
               }
+              # On every interface kind: the gateway interface is also under `gateway_ip_address`, and the
+              # store keeps one copy of it, so both places select its device.
+              device {
+                node {
+                  id
+                  __typename
+                  ... on DcimDevice {
+                    role {
+                      value
+                    }
+                    index {
+                      value
+                    }
+                  }
+                }
+              }
               ... on DcimInterfaceL2 {
+                enabled {
+                  value
+                }
                 l2_mode {
                   value
                 }
@@ -53,15 +76,6 @@ query DedicatedInternetQuery($service_identifier: String!) {
                 status {
                   value
                 }
-                device {
-                  node {
-                    ... on DcimDevice {
-                      role {
-                        value
-                      }
-                    }
-                  }
-                }
               }
               ... on DcimInterfaceL3 {
                 role {
@@ -70,11 +84,28 @@ query DedicatedInternetQuery($service_identifier: String!) {
                 status {
                   value
                 }
-                ip_addresses {
-                  edges {
-                    node {
-                      id
-                      address {
+              }
+            }
+          }
+        }
+        # The edge router of the gateway IP address: on a re-run, the service keeps the path through it.
+        gateway_ip_address {
+          node {
+            id
+            __typename
+            interface {
+              node {
+                id
+                __typename
+                device {
+                  node {
+                    id
+                    __typename
+                    ... on DcimDevice {
+                      role {
+                        value
+                      }
+                      index {
                         value
                       }
                     }

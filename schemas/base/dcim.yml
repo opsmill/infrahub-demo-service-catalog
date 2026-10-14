@@ -2,6 +2,39 @@
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 version: "1.0"
 
+# Copied from the OpsMill schema library (github.com/opsmill/schema-library), file
+# `base/dcim.yml`.
+# Library version: not known. The repository does not record the library commit or release. First
+# committed here on 2024-12-24 (6bce96e).
+# Taken: the file as a whole. The repository does not record whether parts were left out when it
+# was copied.
+# Re-check on upgrade: this copy is no longer refreshed from the library. Reconcile library
+# changes by hand and keep the local edits below.
+# Local edits, from the git history of this file (date, commit, change and reason):
+# - 2025-04-03 06bd304: `generate_template: true` on DcimDevice, so devices can be created from
+#   templates.
+# - 2026-03-16 16ebc02: identifier `location__devices` on the device `location`, to pair it with
+#   LocationHosting `devices`.
+# - 2026-03-16 3450912: `display_labels` lists replaced by `display_label`, because the list form
+#   is deprecated.
+# - 2026-03-31 dbe88bc: removed the DcimConnector generic and DcimEndpoint `connector`;
+#   DcimEndpoint has `connected_endpoint` (cardinality one) instead, to connect two endpoints
+#   directly.
+# - 2026-03-31 64c131e: DcimGenericDevice not in the menu, because the menu already lists devices.
+# - 2026-05-29 27124a3: `status` and `role` moved from DcimInterfaceL2 and DcimInterfaceL3 to the
+#   DcimInterface generic, and the `upstream` role label set to `Upstream`, from a schema audit.
+# - 2026-10-10 2f9e945: DcimInterfaceL3 `ip_addresses` is an Attribute relationship with
+#   `on_delete: no-action`, so deleting an interface does not delete its gateway addresses.
+# - 2026-10-10 482d8d6: removed the uniqueness constraints of DcimDeviceType (`manufacturer`,
+#   `name`) and DcimPlatform (`name`), which repeated or contradicted `unique: true` on `name`, and
+#   added `order_weight` values, from a schema audit.
+# - 2026-10-12 c8dc92c: `list_price` attribute on DcimDeviceType, for the cost of service.
+# - 2026-10-13 90f399a: `include_in_menu: false` on DcimInterface, DcimDeviceType, DcimPlatform
+#   and DcimDevice, because `menu.yml` gives each node one sidebar entry.
+# - 2026-10-13 3d476e9: reverse relationships DcimDeviceType `devices` and DcimPlatform
+#   `device_types`, and explicit identifiers on `primary_address`, `device_type` and `platform`,
+#   so each cardinality-one relationship has its reverse.
+
 generics:
   - name: GenericDevice
     namespace: Dcim
@@ -39,7 +72,7 @@ generics:
         optional: true
         cardinality: many
         kind: Attribute
-        order_weight: 2000
+        order_weight: 3000
       - name: primary_address
         peer: IpamIPAddress
         label: Primary IP Address
@@ -47,6 +80,7 @@ generics:
         cardinality: one
         kind: Attribute
         order_weight: 1700
+        identifier: dcimgenericdevice__ipamipaddress
       - name: platform
         peer: DcimPlatform
         optional: true
@@ -90,6 +124,7 @@ generics:
         cardinality: one
         kind: Attribute
         order_weight: 1200
+        identifier: dcimdevicetype__dcimphysicaldevice
       - name: location
         label: Location
         peer: LocationHosting
@@ -105,7 +140,7 @@ generics:
     label: Interface
     icon: mdi:ethernet
     menu_placement: DcimGenericDevice
-    include_in_menu: true
+    include_in_menu: false
     human_friendly_id:
       - device__name__value
       - name__value
@@ -242,6 +277,7 @@ nodes:
     description: A model of device
     label: Device Type
     icon: mdi:poll
+    include_in_menu: false
     human_friendly_id:
       - name__value
     display_label: name__value
@@ -278,12 +314,19 @@ nodes:
         optional: true
         kind: Number
         order_weight: 1600
+      - name: list_price
+        label: List price (EUR)
+        description: One-time list price of one device of this type. Demo input, set in data/06_device_type.yml.
+        optional: true
+        kind: Number
+        order_weight: 1700
     relationships:
       - name: platform
         peer: DcimPlatform
         cardinality: one
         kind: Attribute
         order_weight: 1300
+        identifier: dcimdevicetype__dcimplatform
       - name: manufacturer
         peer: OrganizationManufacturer
         cardinality: one
@@ -295,13 +338,20 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
-        order_weight: 2000
+        order_weight: 3000
+      - name: devices
+        peer: DcimPhysicalDevice
+        optional: true
+        cardinality: many
+        order_weight: 3100
+        identifier: dcimdevicetype__dcimphysicaldevice
 
   - name: Platform
     namespace: Dcim
     description: A Platform represent the type of software running on a device.
     label: Platform
     icon: mdi:application-cog-outline
+    include_in_menu: false
     human_friendly_id:
       - name__value
     display_label: name__value
@@ -343,6 +393,13 @@ nodes:
         optional: true
         cardinality: many
         order_weight: 1350
+      - name: device_types
+        label: Device Types
+        peer: DcimDeviceType
+        optional: true
+        cardinality: many
+        order_weight: 1360
+        identifier: dcimdevicetype__dcimplatform
       - name: manufacturer
         peer: OrganizationManufacturer
         cardinality: one
@@ -354,6 +411,7 @@ nodes:
     description: A configurable network device for managing and directing data traffic, including routers, switches...
     icon: clarity:network-switch-solid
     namespace: Dcim
+    include_in_menu: false
     generate_template: true
     inherit_from:
       - CoreArtifactTarget

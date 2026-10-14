@@ -6,6 +6,8 @@ spec:
   data:
     - name: "automated_dedicated_internet"
     - name: "generic_devices"
+    - name: "affected_customers_report"
+    - name: "cost_of_service_report"
 ---
 apiVersion: infrahub.app/v1
 kind: Object

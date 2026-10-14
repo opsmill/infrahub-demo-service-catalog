@@ -1,0 +1,51 @@
+# The upstream circuits for the cost of service, read apart from the stored query `cost_of_service`.
+# Not registered in .infrahub.yml: the circuit schema is optional, and the repository import refuses
+# a stored query that names a type the schema does not have. The cost transform and the Cost of
+# Service page run this query only when the branch's schema has DcimCircuitEndpoint.
+# The DcimCircuit block gives the circuits at each site and their monthly cost: the code asks
+# Infrahub's path traversal which of them each active service's traffic leaves through
+# (service_catalog/business_impact/footprint.py). The DcimCircuitEndpoint block matches each
+# endpoint ID to the endpoint connected to an edge router's upstream interface, for the circuit
+# of an edge router that carries no service path.
+query cost_of_service_circuits {
+  DcimCircuit {
+    edges {
+      node {
+        id
+        circuit_id {
+          value
+        }
+        monthly_cost {
+          value
+        }
+        location {
+          node {
+            __typename
+            ... on LocationSite {
+              shortname {
+                value
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  DcimCircuitEndpoint {
+    edges {
+      node {
+        id
+        circuit {
+          node {
+            circuit_id {
+              value
+            }
+            monthly_cost {
+              value
+            }
+          }
+        }
+      }
+    }
+  }
+}

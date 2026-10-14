@@ -2,6 +2,23 @@
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 version: "1.0"
 
+# Copied from the OpsMill schema library (github.com/opsmill/schema-library), file
+# `base/organization.yml`.
+# Library version: not known. The repository does not record the library commit or release. First
+# committed here on 2024-12-24 (6bce96e).
+# Taken: the file as a whole. The repository does not record whether parts were left out when it
+# was copied.
+# Re-check on upgrade: this copy is no longer refreshed from the library. Reconcile library
+# changes by hand and keep the local edits below.
+# Local edits, from the git history of this file (date, commit, change and reason):
+# - 2026-03-16 3450912: `display_labels` list replaced by `display_label`, because the list form
+#   is deprecated.
+# - 2026-10-05 afcf652: OrganizationCustomer node, the buyer of Dedicated Internet services, for
+#   the business impact demo.
+# - 2026-10-10 482d8d6: added `order_weight` values, from a schema audit.
+# - 2026-10-13 3d476e9: reverse relationship OrganizationGeneric `prefixes`, so the prefix
+#   `organization` has its reverse.
+
 generics:
   - name: Generic
     namespace: Organization
@@ -30,6 +47,12 @@ generics:
         kind: Attribute
         optional: true
         order_weight: 3000
+      - name: prefixes
+        peer: IpamPrefix
+        cardinality: many
+        optional: true
+        order_weight: 3600
+        identifier: ipamprefix__organizationgeneric
 
 nodes:
   - name: Manufacturer

@@ -187,6 +187,40 @@ def lint_all(context: Context) -> None:
     lint_markdown(context)
 
 
+PROTOCOL_SCHEMAS = [
+    "schemas/base",
+    "schemas/location_minimal",
+    "schemas/vlan",
+    "schemas/service",
+    "schemas/circuit",
+]
+
+
+@task
+def protocols(context: Context) -> None:
+    """Regenerate the Python protocols of the portal from the schema files.
+
+    Writes ``service_catalog/protocols_sync.py`` and
+    ``service_catalog/protocols_async.py``. Needs a running Infrahub
+    (``INFRAHUB_ADDRESS``), because ``infrahubctl protocols`` reads the core
+    schema from the server.
+
+    ``generators/protocols.py`` is not written by this task. It is a copy of
+    the async protocols trimmed by hand to the types the generators use (see
+    its header). After a schema change, regenerate it with
+    ``infrahubctl protocols`` and trim it again by hand.
+    """
+    schemas = " ".join(f"--schemas {path}" for path in PROTOCOL_SCHEMAS)
+    targets = {
+        "--sync": "service_catalog/protocols_sync.py",
+        "--no-sync": "service_catalog/protocols_async.py",
+    }
+    with context.cd(MAIN_DIRECTORY_PATH):
+        for flag, out in targets.items():
+            print(f" - Generate {out}")
+            context.run(f"uv run infrahubctl protocols {schemas} {flag} --out {out}", pty=True)
+
+
 @task(name="test-unit")
 def test_unit(context: Context) -> None:
     """Run every test that needs no Infrahub deployment."""
@@ -383,9 +417,12 @@ def init(context: Context) -> None:
 
 @task(name="seed")
 def seed(context: Context) -> None:
-    """Seed the business impact demo: twelve services on main, generator runs, four maintenance changes.
+    """Seed the business impact demo on main, then open the maintenance changes.
 
-    Run after `invoke init`. Safe to run again: it creates only what is missing.
+    Steps: the repository descriptions, the circuit schema and the upstream circuits, twelve services, a generator run for each, a second path for the
+    three Paris Gold services, a request for the "Cost of service" artifact on main, the inactive outreach
+    webhook, three maintenance proposed changes, then the wait for the artifact. Run after `invoke init`.
+    Safe to run again: it creates only what is missing.
     """
     # Imported here so the other tasks do not load the SDK and the protocols.
     from service_catalog.business_impact import seed as seed_steps
@@ -401,11 +438,15 @@ def seed(context: Context) -> None:
         raise Exit(message, code=1)
     client = seed_steps.build_client()
     with context.cd(MAIN_DIRECTORY_PATH):
+        print(
+            "Seed steps: wait for the repository, describe the repository items, load the circuit schema "
+            "and the upstream circuits, create the services, "
+            "run the generators, add the second paths of the Paris Gold services, request the cost of service "
+            "artifact, create the outreach webhook, open the maintenance proposed changes, "
+            "wait for the cost of service artifact"
+        )
         try:
-            seed_steps.wait_for_repository(client)
-            seed_steps.seed_services(client)
-            seed_steps.run_generators(client, run)
-            seed_steps.seed_maintenance(client, run)
+            seed_steps.run_all(client, run)
         except seed_steps.SeedError as exc:
             raise Exit(f"Seed failed. {exc}", code=1) from exc
     print("=== Seed complete ===")
