@@ -119,9 +119,6 @@ ignore = [
 
 #https://docs.astral.sh/ruff/formatter/black/
 [tool.ruff.format]
-# Kept byte-identical with the copy in every OpsMill demo and solution repository, which is
-# formatted at a 100-character line length. Still linted; only the formatter skips it.
-exclude = ["scripts/update_infrahub_pins.py"]
 quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
