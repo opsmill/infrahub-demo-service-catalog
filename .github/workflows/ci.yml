@@ -42,6 +42,7 @@ jobs:
       dependencies: ${{ steps.changes.outputs.dependencies_all }}
       integration_scope: ${{ steps.scope.outputs.scope }}
       run_full: ${{ steps.scope.outputs.run_full }}
+      infrahub_bump: ${{ steps.scope.outputs.infrahub_bump }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v7"
@@ -54,6 +55,7 @@ jobs:
       - name: Decide how much of the integration suite to run
         id: scope
         # `update-infrahub-sdk-` is tested first: an SDK branch also matches the broader Infrahub prefix.
+        # infrahub_bump marks an Infrahub-only bump (update-infrahub-<v>, no `-sdk-`): it runs the full set once.
         env:
           DISPATCH_TIER: ${{ github.event.inputs.tier }}
           HEAD_REF: ${{ github.head_ref }}
@@ -64,9 +66,15 @@ jobs:
           elif [ "${HEAD_REF#update-infrahub-sdk-}" = "${HEAD_REF}" ] && [ "${HEAD_REF#update-infrahub-}" != "${HEAD_REF}" ]; then
             SCOPE="full"
           fi
+          INFRAHUB_BUMP="false"
+          case "${HEAD_REF}" in
+            update-infrahub-sdk-*|*-sdk-*) ;;
+            update-infrahub-*) INFRAHUB_BUMP="true" ;;
+          esac
           {
             echo "scope=${SCOPE}"
             echo "run_full=$([ "${SCOPE}" = "full" ] && echo true || echo false)"
+            echo "infrahub_bump=${INFRAHUB_BUMP}"
           } >> "$GITHUB_OUTPUT"
           echo "Integration scope selected -> ${SCOPE}"
 
@@ -170,6 +178,8 @@ jobs:
           fi
           echo "PYTEST_DEBUG_TEMPROOT=/var/lib/github/${RUNNER_NAME/ghrunner/ghrunner_}/_temp" >> "$GITHUB_ENV"
       - name: "Run the core integration tier (blocking)"
+        # An Infrahub-only bump runs the full set once, in the next step, instead.
+        if: needs.files-changed.outputs.infrahub_bump != 'true'
         run: exec tini -s -g -- uv run invoke test-integration --tier=core
       - name: "Run the full integration tier (blocking for Infrahub bumps)"
         id: full
@@ -181,7 +191,7 @@ jobs:
         continue-on-error: ${{ !startsWith(github.head_ref, 'update-infrahub-') || startsWith(github.head_ref, 'update-infrahub-sdk-') }}
         run: exec tini -s -g -- uv run invoke test-integration --tier=full
       - name: "Report what the full tier did"
-        if: always() && needs.files-changed.outputs.run_full == 'true'
+        if: always() && needs.files-changed.outputs.run_full == 'true' && needs.files-changed.outputs.infrahub_bump != 'true'
         env:
           OUTCOME: ${{ steps.full.outcome }}
         run: |
