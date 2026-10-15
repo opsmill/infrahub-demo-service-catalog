@@ -1,0 +1,50 @@
+---
+# Layered on top of app-config.yaml for the docker-compose service, which keeps
+# the Infrahub wiring, the extensions and the catalog rules.
+app:
+  # The container's 7007 is published on the host as 3001, and the backend serves
+  # the frontend bundle, so both URLs are the same origin.
+  baseUrl: http://localhost:3001
+
+backend:
+  baseUrl: http://localhost:3001
+  listen: ':7007'
+  cors:
+    origin: http://localhost:3001
+  # ponytail: in-memory, because everything worth keeping lives in Infrahub.
+  database:
+    client: better-sqlite3
+    connection: ':memory:'
+
+proxy:
+  endpoints:
+    # Lets the visual panels query Infrahub from the browser: the token stays in
+    # the backend, and the browser talks to same-origin Backstage.
+    '/infrahub':
+      target: ${INFRAHUB_ADDRESS}
+      allowedMethods: [POST]
+      headers:
+        X-INFRAHUB-KEY: ${INFRAHUB_API_TOKEN}
+
+infrahub:
+  instance: demo
+  # The backend talks to the compose service; browsers get the published port.
+  externalAddress: http://localhost:8000
+
+catalog:
+  # Replaces the dev locations: paths there are relative to packages/backend,
+  # the backend runs from /app here, and the scaffolded sample entities are
+  # noise next to the Infrahub data.
+  locations:
+    - type: file
+      target: ./examples/org.yaml
+      rules:
+        - allow: [User, Group]
+
+auth:
+  providers:
+    guest:
+      # The image runs with NODE_ENV=production, which otherwise refuses guest
+      # sign-in. Fine for a demo stack on localhost; put a real provider here
+      # before this is reachable by anyone else.
+      dangerouslyAllowOutsideDevelopment: true

@@ -32,6 +32,7 @@ schemas:
 # OBJECTS
 objects:
   - data/01_location.yml
+  - data/02_racks.yml
   - data/02_groups_tags.yml
   - data/03_ipam_domain.yml
   - data/04_manufacturer.yml

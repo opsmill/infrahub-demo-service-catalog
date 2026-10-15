@@ -8,6 +8,7 @@ from invoke import Context, Exit, task
 
 CURRENT_DIRECTORY = Path(__file__).resolve()
 DOCUMENTATION_DIRECTORY = CURRENT_DIRECTORY.parent / "docs"
+BACKSTAGE_DIRECTORY = CURRENT_DIRECTORY.parent / "backstage"
 MAIN_DIRECTORY_PATH = Path(__file__).parent
 
 infrahub_address = os.getenv("INFRAHUB_ADDRESS")
@@ -214,6 +215,50 @@ def test_all(context: Context) -> None:
     """Run the full test suite (unit and integration)."""
     with context.cd(MAIN_DIRECTORY_PATH):
         context.run("pytest tests", pty=True)
+
+
+@task(name="backstage-install")
+def backstage_install(context: Context) -> None:
+    """Install the Backstage portal's Node dependencies (yarn install)."""
+    with context.cd(BACKSTAGE_DIRECTORY):
+        context.run("yarn install", pty=True)
+
+
+@task(name="backstage")
+def backstage(context: Context) -> None:
+    """Run the Backstage portal on http://localhost:3001 (Ctrl-C to stop).
+
+    Reads ``INFRAHUB_ADDRESS`` and ``INFRAHUB_API_TOKEN`` from the environment,
+    so start the Infrahub stack with ``invoke start`` first.
+    """
+    if not (BACKSTAGE_DIRECTORY / "node_modules").exists():
+        message = "Run `invoke backstage-install` first."
+        raise Exit(message, code=1)
+
+    with context.cd(BACKSTAGE_DIRECTORY):
+        context.run("yarn start", pty=True)
+
+
+@task(name="backstage-build")
+def backstage_build(context: Context) -> None:
+    """Build the Backstage bundle on the host, then its Docker image.
+
+    The image copies a bundle built on the host, so this has to run before
+    ``invoke start`` can bring the ``backstage`` service up with a fresh build.
+    """
+    with context.cd(BACKSTAGE_DIRECTORY):
+        context.run("yarn tsc", pty=True)
+        context.run("yarn build:backend", pty=True)
+
+    with context.cd(MAIN_DIRECTORY_PATH):
+        context.run(COMPOSE_COMMAND + " build backstage", pty=True)
+
+
+@task(name="backstage-test")
+def backstage_test(context: Context) -> None:
+    """Run the Backstage portal's unit tests."""
+    with context.cd(BACKSTAGE_DIRECTORY):
+        context.run("yarn test --watch=false", pty=True)
 
 
 @task(name="docs")
