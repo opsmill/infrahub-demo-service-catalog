@@ -26,9 +26,9 @@ dev = [
     # The unit tests read the schema and data YAML files.
     "pyyaml>=6",
     # Floor and cap both come from ariadne-codegen (via infrahub-sdk[all]), which requires
-    # ruff>=0.15.0,<0.17.0; recording it locally keeps a relock from crossing the boundary as a
+    # ruff>=0.15.0,<0.18.0; recording it locally keeps a relock from crossing the boundary as a
     # side effect. ruff is lint-only here.
-    "ruff>=0.15.0,<0.17.0",
+    "ruff>=0.15.0,<0.18.0",
     "types-pyyaml>=6.0.12",
     "types-requests>=2.32.0",
     "yamllint>=1.37.1",
