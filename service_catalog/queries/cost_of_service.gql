@@ -1,0 +1,128 @@
+# Stored query for the Cost of Service page and the "Cost of service" artifact.
+# Ships as service_catalog/queries/cost_of_service.gql and is registered under
+# `queries` in .infrahub.yml as `cost_of_service`. Run on main.
+# The DcimDevice block gives the switches and edge routers at each site: the code asks Infrahub's
+# path traversal which of them each active service reaches (service_catalog/business_impact/footprint.py).
+# Each device carries its device type's list price and its number of interfaces
+# with status active: a device's share for one path is the list price divided by that number.
+# The device index and site pair a switch with the edge router of the same index at the same site into one path.
+# Each edge router carries its upstream interfaces and the ID of the endpoint connected to each:
+# the active ones carry a share of the router's list price, and an edge router that carries no
+# service path keeps its circuit as a cost no service carries.
+# The query names no circuit type, because the circuit schema is optional. When it is loaded,
+# cost_of_service_circuits.gql reads the circuits: the circuit's monthly
+# cost is split over the bandwidth of the service paths through the router.
+query cost_of_service {
+  ServiceDedicatedInternet {
+    edges {
+      node {
+        id
+        service_identifier {
+          value
+        }
+        status {
+          value
+        }
+        bandwidth {
+          value
+        }
+        location {
+          node {
+            __typename
+            ... on LocationSite {
+              shortname {
+                value
+              }
+            }
+          }
+        }
+        customer {
+          node {
+            name {
+              value
+            }
+          }
+        }
+        tier {
+          node {
+            name {
+              value
+            }
+          }
+        }
+        # The paths come from Infrahub's path traversal, not from here. The interfaces keep the
+        # service's links in the query result, so Infrahub generates the "Cost of service" artifact
+        # again when one of them changes.
+        dedicated_interfaces {
+          edges {
+            node {
+              id
+              name {
+                value
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  DcimDevice(role__values: ["core", "edge"]) {
+    edges {
+      node {
+        id
+        name {
+          value
+        }
+        role {
+          value
+        }
+        index {
+          value
+        }
+        location {
+          node {
+            __typename
+            ... on LocationSite {
+              shortname {
+                value
+              }
+            }
+          }
+        }
+        device_type {
+          node {
+            name {
+              value
+            }
+            list_price {
+              value
+            }
+          }
+        }
+        interfaces(status__value: "active") {
+          count
+        }
+        upstream: interfaces(role__value: "upstream") {
+          edges {
+            node {
+              name {
+                value
+              }
+              status {
+                value
+              }
+              ... on DcimEndpoint {
+                connected_endpoint {
+                  node {
+                    id
+                    __typename
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -13,6 +13,7 @@ from infrahub_sdk.spec.object import ObjectFile
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo
 from infrahub_sdk.yaml import SchemaFile
+from service_catalog.business_impact import seed
 from service_catalog.infrahub import get_client
 from service_catalog.protocols_async import (
     DcimInterface,
@@ -23,8 +24,17 @@ from service_catalog.protocols_async import (
     LocationSite,
     ServiceDedicatedInternet,
 )
+from service_catalog.protocols_sync import IpamIPAddress as IpamIPAddressSync
+from service_catalog.protocols_sync import IpamPrefix as IpamPrefixSync
+from service_catalog.protocols_sync import IpamVLAN as IpamVLANSync
+from service_catalog.protocols_sync import ServiceDedicatedInternet as ServiceDedicatedInternetSync
+
+from .proposed_changes import MERGE_MUTATION, wait_for_guard
 
 GENERATOR_SERVICE_IDENTIFIER = "test-generator-1"
+# Each page run reads Infrahub; AppTest's default 3 seconds is too short on a busy test stack.
+APP_TIMEOUT_S = 30
+PORTAL_SERVICE_IDENTIFIER = "test-12345"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -42,8 +52,8 @@ class TestServiceCatalog(TestInfrahubDockerClient):
         return "main"
 
     @pytest.fixture(scope="class")
-    def schema_definition(self, schema_dir: Path) -> list[SchemaFile]:
-        return list(SchemaFile.load_from_disk(paths=[schema_dir]))
+    def schema_definition(self, repository_schemas: list[SchemaFile]) -> list[SchemaFile]:
+        return repository_schemas
 
     @pytest.fixture(scope="class")
     def override_client(self, provider: Provider, client_sync: InfrahubClientSync) -> None:
@@ -63,12 +73,14 @@ class TestServiceCatalog(TestInfrahubDockerClient):
         client_sync.schema.load(schemas=[item.content for item in schema_definition])
         client_sync.schema.wait_until_converged(branch=default_branch)
 
-    async def test_data_load(self, client: InfrahubClient, data_dir: Path, default_branch: str) -> None:
-        """Load the data from the data directory into the infrahub instance."""
+    async def test_data_load(
+        self, client: InfrahubClient, repository_object_files: list[ObjectFile], default_branch: str
+    ) -> None:
+        """Load the object files `.infrahub.yml` lists into the infrahub instance."""
         logger.info("Starting test: test_data_load")
 
         await client.schema.all()
-        object_files = sorted(ObjectFile.load_from_disk(paths=[data_dir]), key=lambda x: x.location)
+        object_files = repository_object_files
 
         for idx, file in enumerate(object_files):
             file.validate_content()
@@ -90,7 +102,9 @@ class TestServiceCatalog(TestInfrahubDockerClient):
         """
         repo = GitRepo(name="infrahub-demo-service-catalog", src_directory=root_dir, dst_directory=remote_repos_dir)
         await repo.add_to_infrahub(client=client)
-        in_sync = await repo.wait_for_sync_to_complete(client=client)
+        # 24 retries of 5 s, as in test_business_impact: the SDK default of 6 retries (30 s) once ran out
+        # about 5 s before the import finished, which Infrahub's periodic repository sync completed.
+        in_sync = await repo.wait_for_sync_to_complete(client=client, retries=24)
         assert in_sync
 
         repos = await client.all(kind=CoreGenericRepository)
@@ -206,6 +220,21 @@ class TestServiceCatalog(TestInfrahubDockerClient):
         assert f"switchport access vlan {vlan.vlan_id.value}" in content
         assert f'description "Port allocated to service {GENERATOR_SERVICE_IDENTIFIER}"' in content
 
+        # The edge router's gateway interface carries the gateway IP address with its prefix length.
+        gateways = await client.filters(
+            kind=IpamIPAddress, service__ids=[service.id], branch=default_branch, include=["interface"]
+        )
+        assert len(gateways) == 1
+        gateway = gateways[0]
+        await gateway.interface.fetch()
+        await gateway.interface.peer.device.fetch()
+        router = gateway.interface.peer.device.peer
+        command = f"infrahubctl render device_config --branch {default_branch} device_name={router.name.value}"
+        result = self.execute_command(command=command, address=address)
+        assert result.returncode == 0, f"Render failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
+        assert f"ip address {gateway.address.value}" in result.stdout
+        assert "/" in str(gateway.address.value)
+
     async def test_portal(self, override_client: None, client: InfrahubClient, default_branch: str) -> None:
         """Test the streamlit app on top of a running infrahub instance.
 
@@ -214,17 +243,17 @@ class TestServiceCatalog(TestInfrahubDockerClient):
         2. Creates a service object on that branch
         3. Creates a proposed change targeting main
         """
-        service_identifier = "test-12345"
+        service_identifier = PORTAL_SERVICE_IDENTIFIER
         expected_branch_name = f"implement_{service_identifier.lower()}"
 
-        app = AppTest.from_file("service_catalog/pages/1_🔌_Dedicated_Internet.py").run()
+        app = AppTest.from_file("service_catalog/views/1_🔌_Dedicated_Internet.py").run(timeout=APP_TIMEOUT_S)
 
-        app.text_input("input-service-identifier").set_value(service_identifier).run()
-        app.text_input("input-account-reference").set_value("acct-12345").run()
-        app.selectbox("select-location").select("bru01").run()
-        app.selectbox("select-bandwidth").set_value("100").run()
-        app.select_slider("select-ip-package").set_value("small").run()
-        app.button("FormSubmitter:new_dedicated_internet_form-Submit").click().run(timeout=15)
+        app.text_input("input-service-identifier").set_value(service_identifier).run(timeout=APP_TIMEOUT_S)
+        app.text_input("input-account-reference").set_value("acct-12345").run(timeout=APP_TIMEOUT_S)
+        app.selectbox("select-location").select("bru01").run(timeout=APP_TIMEOUT_S)
+        app.selectbox("select-bandwidth").set_value("100").run(timeout=APP_TIMEOUT_S)
+        app.select_slider("select-ip-package").set_value("small").run(timeout=APP_TIMEOUT_S)
+        app.button("FormSubmitter:new_dedicated_internet_form-Submit").click().run(timeout=APP_TIMEOUT_S)
 
         # Verify the branch was created
         branches = await client.branch.all()
@@ -236,9 +265,54 @@ class TestServiceCatalog(TestInfrahubDockerClient):
         services = await client.all(kind=ServiceDedicatedInternet, branch=expected_branch_name)
         matches = [service for service in services if service.service_identifier.value == service_identifier]
         assert len(matches) == 1, "Service was not created on the new branch"
+        # The order form does not fill the request record.
+        assert matches[0].requested_by.value is None
+        assert matches[0].request_reason.value is None
 
         # Verify the proposed change was created
         proposed_changes = await client.all(kind=CoreProposedChange)
         assert len(proposed_changes) == 1, "Proposed change was not created"
         assert proposed_changes[0].source_branch.value == expected_branch_name
         assert proposed_changes[0].destination_branch.value == default_branch
+
+    def test_portal_order_merges(self, client_sync: InfrahubClientSync, default_branch: str) -> None:
+        """The order placed by test_portal passes its pipeline, including the Gold outage guard, and merges.
+
+        Every proposed change pipeline runs the Gold outage guard check, so the requester flow must
+        still reach main. This test reuses the
+        proposed change that test_portal opened (pytest runs the tests of this class in file order),
+        waits for its pipeline, merges it and reads the provisioned service on main.
+        """
+        proposed_change = client_sync.get(
+            kind=CoreProposedChange, name__value=f"Implement service {PORTAL_SERVICE_IDENTIFIER}"
+        )
+
+        latest = wait_for_guard(client_sync, proposed_change.id, "the portal order")
+        conclusions = {row.label: row.conclusion for row in latest}
+        logger.info("Validator conclusions on the portal order: %s", conclusions)
+
+        assert conclusions.get(seed.GUARD_VALIDATOR_LABEL) == "success", conclusions
+        assert all(conclusion == "success" for conclusion in conclusions.values()), conclusions
+
+        response = client_sync.execute_graphql(query=MERGE_MUTATION, variables={"id": proposed_change.id})
+        assert response["CoreProposedChangeMerge"]["ok"] is True
+        merged = client_sync.get(kind=CoreProposedChange, id=proposed_change.id)
+        assert merged.state.value == "merged"
+
+        # Read the allocations from their owning side, for the same reason as in test_generator_allocation.
+        service = client_sync.get(
+            kind=ServiceDedicatedInternetSync,
+            service_identifier__value=PORTAL_SERVICE_IDENTIFIER,
+            branch=default_branch,
+        )
+        assert service.status.value == "active"
+        vlans = client_sync.filters(kind=IpamVLANSync, service__ids=[service.id], branch=default_branch)
+        assert len(vlans) == 1
+        assert 1000 <= vlans[0].vlan_id.value <= 2000
+        prefixes = client_sync.filters(kind=IpamPrefixSync, service__ids=[service.id], branch=default_branch)
+        assert len(prefixes) == 1
+        allocated_network = ipaddress.IPv4Network(str(prefixes[0].prefix.value))
+        assert allocated_network.prefixlen == 29
+        assert allocated_network.subnet_of(ipaddress.IPv4Network("203.0.113.0/24"))
+        gateways = client_sync.filters(kind=IpamIPAddressSync, service__ids=[service.id], branch=default_branch)
+        assert len(gateways) == 1

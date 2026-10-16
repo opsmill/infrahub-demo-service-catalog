@@ -1,0 +1,121 @@
+# Stored query for the Planned maintenance page, the Single points of failure page and the Gold outage guard.
+# Ships as service_catalog/queries/business_impact_services.gql and is registered under
+# `queries` in .infrahub.yml as `business_impact_services`. Run on the selected branch,
+# and on main to compare the paths each service has on the current network.
+# The ServiceTier block gives each tier's rule, the separate paths its services keep during a change.
+# The DcimDevice block gives the devices at each site: the code asks Infrahub's path traversal which of
+# them each active service reaches (service_catalog/business_impact/footprint.py).
+# The device index and site pair a switch with the edge router of the same index at the same site into one path.
+query business_impact_services {
+  ServiceDedicatedInternet {
+    edges {
+      node {
+        __typename
+        id
+        service_identifier {
+          value
+        }
+        status {
+          value
+        }
+        bandwidth {
+          value
+        }
+        location {
+          node {
+            __typename
+            id
+            ... on LocationSite {
+              shortname {
+                value
+              }
+              name {
+                value
+              }
+            }
+          }
+        }
+        customer {
+          node {
+            __typename
+            id
+            name {
+              value
+            }
+          }
+        }
+        tier {
+          node {
+            __typename
+            id
+            name {
+              value
+            }
+          }
+        }
+        # The paths come from Infrahub's path traversal, not from here. The interfaces keep the
+        # service's links in the query result, so Infrahub generates the "Affected customers"
+        # artifact again when one of them changes.
+        dedicated_interfaces {
+          edges {
+            node {
+              __typename
+              id
+              name {
+                value
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  DcimDevice(role__values: ["core", "edge"]) {
+    edges {
+      node {
+        __typename
+        id
+        name {
+          value
+        }
+        description {
+          value
+        }
+        role {
+          value
+        }
+        status {
+          value
+        }
+        index {
+          value
+        }
+        location {
+          node {
+            __typename
+            id
+            ... on LocationSite {
+              shortname {
+                value
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  ServiceTier {
+    edges {
+      node {
+        __typename
+        id
+        name {
+          value
+        }
+        min_paths {
+          value
+        }
+      }
+    }
+  }
+}

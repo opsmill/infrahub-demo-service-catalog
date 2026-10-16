@@ -2,6 +2,29 @@
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 version: "1.0"
 
+# Copied from the OpsMill schema library (github.com/opsmill/schema-library), file
+# `extensions/vlan/vlan.yml`.
+# Library version: not known. The repository does not record the library commit or release. First
+# committed here on 2024-12-24 (6bce96e).
+# Taken: the file as a whole. The repository does not record whether parts were left out when it
+# was copied.
+# Re-check on upgrade: this copy is no longer refreshed from the library. Reconcile library
+# changes by hand and keep the local edits below.
+# Local edits, from the git history of this file (date, commit, change and reason):
+# - 2026-03-16 16ebc02: identifiers `location__vlans` and `vlan__prefixes` on both sides of those
+#   relationships.
+# - 2026-03-16 3450912: `display_labels` lists replaced by `display_label`, because the list form
+#   is deprecated.
+# - 2026-05-29 27124a3: IpamVLAN human-friendly ID is the layer 2 domain name and the VLAN ID,
+#   from a schema audit.
+# - 2026-05-29 to 2026-06-01 f0b4e16, 2191a39, f70c200: IpamL2Domain `name` is unique.
+# - 2026-10-10 2f9e945: IpamVLAN `l2domain` is a Parent relationship, and DcimInterfaceL2
+#   `untagged_vlan` and `tagged_vlan` are Attribute relationships with `on_delete: no-action`, so
+#   deleting an interface does not delete its VLANs.
+# - 2026-10-10 482d8d6: added `order_weight` values, from a schema audit.
+# - 2026-10-13 3d476e9: reverse relationship IpamVLAN `untagged_interfaces`, so the interface
+#   `untagged_vlan` has its reverse.
+
 nodes:
   - name: VLAN
     namespace: Ipam
@@ -20,13 +43,17 @@ nodes:
     attributes:
       - name: name
         kind: Text
+        order_weight: 1000
       - name: description
         kind: Text
         optional: true
+        order_weight: 2000
       - name: vlan_id
         kind: Number
+        order_weight: 1100
       - name: status
         kind: Dropdown
+        order_weight: 1300
         choices:
           - name: active
             label: Active
@@ -47,6 +74,7 @@ nodes:
       - name: role
         kind: Dropdown
         optional: true
+        order_weight: 2100
         choices:
           - name: server
             label: Server
@@ -69,18 +97,28 @@ nodes:
         peer: LocationHosting
         optional: true
         cardinality: many
+        order_weight: 3000
         identifier: location__vlans
       - name: prefixes
         peer: IpamPrefix
         optional: true
         cardinality: many
+        order_weight: 3100
         identifier: vlan__prefixes
       - name: l2domain
         peer: IpamL2Domain
         optional: false
         cardinality: one
-        kind: Attribute
+        kind: Parent
         order_weight: 1200
+      - name: untagged_interfaces
+        label: Untagged Interfaces
+        description: The layer 2 interfaces that carry this VLAN untagged.
+        peer: DcimInterfaceL2
+        optional: true
+        cardinality: many
+        order_weight: 3200
+        identifier: interface_l2__untagged_vlan
 
   - name: L2Domain
     namespace: Ipam
@@ -101,6 +139,7 @@ nodes:
         optional: true
         cardinality: many
         kind: Component
+        order_weight: 3000
 
 extensions:
   nodes:
@@ -120,14 +159,16 @@ extensions:
           peer: IpamVLAN
           optional: true
           cardinality: one
-          kind: Component
+          kind: Attribute
+          on_delete: no-action
           identifier: interface_l2__untagged_vlan
         - name: tagged_vlan
           label: Tagged VLANs
           peer: IpamVLAN
           optional: true
           cardinality: many
-          kind: Component
+          kind: Attribute
+          on_delete: no-action
           identifier: interface_l2__tagged_vlan
     - kind: LocationHosting
       relationships:
@@ -136,4 +177,5 @@ extensions:
           peer: IpamVLAN
           cardinality: many
           optional: true
+          order_weight: 3300
           identifier: location__vlans

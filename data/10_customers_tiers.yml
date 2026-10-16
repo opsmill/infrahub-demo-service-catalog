@@ -1,0 +1,22 @@
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: ServiceTier
+  data:
+    - name: Gold
+      min_paths: 1
+    - name: Silver
+      min_paths: 0
+    - name: Bronze
+      min_paths: 0
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: OrganizationCustomer
+  data:
+    - name: "Northbank"
+    - name: "Helix Health"
+    - name: "Maison Verte"
+    - name: "Rapid Freight"

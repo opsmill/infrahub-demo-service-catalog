@@ -54,13 +54,15 @@ spec:
       role: "edge"
       device_type: "Generic router"
       primary_address_from_resource_pool: "Management IP pool"
+      # The interface profiles own the role, MTU and enabled state of these interfaces. A value set
+      # here would override the profile, so each template interface sets only its own name, speed,
+      # description and status.
       interfaces:
         kind: TemplateDcimInterfaceL3
         data:
           - template_name: "GenericRouterEthernet1"
             name: "Ethernet1"
             speed: 1000
-            role: backbone
             description: "Connected to peer router"
             status: free
             profiles:
@@ -68,7 +70,6 @@ spec:
           - template_name: "GenericRouterEthernet2"
             name: "Ethernet2"
             speed: 1000
-            role: backbone
             description: "Connected to switch 1"
             status: free
             profiles:
@@ -76,7 +77,6 @@ spec:
           - template_name: "GenericRouterEthernet3"
             name: "Ethernet3"
             speed: 1000
-            role: backbone
             description: "Connected to switch 2"
             status: free
             profiles:
@@ -84,7 +84,6 @@ spec:
           - template_name: "GenericRouterEthernet4"
             name: "Ethernet4"
             speed: 1000
-            role: upstream
             description: "Connected to transit"
             status: free
             profiles:
@@ -92,7 +91,6 @@ spec:
           - template_name: "GenericRouterEthernet5"
             name: "Ethernet5"
             speed: 1000
-            role: upstream
             description: "Connected to transit"
             status: free
             profiles:

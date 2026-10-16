@@ -8,7 +8,7 @@ generics:
     description: Generic service...
     label: Service
     icon: mdi:package-variant
-    include_in_menu: true
+    include_in_menu: false
     human_friendly_id:
       - service_identifier__value
     order_by:
@@ -26,6 +26,35 @@ generics:
         order_weight: 1010
         optional: false
         branch: agnostic
+      - name: requested_by
+        kind: Text
+        label: Requested by
+        optional: true
+        branch: agnostic
+        order_weight: 1012
+      - name: request_reason
+        kind: Text
+        label: Reason for the request
+        optional: true
+        branch: agnostic
+        order_weight: 1014
+    relationships:
+      - name: customer
+        peer: OrganizationCustomer
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: service__customer
+        branch: aware
+        order_weight: 1030
+      - name: tier
+        peer: ServiceTier
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: service__tier
+        branch: aware
+        order_weight: 1040
 
 nodes:
   - name: DedicatedInternet
@@ -36,7 +65,7 @@ nodes:
     menu_placement: ServiceGeneric
     inherit_from:
       - ServiceGeneric
-    include_in_menu: true
+    include_in_menu: false
     branch: agnostic
     attributes:
       - name: status
@@ -97,6 +126,10 @@ nodes:
             description: Provide customer with 30 IPs.
             color: "#ffa07a"
     relationships:
+      # These identifiers (service_site, service_interface, service_vlan, service_ip_address,
+      # service_prefix) do not follow the source__peer convention. They are kept because an
+      # identifier cannot change once loaded, and renaming one drops the existing links.
+      # New relationships use source__peer.
       - name: location
         peer: LocationSite
         order_weight: 1150
@@ -120,6 +153,7 @@ nodes:
         direction: inbound
         identifier: service_vlan
       - name: gateway_ip_address
+        description: The service's gateway IP address, the authoritative value. The gateway of the service's prefix is a copy.
         peer: IpamIPAddress
         order_weight: 1350
         cardinality: one
@@ -135,6 +169,14 @@ nodes:
 
 extensions:
   nodes:
+    - kind: OrganizationCustomer
+      relationships:
+        - name: services
+          peer: ServiceGeneric
+          cardinality: many
+          optional: true
+          identifier: service__customer
+          branch: aware
     - kind: LocationSite
       relationships:
         - name: services

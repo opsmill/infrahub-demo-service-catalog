@@ -2,13 +2,31 @@
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 version: "1.0"
 
+# Copied from the OpsMill schema library (github.com/opsmill/schema-library), file
+# `base/location.yml`.
+# Library version: not known. The repository does not record the library commit or release. First
+# committed here on 2024-12-24 (6bce96e).
+# Taken: the file as a whole. The repository does not record whether parts were left out when it
+# was copied.
+# Re-check on upgrade: this copy is no longer refreshed from the library. Reconcile library
+# changes by hand and keep the local edits below.
+# Local edits, from the git history of this file (date, commit, change and reason):
+# - 2025-04-03 06bd304: `shortname` attribute and human-friendly ID on LocationHosting.
+# - 2026-03-16 16ebc02: identifiers `location__prefixes` and `location__devices` on the
+#   LocationHosting relationships.
+# - 2026-03-16 3450912: `display_labels` list replaced by `display_label`, because the list form
+#   is deprecated.
+# - 2026-10-10 482d8d6: added `order_weight` values, from a schema audit.
+# - 2026-10-13 90f399a: `include_in_menu: false` on LocationGeneric, because `menu.yml` gives each
+#   node one sidebar entry.
+
 generics:
   - name: Generic
     namespace: Location
     description: Generic Location, could be a country, city ...
     label: Location
     icon: mingcute:location-line
-    include_in_menu: true
+    include_in_menu: false
     hierarchical: true
     human_friendly_id:
       - shortname__value
@@ -33,6 +51,7 @@ generics:
         kind: Attribute
         optional: true
         cardinality: many
+        order_weight: 3000
 
   - name: Hosting
     namespace: Location
@@ -52,10 +71,12 @@ generics:
         peer: IpamPrefix
         cardinality: many
         optional: true
+        order_weight: 3100
         identifier: location__prefixes
       - name: devices
         label: Devices
         peer: DcimPhysicalDevice
         cardinality: many
         optional: true
+        order_weight: 3200
         identifier: location__devices
