@@ -10,13 +10,14 @@ x-infrahub-custom-build: &infrahub_custom_build
     INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES: '["^demo/.*$"]'
 services:
   service-catalog:
-    <<: *infrahub_custom_build
+    # Published by .github/workflows/publish-images.yml. To build it from this
+    # checkout instead, see docker-compose.catalog-dev.yml.
+    image: ${STREAMLIT_IMAGE:-registry.opsmill.io/opsmill/infrahub-demo-service-catalog-streamlit:main}
     environment:
       INFRAHUB_ADDRESS: http://infrahub-server:8000
       INFRAHUB_API_TOKEN: ${INFRAHUB_API_TOKEN:-44af444d-3b26-410d-9546-b758657e026c}
     ports:
       - 8501:8501
-    command: uv run streamlit run /opt/local/service_catalog/portal.py
   infrahub-server:
     <<: *infrahub_custom_build
   task-worker:

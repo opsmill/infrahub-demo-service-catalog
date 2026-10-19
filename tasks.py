@@ -15,9 +15,12 @@ infrahub_address = os.getenv("INFRAHUB_ADDRESS")
 INFRAHUB_VERSION = os.getenv("INFRAHUB_VERSION", "stable")
 INFRAHUB_ENTERPRISE = os.getenv("INFRAHUB_ENTERPRISE", "false").lower() == "true"
 INFRAHUB_PROJECT_NAME = os.getenv("INFRAHUB_PROJECT_NAME", MAIN_DIRECTORY_PATH.name)
+# Build the portal image from this checkout instead of pulling the published one,
+# and bind-mount its sources for live editing.
+INFRAHUB_SERVICE_CATALOG_BUILD = os.getenv("INFRAHUB_SERVICE_CATALOG_BUILD", "false").lower() == "true"
 
 
-def get_compose_command() -> str:
+def get_compose_command(local_build: bool = False) -> str:
     """Build the ``docker compose`` command with layered compose-file support.
 
     Resolution order for the base stack definition:
@@ -26,15 +29,22 @@ def get_compose_command() -> str:
        piped to ``docker compose`` over stdin.
 
     ``docker-compose.override.yml`` is always layered on top when present; in
-    this repo it wires every service to the custom image built from the local
-    ``Dockerfile``. The Compose project name is controlled by
-    ``INFRAHUB_PROJECT_NAME`` and defaults to the directory name.
+    this repo it wires the Infrahub services to the custom image built from the
+    local ``Dockerfile`` and the portal to the published image.
+    ``docker-compose.catalog-dev.yml`` is layered last, only with ``local_build``:
+    it builds the portal image from this checkout and mounts its sources. The
+    Compose project name is controlled by ``INFRAHUB_PROJECT_NAME`` and defaults
+    to the directory name.
+
+    Args:
+        local_build: Build the portal image from this checkout instead of pulling it.
 
     Returns:
         The ``docker compose`` command prefix, ready for a subcommand suffix.
     """
     local_compose_file = MAIN_DIRECTORY_PATH / "docker-compose.yml"
     override_file = MAIN_DIRECTORY_PATH / "docker-compose.override.yml"
+    catalog_dev_file = MAIN_DIRECTORY_PATH / "docker-compose.catalog-dev.yml"
 
     base_cmd = f"docker compose -p {INFRAHUB_PROJECT_NAME}"
 
@@ -47,6 +57,8 @@ def get_compose_command() -> str:
 
     if override_file.exists():
         cmd += f" -f {override_file}"
+    if local_build and catalog_dev_file.exists():
+        cmd += f" -f {catalog_dev_file}"
     return cmd
 
 
@@ -74,8 +86,8 @@ SEMAPHORE_PLAYBOOK_PATH = "/opt/semaphore/playbooks"
 
 @task
 def build(context: Context, cache: bool = True) -> None:
-    """Build the Docker Compose images for the service catalog stack."""
-    compose_cmd = COMPOSE_COMMAND + " build"
+    """Build the Docker Compose images for the service catalog stack, the portal included."""
+    compose_cmd = get_compose_command(local_build=True) + " build"
     if not cache:
         compose_cmd += " --no-cache"
     with context.cd(MAIN_DIRECTORY_PATH):
@@ -84,13 +96,19 @@ def build(context: Context, cache: bool = True) -> None:
 
 @task
 def start(context: Context, build: bool = False) -> None:
-    """Start the service catalog stack in the background via Docker Compose."""
+    """Start the service catalog stack in the background via Docker Compose.
+
+    The portal runs the published image from registry.opsmill.io. Use --build (or set
+    INFRAHUB_SERVICE_CATALOG_BUILD=true) to build the images from this checkout instead.
+    """
     print(f"Compose source: {COMPOSE_SOURCE}")
-    compose_cmd = COMPOSE_COMMAND + " up -d"
-    if build:
-        compose_cmd += " --build"
+    local_build = build or INFRAHUB_SERVICE_CATALOG_BUILD
+    base_cmd = get_compose_command(local_build)
     with context.cd(MAIN_DIRECTORY_PATH):
-        context.run(compose_cmd, pty=True)
+        if not local_build:
+            # The image uses a moving tag, so refresh it. An offline run keeps the local copy.
+            context.run(f"{base_cmd} pull --quiet --ignore-pull-failures service-catalog", pty=True)
+        context.run(f"{base_cmd} up -d{' --build' if local_build else ''}", pty=True)
 
 
 @task
