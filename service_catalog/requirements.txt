@@ -1,0 +1,12 @@
+# Packages the Streamlit Service Catalog portal image installs.
+#
+# Names only, on purpose: the versions come from uv.lock, and the Docker build
+# constrains every package here to the locked version. Move a version floor in
+# pyproject.toml, not here.
+streamlit
+infrahub-sdk
+pandas
+altair
+fast-depends
+# Lets Streamlit pick up edits to the mounted sources of docker-compose.catalog-dev.yml.
+watchdog

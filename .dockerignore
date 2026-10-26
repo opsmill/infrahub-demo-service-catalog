@@ -9,3 +9,29 @@
 .dev
 docs/node_modules
 specs
+
+# The image builds use the repository root as context. The portal image copies only
+# pyproject.toml, uv.lock and service_catalog/; the Infrahub image copies the same
+# files and README.md. Keep the context small.
+.github
+docs
+.env
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.specify
+.claude
+.agents
+ansible
+bootstrap
+checks
+data
+dev
+files
+generators
+schemas
+scripts
+semaphore
+templates
+tests
+transforms
