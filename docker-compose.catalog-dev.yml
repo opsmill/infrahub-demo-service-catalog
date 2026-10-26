@@ -1,6 +1,7 @@
 ---
-# Builds the Streamlit portal from this checkout and mounts its sources, so edits
-# show up without rebuilding.
+# Builds the Streamlit portal and the Semaphore image from this checkout and mounts
+# their sources (the portal package and the playbooks), so edits show up without
+# rebuilding.
 #
 # `invoke start --build`, or INFRAHUB_SERVICE_CATALOG_BUILD="true" in the environment,
 # layers this file on top of docker-compose.override.yml.
@@ -11,3 +12,9 @@ services:
       dockerfile: service_catalog/Dockerfile
     volumes:
       - ./service_catalog:/app/service_catalog
+  semaphore:
+    build:
+      context: .
+      dockerfile: semaphore/Dockerfile
+    volumes:
+      - ./ansible:/opt/semaphore/playbooks

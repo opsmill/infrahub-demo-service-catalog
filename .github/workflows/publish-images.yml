@@ -2,12 +2,13 @@
 # yamllint disable rule:truthy rule:line-length
 name: Publish images
 
-# Builds the Streamlit Service Catalog portal image and publishes it to the
-# OpsMill Harbor registry (public alias registry.opsmill.io):
+# Builds the Streamlit Service Catalog portal image and the Semaphore image, and
+# publishes them to the OpsMill Harbor registry (public alias registry.opsmill.io):
 #
 #   registry.opsmill.io/opsmill/infrahub-demo-service-catalog-streamlit
+#   registry.opsmill.io/opsmill/infrahub-demo-service-catalog-semaphore
 #
-# Pull requests build and smoke-test the image without publishing and without
+# Pull requests build and smoke-test the images without publishing and without
 # reading any secret. Pushes to main, the weekly rebuild and manual runs with
 # `publish` enabled push linux/amd64 and linux/arm64 images, then sign them and
 # attach SBOMs, as the other OpsMill images are.
@@ -20,6 +21,8 @@ on:
   pull_request:
     paths:
       - "service_catalog/**"
+      - "semaphore/**"
+      - "ansible/**"
       - "pyproject.toml"
       - "uv.lock"
       - ".dockerignore"
@@ -29,6 +32,8 @@ on:
       - main
     paths:
       - "service_catalog/**"
+      - "semaphore/**"
+      - "ansible/**"
       - "pyproject.toml"
       - "uv.lock"
       - ".dockerignore"
@@ -39,7 +44,7 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: "Push the image to Harbor"
+        description: "Push the images to Harbor"
         type: boolean
         required: false
         default: false
@@ -53,13 +58,29 @@ permissions:
   contents: read
 
 env:
-  IMAGE_NAME: opsmill/infrahub-demo-service-catalog-streamlit
+  IMAGE_PREFIX: opsmill/infrahub-demo-service-catalog
 
 jobs:
   test-build:
-    name: Build and smoke-test the image
+    name: "Build and smoke-test ${{ matrix.image }}"
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: streamlit
+            dockerfile: service_catalog/Dockerfile
+            port: 8501
+            port_variable: STREAMLIT_SERVER_PORT
+            health_path: /_stcore/health
+            run_options: "-e INFRAHUB_ADDRESS=http://localhost:1 -e INFRAHUB_API_TOKEN=smoke-test"
+          - image: semaphore
+            dockerfile: semaphore/Dockerfile
+            port: 3000
+            port_variable: SEMAPHORE_PORT
+            health_path: /api/ping
+            run_options: "-e SEMAPHORE_DB_DIALECT=bolt -e SEMAPHORE_ADMIN=admin -e SEMAPHORE_ADMIN_PASSWORD=smoke-test -e SEMAPHORE_ADMIN_NAME=Admin -e SEMAPHORE_ADMIN_EMAIL=admin@localhost"
     steps:
       - uses: actions/checkout@v7
 
@@ -69,17 +90,18 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: service_catalog/Dockerfile
+          file: ${{ matrix.dockerfile }}
           platforms: linux/amd64
           load: true
-          tags: smoke:streamlit
-          cache-from: type=gha,scope=streamlit-amd64
-          cache-to: type=gha,mode=max,scope=streamlit-amd64
+          tags: smoke:${{ matrix.image }}
+          cache-from: type=gha,scope=${{ matrix.image }}-amd64
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-amd64
 
       # Every third-party package a portal file imports must be in the image.
       # The pages are only parsed, because running one needs a Streamlit session;
       # the other modules are imported.
       - name: Check the portal's imports resolve
+        if: matrix.image == 'streamlit'
         run: |
           docker run --rm --entrypoint python smoke:streamlit -c "
           import ast, importlib, logging, pathlib, pkgutil, sys
@@ -111,9 +133,25 @@ jobs:
           print(len(modules), 'portal modules imported')
           "
 
+      # The Deploy template runs deploy.yml with inventory.yml, whose plugin and module
+      # come from the opsmill.infrahub collection, which imports the Infrahub SDK.
+      - name: Check the playbooks, the collection and the SDK are in the image
+        if: matrix.image == 'semaphore'
+        run: |
+          docker run --rm -i --entrypoint sh smoke:semaphore -s <<'SCRIPT'
+          set -e
+          test -f /opt/semaphore/playbooks/deploy.yml
+          test -f /opt/semaphore/playbooks/inventory.yml
+          ansible_python="$(dirname "$(command -v ansible)")/python3"
+          "$ansible_python" -c 'import infrahub_sdk; print("infrahub-sdk", infrahub_sdk.__version__, "in", __import__("sys").prefix)'
+          ANSIBLE_COLLECTIONS_PATH=/opt/semaphore/collections ansible-galaxy collection list opsmill.infrahub
+          ANSIBLE_COLLECTIONS_PATH=/opt/semaphore/collections ansible-doc -t inventory opsmill.infrahub.inventory > /dev/null
+          echo "playbooks, collection and SDK found"
+          SCRIPT
+
       - name: Check the container runs as a non-root user
         run: |
-          uid=$(docker run --rm --entrypoint id smoke:streamlit -u)
+          uid=$(docker run --rm --entrypoint id "smoke:${{ matrix.image }}" -u)
           if [ "${uid}" = "0" ]; then
             echo "::error::The image runs as root."
             exit 1
@@ -122,12 +160,11 @@ jobs:
       - name: Check the container reports healthy
         run: |
           docker run -d --name smoke \
-            -e INFRAHUB_ADDRESS=http://localhost:1 \
-            -e INFRAHUB_API_TOKEN=smoke-test \
-            -p 8501:8501 \
-            smoke:streamlit
+            ${{ matrix.run_options }} \
+            -p "${{ matrix.port }}:${{ matrix.port }}" \
+            "smoke:${{ matrix.image }}"
           for _ in $(seq 1 30); do
-            if curl --fail --silent "http://localhost:8501/_stcore/health"; then
+            if curl --fail --silent "http://localhost:${{ matrix.port }}${{ matrix.health_path }}"; then
               echo
               echo "The container is healthy."
               exit 0
@@ -142,13 +179,12 @@ jobs:
       - name: Check the container listens on port 8080 when asked to
         run: |
           docker run -d --name smoke-8080 \
-            -e STREAMLIT_SERVER_PORT=8080 \
-            -e INFRAHUB_ADDRESS=http://localhost:1 \
-            -e INFRAHUB_API_TOKEN=smoke-test \
+            -e "${{ matrix.port_variable }}=8080" \
+            ${{ matrix.run_options }} \
             -p 8080:8080 \
-            smoke:streamlit
+            "smoke:${{ matrix.image }}"
           for _ in $(seq 1 30); do
-            if curl --fail --silent "http://localhost:8080/_stcore/health"; then
+            if curl --fail --silent "http://localhost:8080${{ matrix.health_path }}"; then
               echo
               echo "The container is healthy on port 8080."
               exit 0
@@ -198,15 +234,20 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   build:
-    name: "Build (${{ matrix.platform }})"
+    name: "Build ${{ matrix.image }} (${{ matrix.platform }})"
     needs: metadata
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     strategy:
       fail-fast: true
       matrix:
+        image: [streamlit, semaphore]
         platform: [linux/amd64, linux/arm64]
         include:
+          - image: streamlit
+            dockerfile: service_catalog/Dockerfile
+          - image: semaphore
+            dockerfile: semaphore/Dockerfile
           - platform: linux/amd64
             runner: ubuntu-24.04
             arch: amd64
@@ -230,13 +271,13 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: service_catalog/Dockerfile
+          file: ${{ matrix.dockerfile }}
           platforms: ${{ matrix.platform }}
           provenance: false  # avoids cross-platform "unknown" entries
           labels: ${{ needs.metadata.outputs.labels }}
-          outputs: type=image,name=${{ vars.HARBOR_HOST }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=gha,scope=streamlit-${{ matrix.arch }}
-          cache-to: type=gha,mode=max,scope=streamlit-${{ matrix.arch }}
+          outputs: type=image,name=${{ vars.HARBOR_HOST }}/${{ env.IMAGE_PREFIX }}-${{ matrix.image }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.image }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-${{ matrix.arch }}
 
       - name: Export digest
         env:
@@ -248,22 +289,25 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@v7
         with:
-          name: digests-streamlit-${{ matrix.arch }}
+          name: digests-${{ matrix.image }}-${{ matrix.arch }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
 
   merge:
-    name: Publish the multi-architecture manifest
+    name: "Publish the ${{ matrix.image }} manifest"
     needs: [metadata, build]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    strategy:
+      matrix:
+        image: [streamlit, semaphore]
     steps:
       - name: Download digests
         uses: actions/download-artifact@v8
         with:
           path: /tmp/digests
-          pattern: digests-streamlit-*
+          pattern: digests-${{ matrix.image }}-*
           merge-multiple: true
 
       - uses: docker/setup-buildx-action@v4
@@ -278,7 +322,7 @@ jobs:
       - name: Create the multi-architecture manifest
         working-directory: /tmp/digests
         env:
-          IMAGE: ${{ vars.HARBOR_HOST }}/${{ env.IMAGE_NAME }}
+          IMAGE: ${{ vars.HARBOR_HOST }}/${{ env.IMAGE_PREFIX }}-${{ matrix.image }}
           TAGS: ${{ needs.metadata.outputs.tags }}
         run: |
           set -euo pipefail
@@ -295,7 +339,8 @@ jobs:
 
       - name: Summarise the published tags
         env:
-          IMAGE: ${{ vars.HARBOR_HOST }}/${{ env.IMAGE_NAME }}
+          IMAGE: ${{ vars.HARBOR_HOST }}/${{ env.IMAGE_PREFIX }}-${{ matrix.image }}
+          IMAGE_NAME: ${{ env.IMAGE_PREFIX }}-${{ matrix.image }}
           TAGS: ${{ needs.metadata.outputs.tags }}
         run: |
           set -euo pipefail
@@ -303,7 +348,7 @@ jobs:
           digest=$(docker buildx imagetools inspect "${IMAGE}:${FIRST_TAG}" \
             --format '{{json .Manifest}}' | jq -r '.digest')
           {
-            echo "### streamlit"
+            echo "### ${{ matrix.image }}"
             echo ""
             echo "Digest: \`${digest}\`"
             echo ""
@@ -314,13 +359,16 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   sign:
-    name: Sign and attach SBOM
+    name: "Sign and attach SBOM to ${{ matrix.image }}"
     needs: [metadata, merge]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
       id-token: write
+    strategy:
+      matrix:
+        image: [streamlit, semaphore]
     steps:
       - name: Install cosign
         uses: sigstore/cosign-installer@v4.1.2
@@ -339,7 +387,7 @@ jobs:
       # that the previous job pushed.
       - name: Resolve the manifest digest
         env:
-          IMAGE: ${{ vars.HARBOR_HOST }}/${{ env.IMAGE_NAME }}
+          IMAGE: ${{ vars.HARBOR_HOST }}/${{ env.IMAGE_PREFIX }}-${{ matrix.image }}
         run: |
           set -euo pipefail
           digest=$(docker buildx imagetools inspect "${IMAGE}:sha-${GITHUB_SHA::7}" \
@@ -364,7 +412,7 @@ jobs:
       - name: Upload the SBOMs
         uses: actions/upload-artifact@v7
         with:
-          name: sbom-streamlit-${{ github.sha }}
+          name: sbom-${{ matrix.image }}-${{ github.sha }}
           path: |
             sbom.spdx.json
             sbom.cdx.json
