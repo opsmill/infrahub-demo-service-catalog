@@ -80,10 +80,15 @@ def get_compose_source() -> str:
 COMPOSE_COMMAND = get_compose_command()
 COMPOSE_SOURCE = get_compose_source()
 
-SEMAPHORE_URL = "http://localhost:3000"
-SEMAPHORE_ADMIN = "admin"
-SEMAPHORE_ADMIN_PASSWORD = "semaphore"  # noqa: S105
-SEMAPHORE_PLAYBOOK_PATH = "/opt/semaphore/playbooks"
+# Defaults match the local Semaphore container. A public sandbox sets its own through the environment.
+SEMAPHORE_URL = os.getenv("SEMAPHORE_URL", "http://localhost:3000")
+SEMAPHORE_ADMIN = os.getenv("SEMAPHORE_ADMIN", "admin")
+SEMAPHORE_ADMIN_PASSWORD = os.getenv("SEMAPHORE_ADMIN_PASSWORD", "semaphore")
+SEMAPHORE_PLAYBOOK_PATH = os.getenv("SEMAPHORE_PLAYBOOK_PATH", "/opt/semaphore/playbooks")
+
+# Repository that `sandbox-setup` registers read-only. A fork sets its own.
+INFRAHUB_REPO_URL = os.getenv("INFRAHUB_REPO_URL", "https://github.com/opsmill/infrahub-demo-service-catalog.git")
+INFRAHUB_REPO_REF = os.getenv("INFRAHUB_REPO_REF", "main")
 
 
 @task
@@ -317,7 +322,8 @@ class _SemaphoreClient:
         payload: dict[str, object],
     ) -> int:
         """Find an existing resource by name or create it. Returns the resource id."""
-        items: list[dict[str, object]] = self._client.get(list_url).json()
+        # Semaphore 2.17 answers null, not [], for a list that has no item yet
+        items: list[dict[str, object]] = self._client.get(list_url).json() or []
         for item in items:
             if item.get("name") == name:
                 rid = int(str(item["id"]))
@@ -470,3 +476,49 @@ def seed(context: Context) -> None:
         except seed_steps.SeedError as exc:
             raise Exit(f"Seed failed. {exc}", code=1) from exc
     print("=== Seed complete ===")
+
+
+def _register_repository() -> None:
+    """Register INFRAHUB_REPO_URL at INFRAHUB_REPO_REF read-only, under the name that `seed` waits for."""
+    from service_catalog.business_impact import seed as seed_steps
+
+    client = seed_steps.build_client()
+    repository = client.create(
+        kind="CoreReadOnlyRepository",
+        name=seed_steps.REPOSITORY_NAME,
+        location=INFRAHUB_REPO_URL,
+        ref=INFRAHUB_REPO_REF,
+    )
+    repository.save(allow_upsert=True)
+
+
+@task(name="sandbox-setup")
+def sandbox_setup(context: Context) -> None:
+    """Build the whole demo on an Infrahub that already runs (the public sandbox entry point).
+
+    The public sandbox pipeline runs this after it deploys an empty Infrahub. It reads only
+    environment variables and starts no container:
+
+    - INFRAHUB_ADDRESS and INFRAHUB_API_TOKEN: the Infrahub
+    - INFRAHUB_REPO_URL and INFRAHUB_REPO_REF: the repository to register
+    - SEMAPHORE_URL, SEMAPHORE_ADMIN and SEMAPHORE_ADMIN_PASSWORD: the Semaphore to configure.
+      Without SEMAPHORE_URL, Semaphore is left out.
+
+    Steps: the accounts and permissions, the repository, Semaphore, then `seed`.
+    Safe to run again: each step creates only what is missing.
+    """
+    if not os.getenv("INFRAHUB_ADDRESS"):
+        message = "Sandbox setup failed. Set INFRAHUB_ADDRESS to the Infrahub URL"
+        raise Exit(message, code=1)
+    with context.cd(MAIN_DIRECTORY_PATH):
+        output = context.run("uv run infrahubctl object load bootstrap/permissions.yml", warn=True)
+        if output is None or output.exited != 0:
+            message = "Sandbox setup failed. Loading bootstrap/permissions.yml failed"
+            raise Exit(message, code=1)
+    print(f"Registering the repository {INFRAHUB_REPO_URL} ({INFRAHUB_REPO_REF})...")
+    _register_repository()
+    if os.getenv("SEMAPHORE_URL"):
+        init_semaphore(context)
+    else:
+        print("SEMAPHORE_URL is not set: Semaphore is not configured.")
+    seed(context)
