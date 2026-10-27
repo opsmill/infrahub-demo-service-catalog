@@ -142,6 +142,8 @@ jobs:
           set -e
           test -f /opt/semaphore/playbooks/deploy.yml
           test -f /opt/semaphore/playbooks/inventory.yml
+          # A requirements.yml here makes Semaphore install the collection from Galaxy before each task
+          test ! -e /opt/semaphore/playbooks/requirements.yml
           ansible_python="$(dirname "$(command -v ansible)")/python3"
           "$ansible_python" -c 'import infrahub_sdk; print("infrahub-sdk", infrahub_sdk.__version__, "in", __import__("sys").prefix)'
           ANSIBLE_COLLECTIONS_PATH=/opt/semaphore/collections ansible-galaxy collection list opsmill.infrahub

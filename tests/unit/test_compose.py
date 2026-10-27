@@ -100,6 +100,8 @@ def test_semaphore_image_holds_the_playbooks_and_the_locked_sdk() -> None:
     assert "uv export --frozen --no-dev" in text
     assert '--python "$(command -v python3)"' in text
     assert "/api/ping" in text  # the healthcheck
+    # Without the file, Semaphore does not reinstall the collection from Galaxy before each task
+    assert "RUN rm /opt/semaphore/playbooks/requirements.yml" in text
     assert text.count("USER semaphore") == 1
     assert text.index("USER semaphore") > text.index("USER root")
 

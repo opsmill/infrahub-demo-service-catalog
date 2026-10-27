@@ -34,7 +34,11 @@ RUN mkdir -p /opt/semaphore/collections \
 
 # The playbooks, so that a Semaphore without the repository mounted can run them.
 # docker-compose.catalog-dev.yml mounts ./ansible over this folder for local edits.
+# Before each task, Semaphore installs the collections that a requirements.yml in this
+# folder lists, from Ansible Galaxy. The collection is already installed above, and a
+# sandbox may not reach Galaxy, so the image leaves that file out.
 COPY --chown=semaphore ansible/ /opt/semaphore/playbooks/
+RUN rm /opt/semaphore/playbooks/requirements.yml
 
 # Semaphore listens on 3000. A deployment that needs another port, such as Styrmin's
 # generic-app driver (8080), sets SEMAPHORE_PORT.
