@@ -32,7 +32,7 @@ dev = [
     "types-pyyaml>=6.0.12",
     "types-requests>=2.32.0",
     "yamllint>=1.37.1",
-    "infrahub-testcontainers>=1.11.10",
+    "infrahub-testcontainers>=1.12.0b0",
     "rumdl>=0.2.55",
 ]
 
