@@ -24,9 +24,11 @@ updates:
     ignore:
       - dependency-name: "github/gh-aw-actions/**"  # managed by gh aw compile
 
-  # Base image and uv binary of the published portal image.
+  # Base images and uv binary of the published portal and Semaphore images.
   - package-ecosystem: "docker"
-    directory: "/service_catalog"
+    directories:
+      - "/service_catalog"
+      - "/semaphore"
     target-branch: main
     schedule:
       interval: weekly

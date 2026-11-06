@@ -18,6 +18,8 @@ OVERRIDE = ROOT / "docker-compose.override.yml"
 CATALOG_DEV = ROOT / "docker-compose.catalog-dev.yml"
 PORTAL_DOCKERFILE = ROOT / "service_catalog" / "Dockerfile"
 IMAGE = "registry.opsmill.io/opsmill/infrahub-demo-service-catalog-streamlit"
+SEMAPHORE_DOCKERFILE = ROOT / "semaphore" / "Dockerfile"
+SEMAPHORE_IMAGE = "registry.opsmill.io/opsmill/infrahub-demo-service-catalog-semaphore"
 
 
 def test_default_invocation_layers_only_the_override_file() -> None:
@@ -70,3 +72,46 @@ def test_portal_image_installs_what_the_portal_imports_at_the_locked_versions() 
     assert "uv export --frozen --no-dev" in text
     assert "USER app" in text
     assert 'CMD ["streamlit", "run", "service_catalog/portal.py"]' in text
+
+
+def test_override_runs_semaphore_from_the_published_image_without_building_it() -> None:
+    """The override points Semaphore at the published image, which holds the playbooks, so nothing is mounted."""
+    service = yaml.safe_load(OVERRIDE.read_text(encoding="utf-8"))["services"]["semaphore"]
+
+    assert SEMAPHORE_IMAGE in service["image"]
+    assert "build" not in service
+    assert "volumes" not in service
+    assert service["ports"] == ["3000:3000"]
+
+
+def test_dev_file_builds_semaphore_from_the_repository_root_and_mounts_the_playbooks() -> None:
+    """The build copies ansible/ and installs from uv.lock, so the build context is the root."""
+    service = yaml.safe_load(CATALOG_DEV.read_text(encoding="utf-8"))["services"]["semaphore"]
+
+    assert service["build"] == {"context": ".", "dockerfile": "semaphore/Dockerfile"}
+    assert service["volumes"] == ["./ansible:/opt/semaphore/playbooks"]
+
+
+def test_semaphore_image_holds_the_playbooks_and_the_locked_sdk() -> None:
+    """The image copies the playbooks, installs the SDK at the locked version where Ansible runs, and runs as semaphore."""
+    text = SEMAPHORE_DOCKERFILE.read_text(encoding="utf-8")
+
+    assert "COPY --chown=semaphore ansible/ /opt/semaphore/playbooks/" in text
+    assert "uv export --frozen --no-dev" in text
+    assert '--python "$(command -v python3)"' in text
+    assert "/api/ping" in text  # the healthcheck
+    # Without the file, Semaphore does not reinstall the collection from Galaxy before each task
+    assert "RUN rm /opt/semaphore/playbooks/requirements.yml" in text
+    assert text.count("USER semaphore") == 1
+    assert text.index("USER semaphore") > text.index("USER root")
+
+
+def test_build_context_keeps_what_the_semaphore_image_copies() -> None:
+    """The root .dockerignore must not exclude the files the Semaphore image copies."""
+    ignored = {
+        line.strip()
+        for line in (ROOT / ".dockerignore").read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.startswith("#")
+    }
+
+    assert not {"ansible", "semaphore", "pyproject.toml", "uv.lock"} & ignored

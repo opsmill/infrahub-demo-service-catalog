@@ -29,9 +29,9 @@ services:
     ports:
       - 4200:4200
   semaphore:
-    build:
-      context: ./semaphore
-      dockerfile: Dockerfile
+    # Published by .github/workflows/publish-images.yml, with the playbooks in it. To
+    # build it from this checkout instead, see docker-compose.catalog-dev.yml.
+    image: ${SEMAPHORE_IMAGE:-registry.opsmill.io/opsmill/infrahub-demo-service-catalog-semaphore:main}
     restart: unless-stopped
     environment:
       SEMAPHORE_DB_DIALECT: sqlite
@@ -44,8 +44,6 @@ services:
       INFRAHUB_API_TOKEN: ${INFRAHUB_API_TOKEN:-44af444d-3b26-410d-9546-b758657e026c}
     ports:
       - "3000:3000"
-    volumes:
-      - ./ansible:/opt/semaphore/playbooks
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/ping"]
       interval: 10s

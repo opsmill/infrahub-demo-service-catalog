@@ -12,7 +12,8 @@ specs
 
 # The image builds use the repository root as context. The portal image copies only
 # pyproject.toml, uv.lock and service_catalog/; the Infrahub image copies the same
-# files and README.md. Keep the context small.
+# files and README.md; the Semaphore image copies pyproject.toml, uv.lock, ansible/
+# and semaphore/requirements.txt. Keep the context small.
 .github
 docs
 .env
@@ -22,7 +23,6 @@ docs
 .specify
 .claude
 .agents
-ansible
 bootstrap
 checks
 data
@@ -31,7 +31,6 @@ files
 generators
 schemas
 scripts
-semaphore
 templates
 tests
 transforms
