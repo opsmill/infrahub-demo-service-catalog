@@ -202,6 +202,7 @@ To load the demo into an empty Infrahub that runs elsewhere, for example a publi
 export INFRAHUB_ADDRESS=https://infrahub.example.com
 export INFRAHUB_API_TOKEN=<token>
 export SEMAPHORE_URL=https://semaphore.example.com
+export SEMAPHORE_ADMIN_PASSWORD=<password>
 uv run invoke sandbox-setup
 ```
 
@@ -216,7 +217,7 @@ uv run invoke sandbox-setup
 | `SEMAPHORE_ADMIN_PASSWORD` | not set | Semaphore administrator password. Required when `SEMAPHORE_URL` is set. `invoke init` uses `semaphore` for the local container |
 | `SEMAPHORE_PLAYBOOK_PATH` | `/opt/semaphore/playbooks` | Folder of the playbooks in the Semaphore container |
 
-Run Semaphore from its published image, described above: it holds the playbooks, which read the Infrahub address and token from the `INFRAHUB_ADDRESS` and `INFRAHUB_API_TOKEN` variables that Semaphore passes to them.
+Run Semaphore from its published image, described above: it holds the playbooks. The playbooks read the Infrahub address and token from the `INFRAHUB_ADDRESS` and `INFRAHUB_API_TOKEN` variables that Semaphore passes to them. The image does not set these: set both variables on the Semaphore container, and set `SEMAPHORE_FORWARDED_ENV_VARS` to `["INFRAHUB_ADDRESS","INFRAHUB_API_TOKEN"]`, as `docker-compose.override.yml` does for the local container.
 
 ## Verify your installation
 

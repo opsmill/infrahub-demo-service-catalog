@@ -6,6 +6,7 @@ client talks to a fake transport.
 
 from __future__ import annotations
 
+import importlib.util
 from unittest.mock import MagicMock
 
 import httpx
@@ -13,6 +14,7 @@ import pytest
 from invoke import Context, Exit
 
 import tasks
+from service_catalog.business_impact import seed as seed_steps
 
 SEMAPHORE_URL = "http://semaphore.test"
 
@@ -92,6 +94,41 @@ def test_requires_the_semaphore_password_with_its_address(
     assert stopped.value.code == 1
     assert "SEMAPHORE_ADMIN_PASSWORD" in str(stopped.value.message)
     assert steps == []
+
+
+def test_registers_the_repository_read_only_under_the_name_that_seed_waits_for(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The repository is a read-only one at the given URL and ref, saved as an upsert, named as `seed` looks it up."""
+    client = MagicMock()
+    monkeypatch.setattr(seed_steps, "build_client", lambda: client)
+    monkeypatch.setattr(tasks, "INFRAHUB_REPO_URL", "https://github.com/example/fork.git")
+    monkeypatch.setattr(tasks, "INFRAHUB_REPO_REF", "a-branch")
+
+    tasks._register_repository()  # noqa: SLF001
+
+    client.create.assert_called_once_with(
+        kind="CoreReadOnlyRepository",
+        name=seed_steps.REPOSITORY_NAME,
+        location="https://github.com/example/fork.git",
+        ref="a-branch",
+    )
+    client.create.return_value.save.assert_called_once_with(allow_upsert=True)
+
+
+def test_registers_this_repository_on_main_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Without INFRAHUB_REPO_URL and INFRAHUB_REPO_REF, the task registers this repository at `main`."""
+    monkeypatch.delenv("INFRAHUB_REPO_URL", raising=False)
+    monkeypatch.delenv("INFRAHUB_REPO_REF", raising=False)
+    # A fresh copy of tasks.py, so that its module constants are read again from this environment.
+    spec = importlib.util.spec_from_file_location("tasks_defaults", tasks.__file__)
+    assert spec is not None
+    assert spec.loader is not None
+    fresh = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fresh)
+
+    assert fresh.INFRAHUB_REPO_URL == "https://github.com/opsmill/infrahub-demo-service-catalog.git"
+    assert fresh.INFRAHUB_REPO_REF == "main"
 
 
 def _semaphore(handler: httpx.MockTransport) -> tasks._SemaphoreClient:
