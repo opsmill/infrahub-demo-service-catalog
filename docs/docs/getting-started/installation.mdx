@@ -205,7 +205,7 @@ export SEMAPHORE_URL=https://semaphore.example.com
 uv run invoke sandbox-setup
 ```
 
-`sandbox-setup` starts no container. It loads the accounts and permissions, registers the repository read-only from GitHub, configures Semaphore, then runs the same steps as Step 6. You can run it again: each step creates only what is missing.
+`sandbox-setup` starts no container and loads no demo account: the `john` and `emma` accounts of Step 5 belong to the local installation, and a sandbox gets its visitor logins from its pipeline. It registers the repository read-only from GitHub, configures Semaphore, then runs the same steps as Step 6. You can run it again: registering the repository sets its location and ref again, and the other steps create only what is missing.
 
 | Variable | Default | Effect |
 |---|---|---|
@@ -213,7 +213,8 @@ uv run invoke sandbox-setup
 | `INFRAHUB_REPO_REF` | `main` | Git ref of that repository |
 | `SEMAPHORE_URL` | not set | Semaphore to configure. Without it, Semaphore is left out |
 | `SEMAPHORE_ADMIN` | `admin` | Semaphore administrator login |
-| `SEMAPHORE_ADMIN_PASSWORD` | `semaphore` | Semaphore administrator password |
+| `SEMAPHORE_ADMIN_PASSWORD` | not set | Semaphore administrator password. Required when `SEMAPHORE_URL` is set. `invoke init` uses `semaphore` for the local container |
+| `SEMAPHORE_PLAYBOOK_PATH` | `/opt/semaphore/playbooks` | Folder of the playbooks in the Semaphore container |
 
 Run Semaphore from its published image, described above: it holds the playbooks, which read the Infrahub address and token from the `INFRAHUB_ADDRESS` and `INFRAHUB_API_TOKEN` variables that Semaphore passes to them.
 

@@ -297,7 +297,8 @@ class _SemaphoreClient:
         delay = 2
         for attempt in range(1, 9):
             try:
-                self._client.get("/api/ping")
+                # A proxy or tunnel can answer 502 or 503 while Semaphore starts: that is not ready yet.
+                self._client.get("/api/ping").raise_for_status()
                 print("Semaphore is reachable.")
                 return
             except httpx.HTTPError:
@@ -502,19 +503,20 @@ def sandbox_setup(context: Context) -> None:
     - INFRAHUB_ADDRESS and INFRAHUB_API_TOKEN: the Infrahub
     - INFRAHUB_REPO_URL and INFRAHUB_REPO_REF: the repository to register
     - SEMAPHORE_URL, SEMAPHORE_ADMIN and SEMAPHORE_ADMIN_PASSWORD: the Semaphore to configure.
-      Without SEMAPHORE_URL, Semaphore is left out.
+      Without SEMAPHORE_URL, Semaphore is left out. With it, SEMAPHORE_ADMIN_PASSWORD is required,
+      so that the task never tries the published default password on a remote Semaphore.
 
-    Steps: the accounts and permissions, the repository, Semaphore, then `seed`.
-    Safe to run again: each step creates only what is missing.
+    Steps: the repository, Semaphore, then `seed`. It loads no demo account: `bootstrap/permissions.yml`
+    belongs to the local installation (`invoke init`), and the sandbox's visitor logins come from
+    the pipeline. Registering the repository sets its location and ref again; the other steps
+    create only what is missing. Safe to run again.
     """
     if not os.getenv("INFRAHUB_ADDRESS"):
         message = "Sandbox setup failed. Set INFRAHUB_ADDRESS to the Infrahub URL"
         raise Exit(message, code=1)
-    with context.cd(MAIN_DIRECTORY_PATH):
-        output = context.run("uv run infrahubctl object load bootstrap/permissions.yml", warn=True)
-        if output is None or output.exited != 0:
-            message = "Sandbox setup failed. Loading bootstrap/permissions.yml failed"
-            raise Exit(message, code=1)
+    if os.getenv("SEMAPHORE_URL") and not os.getenv("SEMAPHORE_ADMIN_PASSWORD"):
+        message = "Sandbox setup failed. SEMAPHORE_URL is set: set SEMAPHORE_ADMIN_PASSWORD to the administrator password of that Semaphore"
+        raise Exit(message, code=1)
     print(f"Registering the repository {INFRAHUB_REPO_URL} ({INFRAHUB_REPO_REF})...")
     _register_repository()
     if os.getenv("SEMAPHORE_URL"):
