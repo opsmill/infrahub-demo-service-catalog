@@ -9,10 +9,12 @@ not. Infrahub refuses a stored query that names a kind the schema does not have,
 query `dns_retirement_guard` (`dns_retirement_guard_binding.gql`, which reads only the Infrahub
 version) because Infrahub requires each check to bind one, and it overrides `collect_data`:
 
-1. When the branch's schema has no `DnsRecord`, the check passes with no message and reads nothing.
+1. When the branch's schema has no `DnsRecord`, the check passes with no message of its own and
+   reads no DNS records.
 2. Otherwise it runs the DNS read on the branch and on main. Main counts as having no record marked
    for retirement when its schema has no `DnsRecord`.
-3. Any other read error fails the check, so a read it could not make never passes.
+3. Any other read error fails the check, so a read it could not make never passes. A result with a
+   missing block, edges list or required field fails it in the same way, with the same message.
 
 Then it applies the rule (`evaluate`): only records that this change marks for retirement (retiring
 on the branch and not on main) can fail it. The rule lives in this file and imports nothing from
@@ -24,16 +26,14 @@ always reads the query of the commit it came from.
 from __future__ import annotations
 
 import textwrap
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from infrahub_sdk.checks import InfrahubCheck
 from infrahub_sdk.exceptions import Error as SdkError
 from infrahub_sdk.exceptions import GraphQLError, SchemaNotFoundError
-
-if TYPE_CHECKING:
-    from collections.abc import Mapping
 
 QUERY_FILE = Path(__file__).resolve().parent / "dns_retirement_guard.gql"
 RECORD_KIND = "DnsRecord"
@@ -116,60 +116,116 @@ class GuardResult:
     warnings: list[str] = field(default_factory=list)
 
 
+def _mapping(value: object, where: str) -> Mapping[str, Any]:
+    """`value` as a GraphQL object, or a TypeError naming `where` when it is something else."""
+    if not isinstance(value, Mapping):
+        raise TypeError(f"{where} is not an object")
+    return value
+
+
 def _value(node: Mapping[str, Any] | None, name: str) -> Any:  # noqa: ANN401 - a GraphQL attribute value
     """The `value` of attribute `name` of a node, or None when the node or attribute is missing."""
-    return ((node or {}).get(name) or {}).get("value")
+    if node is None:
+        return None
+    attribute = node.get(name)
+    if attribute is None:
+        return None
+    return _mapping(attribute, f"attribute {name}").get("value")
 
 
-def _peer(node: Mapping[str, Any] | None, name: str) -> Mapping[str, Any] | None:
+def _text(node: Mapping[str, Any] | None, name: str, where: str) -> str:
+    """The value of the required attribute `name`, or a ValueError naming `where` and the field."""
+    value = _value(node, name)
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{where} has no {name}")
+    return value
+
+
+def _label(node: Mapping[str, Any], where: str) -> str:
+    """The display label of a node, or a ValueError naming `where` when it is missing."""
+    label = node.get("display_label")
+    if not isinstance(label, str) or not label:
+        raise ValueError(f"{where} has no display_label")
+    return label
+
+
+def _peer(node: Mapping[str, Any], name: str) -> Mapping[str, Any] | None:
     """The peer node of relationship `name`, or None."""
-    peer: Mapping[str, Any] | None = ((node or {}).get(name) or {}).get("node")
-    return peer
+    block = node.get(name)
+    if block is None:
+        return None
+    peer = _mapping(block, f"relationship {name}").get("node")
+    return None if peer is None else _mapping(peer, f"peer of {name}")
 
 
-def _edges(block: Mapping[str, Any] | None) -> list[Mapping[str, Any]]:
-    """The nodes of a block of edges."""
-    return [edge["node"] for edge in (block or {}).get("edges") or [] if edge.get("node")]
+def _edges(block: object, where: str) -> list[Mapping[str, Any]]:
+    """The nodes of a block of edges. A block that is missing or has no edges list raises a ValueError."""
+    if not isinstance(block, Mapping):
+        raise ValueError(f"{where} is missing")
+    edges = block.get("edges")
+    if not isinstance(edges, list):
+        raise ValueError(f"{where} has no edges list")
+    return [_mapping(_mapping(edge, f"an edge of {where}").get("node"), f"a node of {where}") for edge in edges]
 
 
-def _team(node: Mapping[str, Any] | None) -> Team | None:
-    if not node:
+def _team(node: Mapping[str, Any] | None, where: str) -> Team | None:
+    if node is None:
         return None
     return Team(
-        name=str(_value(node, "name")),
+        name=_text(node, "name", where),
         contact_email=_value(node, "contact_email"),
-        status=_value(node, "status"),
+        status=_text(node, "status", where),
+    )
+
+
+def _application(node: Mapping[str, Any], record: str) -> Application:
+    where = f"an application of record {record}"
+    name = _text(node, "name", where)
+    where = f"application {name} of record {record}"
+    return Application(
+        name=name,
+        status=_text(node, "status", where),
+        owner=_team(_peer(node, "owner"), f"the owning team of {where}"),
+    )
+
+
+def _retiring_record(node: Mapping[str, Any]) -> RetiringRecord:
+    label = _label(node, "a record in retiring")
+    where = f"record {label}"
+    return RetiringRecord(
+        display_label=label,
+        name=_text(node, "name", where),
+        record_type=_text(node, "record_type", where),
+        zone=_text(_peer(node, "zone"), "name", f"the zone of {where}"),
+        applications=tuple(
+            _application(item, label) for item in _edges(node.get("applications"), f"applications of {where}")
+        ),
     )
 
 
 def parse_retiring(data: Mapping[str, Any]) -> list[RetiringRecord]:
-    """The records marked for retirement in one DNS read."""
-    records = []
-    for node in _edges(data.get("retiring")):
-        applications = tuple(
-            Application(
-                name=str(_value(item, "name")), status=_value(item, "status"), owner=_team(_peer(item, "owner"))
-            )
-            for item in _edges(node.get("applications"))
-        )
-        records.append(
-            RetiringRecord(
-                display_label=str(node["display_label"]),
-                name=str(_value(node, "name")),
-                record_type=str(_value(node, "record_type")),
-                zone=str(_value(_peer(node, "zone"), "name")),
-                applications=applications,
-            )
-        )
-    return records
+    """The records marked for retirement in one DNS read (`{}` when that side has no DNS schema).
+
+    A missing block, edges list or required field raises a ValueError or a TypeError.
+    """
+    if not data:
+        return []
+    return [_retiring_record(node) for node in _edges(data.get("retiring"), "retiring")]
+
+
+def _cname(node: Mapping[str, Any]) -> Cname:
+    label = _label(node, "a record in cnames")
+    return Cname(display_label=label, value=_text(node, "value", f"record {label}"))
 
 
 def parse_cnames(data: Mapping[str, Any]) -> list[Cname]:
-    """The active CNAME records in one DNS read."""
-    return [
-        Cname(display_label=str(node["display_label"]), value=str(_value(node, "value") or ""))
-        for node in _edges(data.get("cnames"))
-    ]
+    """The active CNAME records in one DNS read (`{}` when that side has no DNS schema).
+
+    A missing block, edges list or required field raises a ValueError or a TypeError.
+    """
+    if not data:
+        return []
+    return [_cname(node) for node in _edges(data.get("cnames"), "cnames")]
 
 
 def _owner(application: Application) -> str:
@@ -254,8 +310,14 @@ def evaluate(branch: Mapping[str, Any], main: Mapping[str, Any]) -> GuardResult:
     return GuardResult(errors=errors, warnings=warnings)
 
 
-def _error_text(exc: SdkError) -> str:
-    """The server's error messages for a refused query, or the SDK error's own message."""
+# What reading the DNS records can raise: an SDK error or a DNS query file it cannot open.
+READ_ERRORS = (SdkError, OSError)
+# What `evaluate` raises on a result with a missing block, edges list or required field.
+PARSE_ERRORS = (ValueError, KeyError, TypeError)
+
+
+def _error_text(exc: Exception) -> str:
+    """The server's error messages for a refused query, or the error's own message."""
     if isinstance(exc, GraphQLError) and exc.errors:
         return "; ".join(str(error.get("message", error)) for error in exc.errors)
     return str(exc)
@@ -285,7 +347,7 @@ class DnsRetirementGuard(InfrahubCheck):
                 return {}
             branch = await self._read(self.branch_name)
             main = await self._read(MAIN_BRANCH) if await self._has_dns(MAIN_BRANCH) else {}
-        except SdkError as exc:
+        except READ_ERRORS as exc:
             self._read_error = _error_text(exc)
             return {}
         return {"branch": branch, "main": main}
@@ -296,7 +358,12 @@ class DnsRetirementGuard(InfrahubCheck):
             return
         if not data:
             return
-        result = evaluate(data["branch"], data["main"])
+        try:
+            result = evaluate(data["branch"], data["main"])
+        except PARSE_ERRORS as exc:
+            # A malformed result is a read the check could not make, so it fails like one.
+            self.log_error(message=lines(f"{READ_FAILURE}: {_error_text(exc)}"))
+            return
         for message in result.errors:
             self.log_error(message=lines(message))
         for message in result.warnings:

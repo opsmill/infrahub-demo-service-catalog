@@ -14,8 +14,17 @@ import shutil
 from typing import TYPE_CHECKING, Any, cast
 
 import pytest
+import yaml
 
-from checks.dns_retirement_guard import MESSAGE_WIDTH, DnsRetirementGuard, evaluate, lines
+from checks.dns_retirement_guard import (
+    ACTIVE,
+    DISBANDED,
+    MESSAGE_WIDTH,
+    DnsRetirementGuard,
+    evaluate,
+    lines,
+)
+from infrahub_sdk.exceptions import Error as SdkError
 from infrahub_sdk.exceptions import GraphQLError, SchemaNotFoundError, ServerNotReachableError
 
 from .builders import REPO_ROOT
@@ -269,15 +278,19 @@ class FakeClient:
     """Stand-in for the SDK client: the schema and the DNS query by branch.
 
     `results` maps a branch to its DNS query result, or to the error the read raises. A branch
-    missing from `results` has no DNS schema.
+    missing from `results` has no DNS schema. `schema_error`, when set, is what the schema lookup
+    raises on every branch.
     """
 
-    def __init__(self, results: dict[str, dict[str, Any] | Exception]) -> None:
+    def __init__(self, results: dict[str, dict[str, Any] | Exception], schema_error: SdkError | None = None) -> None:
         self.results = results
+        self.schema_error = schema_error
         self.schema = self
         self.reads: list[str] = []
 
     async def get(self, kind: str, branch: str) -> object:
+        if self.schema_error is not None:
+            raise self.schema_error
         if branch not in self.results:
             raise SchemaNotFoundError(identifier=kind)
         return object()
@@ -391,6 +404,70 @@ def test_check_fails_on_another_sdk_error() -> None:
     assert len(errors) == 1
     assert errors[0].startswith(f"{READ_FAILURE}: ")
     assert "infrahub-server" in errors[0]
+
+
+def test_check_fails_when_the_schema_lookup_raises_another_sdk_error() -> None:
+    """Only SchemaNotFoundError means "no DNS schema". Any other error of the lookup is a failed read."""
+    client = FakeClient(
+        {BRANCH: result([]), "main": result([])},
+        schema_error=ServerNotReachableError(address="http://infrahub-server:8000"),
+    )
+
+    check = _run(client)
+
+    assert not check.passed
+    errors = _messages(check, "ERROR")
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{READ_FAILURE}: ")
+    assert "infrahub-server" in errors[0]
+    assert client.reads == []
+
+
+def test_check_fails_when_a_record_has_no_zone_name() -> None:
+    """A missing zone name must not turn into a record named `portal.None`."""
+    broken = portal()
+    broken["node"]["zone"] = {"node": {"name": {"value": None}}}
+
+    check = _run(FakeClient({BRANCH: result([broken]), "main": result([])}))
+
+    assert not check.passed
+    errors = _messages(check, "ERROR")
+    assert len(errors) == 1
+    assert errors[0].startswith(f"{READ_FAILURE}: ")
+    assert "portal.example.net A" in errors[0]
+    assert "name" in errors[0]
+
+
+@pytest.mark.parametrize("side", [BRANCH, "main"])
+def test_check_fails_when_the_retiring_block_is_null(side: str) -> None:
+    """`retiring: null` must not read as "no record marked for retirement"."""
+    results: dict[str, dict[str, Any] | Exception] = {BRANCH: result([portal()]), "main": result([])}
+    results[side] = {"cnames": {"edges": []}, "retiring": None}
+
+    check = _run(FakeClient(results))
+
+    assert not check.passed
+    assert _messages(check, "ERROR") == [f"{READ_FAILURE}: retiring is missing"]
+
+
+def test_status_values_the_check_compares_are_choices_of_the_dns_schema() -> None:
+    """The check compares statuses with `active`, `disbanded` and, in its query, `retiring`. Each must
+    be a dropdown choice of the attribute it is compared with, or the comparison never matches.
+    """
+    schema = yaml.safe_load((REPO_ROOT / "schemas" / "dns" / "dns.yml").read_text(encoding="utf-8"))
+    nodes = {f"{node['namespace']}{node['name']}": node for node in schema["nodes"]}
+
+    def choices(kind: str) -> set[str]:
+        (status,) = [attribute for attribute in nodes[kind]["attributes"] if attribute["name"] == "status"]
+        assert status["kind"] == "Dropdown"
+        return {choice["name"] for choice in status["choices"]}
+
+    query = (REPO_ROOT / "checks" / "dns_retirement_guard.gql").read_text(encoding="utf-8")
+    assert 'status__value: "retiring"' in query
+    assert 'status__value: "active"' in query
+    assert {ACTIVE, "retiring"} <= choices("DnsRecord")
+    assert {ACTIVE, "retired"} <= choices("DnsApplication")
+    assert {ACTIVE, DISBANDED} <= choices("DnsTeam")
 
 
 def test_worker_imports_the_check_and_reads_the_query_from_the_commit_worktree(commit_worktree: Path) -> None:

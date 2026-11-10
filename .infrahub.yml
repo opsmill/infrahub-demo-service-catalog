@@ -22,7 +22,7 @@ check_definitions:
     file_path: "checks/gold_outage_guard.py"
     class_name: GoldOutageGuard
   # Global as well. It reads the optional DNS schema (`invoke seed-dns`) and passes with no message
-  # on a branch whose schema has no DnsRecord.
+  # of its own on a branch whose schema has no DnsRecord.
   - name: dns_retirement_guard
     file_path: "checks/dns_retirement_guard.py"
     class_name: DnsRetirementGuard

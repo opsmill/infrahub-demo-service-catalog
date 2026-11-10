@@ -2,8 +2,8 @@
 
 1. Loads the repository schema and data and imports the repository with no DNS schema. The import
    succeeds and registers the `dns_retirement_guard` check definition, bound to its stored query.
-2. A proposed change on a branch without the DNS schema: the check passes with no message.
-3. Loads `schemas/dns` and `data/dns` on main, as `invoke seed-dns` does. A proposed change that marks
+2. A proposed change on a branch without the DNS schema: the check passes with no message of its own.
+3. Loads `schemas/dns` and `data/dns` on main through the SDK. A proposed change that marks
    `portal.example.net A` for retirement fails the check, and its message names the application
    "Customer portal" and the team "Web Platform".
 4. A proposed change that marks `intranet.example.net A` for retirement passes the check: only a
@@ -130,7 +130,7 @@ class TestDnsRetirementGuard(TestInfrahubDockerClient):
         assert _own_messages(messages) == []
 
     def test_load_the_dns_schema(self, client_sync: InfrahubClientSync, root_dir: Path) -> None:
-        """Load the DNS schema on main and wait for the repository, as `invoke seed-dns` does."""
+        """Load the DNS schema on main through the SDK and wait for the repository."""
         schemas = list(SchemaFile.load_from_disk(paths=[root_dir / "schemas" / "dns"]))
         client_sync.schema.load(schemas=[item.content for item in schemas])
         client_sync.schema.wait_until_converged(branch="main")
@@ -144,7 +144,7 @@ class TestDnsRetirementGuard(TestInfrahubDockerClient):
         seed.wait_for_repository_in_sync(client_sync)
 
     async def test_load_the_dns_records(self, client: InfrahubClient, root_dir: Path) -> None:
-        """Load the DNS zone, teams, applications and records on main, as `invoke seed-dns` does."""
+        """Load the DNS zone, teams, applications and records on main through the SDK."""
         await client.schema.all(branch="main", refresh=True)
         for idx, file in enumerate(ObjectFile.load_from_disk(paths=[root_dir / "data" / "dns"])):
             file.validate_content()

@@ -1,4 +1,5 @@
 import os
+import shlex
 import sys
 import time
 from collections.abc import Callable
@@ -490,8 +491,9 @@ def _load_dns_add_on(client: "InfrahubClientSync", run: Callable[[str], None], b
     # Imported here so the other tasks do not load the SDK and the protocols.
     from service_catalog.business_impact import seed as seed_steps
 
+    quoted = shlex.quote(branch)
     print(f"Loading the DNS schema on branch {branch}...")
-    run(f"infrahubctl schema load {DNS_SCHEMA} --branch {branch} --wait {seed_steps.SCHEMA_WAIT_S}")
+    run(f"infrahubctl schema load {DNS_SCHEMA} --branch {quoted} --wait {seed_steps.SCHEMA_WAIT_S}")
     seed_steps.wait_until(
         lambda: DNS_RECORD_KIND in client.schema.all(branch=branch, refresh=True),
         seed_steps.REPOSITORY_TIMEOUT_S,
@@ -501,17 +503,26 @@ def _load_dns_add_on(client: "InfrahubClientSync", run: Callable[[str], None], b
     # A repository import that runs during a schema load can fail, so wait until it is in sync.
     seed_steps.wait_for_repository_in_sync(client)
     print(f"Loading the DNS menu on branch {branch}...")
-    run(f"infrahubctl menu load {DNS_MENU_FILE} --branch {branch}")
+    run(f"infrahubctl menu load {DNS_MENU_FILE} --branch {quoted}")
     print(f"Loading the DNS records, applications and teams on branch {branch}...")
-    run(f"infrahubctl object load {DNS_DATA} --branch {branch}")
+    run(f"infrahubctl object load {DNS_DATA} --branch {quoted}")
 
 
-@task(name="seed-dns", help={"branch": "The Infrahub branch to load the DNS add-on on (default: main)."})
+@task(
+    name="seed-dns",
+    help={
+        "branch": (
+            "An existing Infrahub branch to load the DNS add-on on (default: main). "
+            "The repository sync wait checks main."
+        )
+    },
+)
 def seed_dns(context: Context, branch: str = "main") -> None:
     """Load the DNS add-on on a branch: the DNS schema, its menu file and the DNS records, applications and teams.
 
     Steps: load schemas/dns and wait until the branch's schema has DnsRecord, wait until the
-    repository is in sync, load menu_dns.yml, then load data/dns. Run after `invoke init`;
+    repository is in sync, load menu_dns.yml, then load data/dns. `--branch` must name a branch
+    that exists in Infrahub. The repository sync wait checks main, whatever the branch. Run after `invoke init`;
     `invoke seed` is not required. Safe to run again: the loads update what exists.
     """
     # Imported here so the other tasks do not load the SDK and the protocols.

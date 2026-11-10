@@ -60,7 +60,7 @@ Select **View all activities** under the panel to open the **Activities** page, 
 
 The **Activities** panel of the record now has an entry "Admin updated - portal.example.net A" with the line `status active > retiring`. The panel shows the stored value `retiring`, not the label "Marked for retirement".
 
-Open the **Checks** tab of the proposed change. The checks take less than a minute. The tab does not refresh by itself, so reload the page to view the result. When the run is done, the row `Check: dns_retirement_guard` has a red icon. Expand the row, then **Message**. The guard has failed with this message:
+Open the **Checks** tab of the proposed change. The tab does not refresh by itself. When the checks finish, reload the page to view the result: the row `Check: dns_retirement_guard` has a red icon. Expand the row, then **Message**. The guard has failed with this message:
 
 ```text
 portal.example.net (A) is marked for retirement but still serves 1
@@ -81,7 +81,7 @@ retired, so retire or repoint it too.
 
 Each message ends with a line that gives its level: `Level: ERROR` for the failure and `Level: INFO` for the information message.
 
-Infrahub does not run the checks again when you change a record on the branch. To run them again, select **Retry all** on the **Checks** tab, then reload the page after about half a minute.
+Infrahub does not run the checks again when you change a record on the branch. To run them again, select **Retry all** on the **Checks** tab. When the checks finish, reload the page.
 
 ### Mark a record that only a retired application uses
 
@@ -108,4 +108,4 @@ The guard reads the records marked for retirement on the branch of the proposed 
 - A record that is already marked for retirement on `main` gives an information message when an active application still uses it. The check passes, because this change does not cause it.
 - An active CNAME on the branch that points at a record this change marks for retirement gives an information message. The guard follows one level of CNAME: it does not follow a CNAME that points at another CNAME.
 
-On a branch without the DNS schema, the guard passes with no message.
+On a branch without the DNS schema, the guard passes with no message of its own.
