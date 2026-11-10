@@ -33,31 +33,6 @@ class DcimEndpoint(CoreNode):
     connected_endpoint: RelationshipAttribute[DcimEndpoint]
 
 
-class LocationGeneric(CoreNode):
-    description: StringOptional
-    name: String
-    shortname: String
-    tags: RelationshipManager[BuiltinTag]
-    parent: RelationshipAttribute[LocationGeneric]
-    children: RelationshipManager[LocationGeneric]
-
-
-class OrganizationGeneric(CoreNode):
-    description: StringOptional
-    name: String
-    prefixes: RelationshipManager[IpamPrefix]
-    tags: RelationshipManager[BuiltinTag]
-
-
-class ServiceGeneric(CoreNode):
-    account_reference: String
-    request_reason: StringOptional
-    requested_by: StringOptional
-    service_identifier: String
-    customer: RelationshipAttribute[OrganizationCustomer]
-    tier: RelationshipAttribute[ServiceTier]
-
-
 class DcimGenericDevice(CoreNode):
     description: StringOptional
     name: String
@@ -66,12 +41,6 @@ class DcimGenericDevice(CoreNode):
     platform: RelationshipAttribute[DcimPlatform]
     primary_address: RelationshipAttribute[IpamIPAddress]
     tags: RelationshipManager[BuiltinTag]
-
-
-class LocationHosting(CoreNode):
-    shortname: String
-    devices: RelationshipManager[DcimPhysicalDevice]
-    prefixes: RelationshipManager[IpamPrefix]
 
 
 class DcimInterface(CoreNode):
@@ -92,6 +61,37 @@ class DcimPhysicalDevice(CoreNode):
     serial: StringOptional
     device_type: RelationshipAttribute[DcimDeviceType]
     location: RelationshipAttribute[LocationHosting]
+
+
+class LocationGeneric(CoreNode):
+    description: StringOptional
+    name: String
+    shortname: String
+    tags: RelationshipManager[BuiltinTag]
+    parent: RelationshipAttribute[LocationGeneric]
+    children: RelationshipManager[LocationGeneric]
+
+
+class LocationHosting(CoreNode):
+    shortname: String
+    devices: RelationshipManager[DcimPhysicalDevice]
+    prefixes: RelationshipManager[IpamPrefix]
+
+
+class OrganizationGeneric(CoreNode):
+    description: StringOptional
+    name: String
+    prefixes: RelationshipManager[IpamPrefix]
+    tags: RelationshipManager[BuiltinTag]
+
+
+class ServiceGeneric(CoreNode):
+    account_reference: String
+    request_reason: StringOptional
+    requested_by: StringOptional
+    service_identifier: String
+    customer: RelationshipAttribute[OrganizationCustomer]
+    tier: RelationshipAttribute[ServiceTier]
 
 
 class DcimCircuit(CoreNode):
@@ -121,25 +121,6 @@ class DcimCircuitEndpoint(DcimEndpoint):
     location: RelationshipAttribute[LocationHosting]
 
 
-class LocationCountry(LocationGeneric):
-    timezone: StringOptional
-
-
-class OrganizationCustomer(OrganizationGeneric):
-    pass
-
-
-class ServiceDedicatedInternet(ServiceGeneric):
-    bandwidth: Dropdown
-    ip_package: Dropdown
-    status: Dropdown
-    dedicated_interfaces: RelationshipManager[DcimInterface]
-    gateway_ip_address: RelationshipAttribute[IpamIPAddress]
-    location: RelationshipAttribute[LocationSite]
-    prefix: RelationshipAttribute[IpamPrefix]
-    vlan: RelationshipAttribute[IpamVLAN]
-
-
 class DcimDevice(CoreArtifactTarget, DcimGenericDevice, DcimPhysicalDevice):
     index: IntegerOptional
     role: DropdownOptional
@@ -160,33 +141,12 @@ class DcimDeviceType(CoreNode):
     tags: RelationshipManager[BuiltinTag]
 
 
-class IpamIPAddress(BuiltinIPAddress):
-    fqdn: StringOptional
-    gateway_of: RelationshipManager[IpamPrefix]
-    interface: RelationshipAttribute[DcimInterfaceL3]
-    primary_address_of: RelationshipManager[DcimGenericDevice]
-
-
 class DcimInterfaceL2(DcimInterface, DcimEndpoint):
     l2_mode: StringOptional
 
 
 class DcimInterfaceL3(DcimInterface, DcimEndpoint):
     ip_addresses: RelationshipManager[IpamIPAddress]
-
-
-class IpamL2Domain(CoreNode):
-    name: String
-    vlans: RelationshipManager[IpamVLAN]
-
-
-class OrganizationManufacturer(OrganizationGeneric):
-    device_type: RelationshipManager[DcimDeviceType]
-    platform: RelationshipManager[DcimPlatform]
-
-
-class LocationMetro(LocationGeneric):
-    pass
 
 
 class DcimPlatform(CoreNode):
@@ -202,39 +162,54 @@ class DcimPlatform(CoreNode):
     manufacturer: RelationshipAttribute[OrganizationManufacturer]
 
 
+class DnsApplication(CoreNode):
+    name: String
+    status: Dropdown
+    owner: RelationshipAttribute[DnsTeam]
+    records: RelationshipManager[DnsRecord]
+
+
+class DnsRecord(CoreNode):
+    name: String
+    record_type: Dropdown
+    status: Dropdown
+    ttl: Integer
+    value: String
+    applications: RelationshipManager[DnsApplication]
+    zone: RelationshipAttribute[DnsZone]
+
+
+class DnsTeam(CoreNode):
+    contact_email: String
+    name: String
+    status: Dropdown
+    applications: RelationshipManager[DnsApplication]
+
+
+class DnsZone(CoreNode):
+    description: StringOptional
+    name: String
+    records: RelationshipManager[DnsRecord]
+
+
+class IpamIPAddress(BuiltinIPAddress):
+    fqdn: StringOptional
+    gateway_of: RelationshipManager[IpamPrefix]
+    interface: RelationshipAttribute[DcimInterfaceL3]
+    primary_address_of: RelationshipManager[DcimGenericDevice]
+
+
+class IpamL2Domain(CoreNode):
+    name: String
+    vlans: RelationshipManager[IpamVLAN]
+
+
 class IpamPrefix(BuiltinIPPrefix):
     role: DropdownOptional
     status: Dropdown
     gateway: RelationshipAttribute[IpamIPAddress]
     location: RelationshipAttribute[LocationHosting]
     organization: RelationshipAttribute[OrganizationGeneric]
-
-
-class OrganizationProvider(OrganizationGeneric):
-    pass
-
-
-class LocationRack(LocationGeneric, LocationHosting):
-    facility_id: StringOptional
-    height: Integer
-    owner: RelationshipAttribute[OrganizationGeneric]
-
-
-class ServiceReport(CoreArtifactTarget):
-    description: StringOptional
-    name: String
-
-
-class LocationSite(LocationGeneric, LocationHosting):
-    facility_id: StringOptional
-    physical_address: StringOptional
-    owner: RelationshipAttribute[OrganizationGeneric]
-
-
-class ServiceTier(CoreNode):
-    min_paths: IntegerOptional
-    name: String
-    services: RelationshipManager[ServiceGeneric]
 
 
 class IpamVLAN(CoreNode):
@@ -247,3 +222,58 @@ class IpamVLAN(CoreNode):
     location: RelationshipManager[LocationHosting]
     prefixes: RelationshipManager[IpamPrefix]
     untagged_interfaces: RelationshipManager[DcimInterfaceL2]
+
+
+class LocationCountry(LocationGeneric):
+    timezone: StringOptional
+
+
+class LocationMetro(LocationGeneric):
+    pass
+
+
+class LocationRack(LocationGeneric, LocationHosting):
+    facility_id: StringOptional
+    height: Integer
+    owner: RelationshipAttribute[OrganizationGeneric]
+
+
+class LocationSite(LocationGeneric, LocationHosting):
+    facility_id: StringOptional
+    physical_address: StringOptional
+    owner: RelationshipAttribute[OrganizationGeneric]
+
+
+class OrganizationCustomer(OrganizationGeneric):
+    pass
+
+
+class OrganizationManufacturer(OrganizationGeneric):
+    device_type: RelationshipManager[DcimDeviceType]
+    platform: RelationshipManager[DcimPlatform]
+
+
+class OrganizationProvider(OrganizationGeneric):
+    pass
+
+
+class ServiceDedicatedInternet(ServiceGeneric):
+    bandwidth: Dropdown
+    ip_package: Dropdown
+    status: Dropdown
+    dedicated_interfaces: RelationshipManager[DcimInterface]
+    gateway_ip_address: RelationshipAttribute[IpamIPAddress]
+    location: RelationshipAttribute[LocationSite]
+    prefix: RelationshipAttribute[IpamPrefix]
+    vlan: RelationshipAttribute[IpamVLAN]
+
+
+class ServiceReport(CoreArtifactTarget):
+    description: StringOptional
+    name: String
+
+
+class ServiceTier(CoreNode):
+    min_paths: IntegerOptional
+    name: String
+    services: RelationshipManager[ServiceGeneric]

@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/menu/latest.json
+#
+# The DNS menu, apart from menu.yml because the DNS schema is optional.
+# `invoke seed-dns` loads this file with `infrahubctl menu load` after it loads schemas/dns.
+# A menu item for a kind the instance does not have opens a broken list, so this file must
+# not be loaded without the DNS schema.
+#
+# To load it with the repository instead, register it next to the DNS schema in .infrahub.yml:
+#
+#   menus:
+#     - menu.yml
+#     - menu_dns.yml
+#
+# Every node of schemas/dns/dns.yml sets `include_in_menu: false`, so these items are their
+# only sidebar entries.
+---
+apiVersion: infrahub.app/v1
+kind: Menu
+spec:
+  data:
+    - namespace: Dns
+      name: Menu
+      label: DNS
+      icon: "mdi:dns"
+      children:
+        data:
+          - namespace: Dns
+            name: Zone
+            label: DNS zones
+            kind: DnsZone
+            icon: "mdi:dns"
+          - namespace: Dns
+            name: Record
+            label: DNS records
+            kind: DnsRecord
+            icon: "mdi:dns-outline"
+          - namespace: Dns
+            name: Application
+            label: Applications
+            kind: DnsApplication
+            icon: "mdi:application-outline"
+          - namespace: Dns
+            name: Team
+            label: Teams
+            kind: DnsTeam
+            icon: "mdi:account-group-outline"

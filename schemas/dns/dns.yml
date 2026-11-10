@@ -1,0 +1,172 @@
+---
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+version: "1.0"
+
+# DNS records, the applications that use them and the teams that own those applications.
+# This schema is optional: `invoke seed-dns` loads it with menu_dns.yml and the data of data/dns.
+# Every node sets `include_in_menu: false`, because menu_dns.yml holds the sidebar items.
+
+nodes:
+  - name: Zone
+    namespace: Dns
+    description: A DNS zone that holds records
+    label: DNS zone
+    icon: mdi:dns
+    include_in_menu: false
+    human_friendly_id:
+      - name__value
+    order_by:
+      - name__value
+    display_label: name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        order_weight: 1000
+      - name: description
+        kind: Text
+        optional: true
+        order_weight: 1100
+    relationships:
+      - name: records
+        peer: DnsRecord
+        kind: Generic
+        cardinality: many
+        optional: true
+        identifier: dnsrecord__dnszone
+        order_weight: 3000
+
+  - name: Record
+    namespace: Dns
+    description: A DNS record in a zone, and the applications that use it
+    label: DNS record
+    icon: mdi:dns-outline
+    include_in_menu: false
+    human_friendly_id:
+      - zone__name__value
+      - name__value
+      - record_type__value
+    display_label: "{{ name__value }}.{{ zone__name__value }} {{ record_type__value }}"
+    attributes:
+      - name: name
+        kind: Text
+        description: The label in the zone, for example portal
+        order_weight: 1000
+      - name: record_type
+        kind: Dropdown
+        choices:
+          - name: A
+            label: A
+          - name: AAAA
+            label: AAAA
+          - name: CNAME
+            label: CNAME
+        order_weight: 1100
+      - name: value
+        kind: Text
+        description: An IPv4 address for A, an IPv6 address for AAAA, a host name for CNAME
+        order_weight: 1200
+      - name: ttl
+        kind: Number
+        default_value: 3600
+        order_weight: 1300
+      - name: status
+        kind: Dropdown
+        default_value: active
+        choices:
+          - name: active
+            label: Active
+          - name: retiring
+            label: Marked for retirement
+        order_weight: 1400
+    relationships:
+      - name: zone
+        peer: DnsZone
+        kind: Attribute
+        cardinality: one
+        optional: false
+        identifier: dnsrecord__dnszone
+        order_weight: 1500
+      - name: applications
+        peer: DnsApplication
+        kind: Attribute
+        cardinality: many
+        optional: true
+        identifier: dnsapplication__dnsrecord
+        order_weight: 1600
+
+  - name: Application
+    namespace: Dns
+    description: An application that uses DNS records, and the team that owns it
+    label: Application
+    icon: mdi:application-outline
+    include_in_menu: false
+    human_friendly_id:
+      - name__value
+    display_label: name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        order_weight: 1000
+      - name: status
+        kind: Dropdown
+        default_value: active
+        choices:
+          - name: active
+            label: Active
+          - name: retired
+            label: Retired
+        order_weight: 1100
+    relationships:
+      - name: owner
+        peer: DnsTeam
+        label: Owning team
+        kind: Attribute
+        cardinality: one
+        optional: true
+        identifier: dnsapplication__dnsteam
+        order_weight: 1200
+      - name: records
+        peer: DnsRecord
+        label: DNS records
+        kind: Generic
+        cardinality: many
+        optional: true
+        identifier: dnsapplication__dnsrecord
+        order_weight: 3000
+
+  - name: Team
+    namespace: Dns
+    description: A team that owns applications, and how to contact it
+    label: Team
+    icon: mdi:account-group-outline
+    include_in_menu: false
+    human_friendly_id:
+      - name__value
+    display_label: "{{ name__value }} ({{ status__value }})"
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        order_weight: 1000
+      - name: contact_email
+        kind: Text
+        order_weight: 1100
+      - name: status
+        kind: Dropdown
+        default_value: active
+        choices:
+          - name: active
+            label: Active
+          - name: disbanded
+            label: Disbanded
+        order_weight: 1200
+    relationships:
+      - name: applications
+        peer: DnsApplication
+        kind: Generic
+        cardinality: many
+        optional: true
+        identifier: dnsapplication__dnsteam
+        order_weight: 3000

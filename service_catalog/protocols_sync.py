@@ -7,11 +7,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub_sdk.protocols import (
-    BuiltinIPAddress,
-    BuiltinIPPrefix,
+    BuiltinIPAddressSync,
+    BuiltinIPPrefixSync,
     BuiltinTagSync,
-    CoreArtifactTarget,
-    CoreFileObject,
+    CoreArtifactTargetSync,
+    CoreFileObjectSync,
     CoreNodeSync,
 )
 
@@ -33,31 +33,6 @@ class DcimEndpoint(CoreNodeSync):
     connected_endpoint: RelationshipAttributeSync[DcimEndpoint]
 
 
-class LocationGeneric(CoreNodeSync):
-    description: StringOptional
-    name: String
-    shortname: String
-    tags: RelationshipManagerSync[BuiltinTagSync]
-    parent: RelationshipAttributeSync[LocationGeneric]
-    children: RelationshipManagerSync[LocationGeneric]
-
-
-class OrganizationGeneric(CoreNodeSync):
-    description: StringOptional
-    name: String
-    prefixes: RelationshipManagerSync[IpamPrefix]
-    tags: RelationshipManagerSync[BuiltinTagSync]
-
-
-class ServiceGeneric(CoreNodeSync):
-    account_reference: String
-    request_reason: StringOptional
-    requested_by: StringOptional
-    service_identifier: String
-    customer: RelationshipAttributeSync[OrganizationCustomer]
-    tier: RelationshipAttributeSync[ServiceTier]
-
-
 class DcimGenericDevice(CoreNodeSync):
     description: StringOptional
     name: String
@@ -66,12 +41,6 @@ class DcimGenericDevice(CoreNodeSync):
     platform: RelationshipAttributeSync[DcimPlatform]
     primary_address: RelationshipAttributeSync[IpamIPAddress]
     tags: RelationshipManagerSync[BuiltinTagSync]
-
-
-class LocationHosting(CoreNodeSync):
-    shortname: String
-    devices: RelationshipManagerSync[DcimPhysicalDevice]
-    prefixes: RelationshipManagerSync[IpamPrefix]
 
 
 class DcimInterface(CoreNodeSync):
@@ -94,6 +63,37 @@ class DcimPhysicalDevice(CoreNodeSync):
     location: RelationshipAttributeSync[LocationHosting]
 
 
+class LocationGeneric(CoreNodeSync):
+    description: StringOptional
+    name: String
+    shortname: String
+    tags: RelationshipManagerSync[BuiltinTagSync]
+    parent: RelationshipAttributeSync[LocationGeneric]
+    children: RelationshipManagerSync[LocationGeneric]
+
+
+class LocationHosting(CoreNodeSync):
+    shortname: String
+    devices: RelationshipManagerSync[DcimPhysicalDevice]
+    prefixes: RelationshipManagerSync[IpamPrefix]
+
+
+class OrganizationGeneric(CoreNodeSync):
+    description: StringOptional
+    name: String
+    prefixes: RelationshipManagerSync[IpamPrefix]
+    tags: RelationshipManagerSync[BuiltinTagSync]
+
+
+class ServiceGeneric(CoreNodeSync):
+    account_reference: String
+    request_reason: StringOptional
+    requested_by: StringOptional
+    service_identifier: String
+    customer: RelationshipAttributeSync[OrganizationCustomer]
+    tier: RelationshipAttributeSync[ServiceTier]
+
+
 class DcimCircuit(CoreNodeSync):
     circuit_id: String
     circuit_type: Dropdown
@@ -106,7 +106,7 @@ class DcimCircuit(CoreNodeSync):
     provider: RelationshipAttributeSync[OrganizationProvider]
 
 
-class DcimCircuitContract(CoreFileObject):
+class DcimCircuitContract(CoreFileObjectSync):
     contract_end_date: DateTime
     contract_start_date: DateTime
     reference: String
@@ -121,26 +121,7 @@ class DcimCircuitEndpoint(DcimEndpoint):
     location: RelationshipAttributeSync[LocationHosting]
 
 
-class LocationCountry(LocationGeneric):
-    timezone: StringOptional
-
-
-class OrganizationCustomer(OrganizationGeneric):
-    pass
-
-
-class ServiceDedicatedInternet(ServiceGeneric):
-    bandwidth: Dropdown
-    ip_package: Dropdown
-    status: Dropdown
-    dedicated_interfaces: RelationshipManagerSync[DcimInterface]
-    gateway_ip_address: RelationshipAttributeSync[IpamIPAddress]
-    location: RelationshipAttributeSync[LocationSite]
-    prefix: RelationshipAttributeSync[IpamPrefix]
-    vlan: RelationshipAttributeSync[IpamVLAN]
-
-
-class DcimDevice(CoreArtifactTarget, DcimGenericDevice, DcimPhysicalDevice):
+class DcimDevice(CoreArtifactTargetSync, DcimGenericDevice, DcimPhysicalDevice):
     index: IntegerOptional
     role: DropdownOptional
     status: Dropdown
@@ -160,33 +141,12 @@ class DcimDeviceType(CoreNodeSync):
     tags: RelationshipManagerSync[BuiltinTagSync]
 
 
-class IpamIPAddress(BuiltinIPAddress):
-    fqdn: StringOptional
-    gateway_of: RelationshipManagerSync[IpamPrefix]
-    interface: RelationshipAttributeSync[DcimInterfaceL3]
-    primary_address_of: RelationshipManagerSync[DcimGenericDevice]
-
-
 class DcimInterfaceL2(DcimInterface, DcimEndpoint):
     l2_mode: StringOptional
 
 
 class DcimInterfaceL3(DcimInterface, DcimEndpoint):
     ip_addresses: RelationshipManagerSync[IpamIPAddress]
-
-
-class IpamL2Domain(CoreNodeSync):
-    name: String
-    vlans: RelationshipManagerSync[IpamVLAN]
-
-
-class OrganizationManufacturer(OrganizationGeneric):
-    device_type: RelationshipManagerSync[DcimDeviceType]
-    platform: RelationshipManagerSync[DcimPlatform]
-
-
-class LocationMetro(LocationGeneric):
-    pass
 
 
 class DcimPlatform(CoreNodeSync):
@@ -202,39 +162,54 @@ class DcimPlatform(CoreNodeSync):
     manufacturer: RelationshipAttributeSync[OrganizationManufacturer]
 
 
-class IpamPrefix(BuiltinIPPrefix):
+class DnsApplication(CoreNodeSync):
+    name: String
+    status: Dropdown
+    owner: RelationshipAttributeSync[DnsTeam]
+    records: RelationshipManagerSync[DnsRecord]
+
+
+class DnsRecord(CoreNodeSync):
+    name: String
+    record_type: Dropdown
+    status: Dropdown
+    ttl: Integer
+    value: String
+    applications: RelationshipManagerSync[DnsApplication]
+    zone: RelationshipAttributeSync[DnsZone]
+
+
+class DnsTeam(CoreNodeSync):
+    contact_email: String
+    name: String
+    status: Dropdown
+    applications: RelationshipManagerSync[DnsApplication]
+
+
+class DnsZone(CoreNodeSync):
+    description: StringOptional
+    name: String
+    records: RelationshipManagerSync[DnsRecord]
+
+
+class IpamIPAddress(BuiltinIPAddressSync):
+    fqdn: StringOptional
+    gateway_of: RelationshipManagerSync[IpamPrefix]
+    interface: RelationshipAttributeSync[DcimInterfaceL3]
+    primary_address_of: RelationshipManagerSync[DcimGenericDevice]
+
+
+class IpamL2Domain(CoreNodeSync):
+    name: String
+    vlans: RelationshipManagerSync[IpamVLAN]
+
+
+class IpamPrefix(BuiltinIPPrefixSync):
     role: DropdownOptional
     status: Dropdown
     gateway: RelationshipAttributeSync[IpamIPAddress]
     location: RelationshipAttributeSync[LocationHosting]
     organization: RelationshipAttributeSync[OrganizationGeneric]
-
-
-class OrganizationProvider(OrganizationGeneric):
-    pass
-
-
-class LocationRack(LocationGeneric, LocationHosting):
-    facility_id: StringOptional
-    height: Integer
-    owner: RelationshipAttributeSync[OrganizationGeneric]
-
-
-class ServiceReport(CoreArtifactTarget):
-    description: StringOptional
-    name: String
-
-
-class LocationSite(LocationGeneric, LocationHosting):
-    facility_id: StringOptional
-    physical_address: StringOptional
-    owner: RelationshipAttributeSync[OrganizationGeneric]
-
-
-class ServiceTier(CoreNodeSync):
-    min_paths: IntegerOptional
-    name: String
-    services: RelationshipManagerSync[ServiceGeneric]
 
 
 class IpamVLAN(CoreNodeSync):
@@ -247,3 +222,58 @@ class IpamVLAN(CoreNodeSync):
     location: RelationshipManagerSync[LocationHosting]
     prefixes: RelationshipManagerSync[IpamPrefix]
     untagged_interfaces: RelationshipManagerSync[DcimInterfaceL2]
+
+
+class LocationCountry(LocationGeneric):
+    timezone: StringOptional
+
+
+class LocationMetro(LocationGeneric):
+    pass
+
+
+class LocationRack(LocationGeneric, LocationHosting):
+    facility_id: StringOptional
+    height: Integer
+    owner: RelationshipAttributeSync[OrganizationGeneric]
+
+
+class LocationSite(LocationGeneric, LocationHosting):
+    facility_id: StringOptional
+    physical_address: StringOptional
+    owner: RelationshipAttributeSync[OrganizationGeneric]
+
+
+class OrganizationCustomer(OrganizationGeneric):
+    pass
+
+
+class OrganizationManufacturer(OrganizationGeneric):
+    device_type: RelationshipManagerSync[DcimDeviceType]
+    platform: RelationshipManagerSync[DcimPlatform]
+
+
+class OrganizationProvider(OrganizationGeneric):
+    pass
+
+
+class ServiceDedicatedInternet(ServiceGeneric):
+    bandwidth: Dropdown
+    ip_package: Dropdown
+    status: Dropdown
+    dedicated_interfaces: RelationshipManagerSync[DcimInterface]
+    gateway_ip_address: RelationshipAttributeSync[IpamIPAddress]
+    location: RelationshipAttributeSync[LocationSite]
+    prefix: RelationshipAttributeSync[IpamPrefix]
+    vlan: RelationshipAttributeSync[IpamVLAN]
+
+
+class ServiceReport(CoreArtifactTargetSync):
+    description: StringOptional
+    name: String
+
+
+class ServiceTier(CoreNodeSync):
+    min_paths: IntegerOptional
+    name: String
+    services: RelationshipManagerSync[ServiceGeneric]

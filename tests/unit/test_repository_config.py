@@ -1,4 +1,4 @@
-"""Unit tests for the `watch` lists in `.infrahub.yml`.
+"""Unit tests for `.infrahub.yml`: the `watch` lists and the optional DNS add-on.
 
 Infrahub reads only a Python transform's or generator's own file to find what
 it depends on. The `watch` list names the other repository files, so the
@@ -44,3 +44,19 @@ def test_each_transform_that_traces_service_paths_watches_the_footprint_module(
         assert watch is not None
         assert "service_catalog/business_impact/footprint.py" in watch.files, name
         assert "service_catalog/protocols_async.py" in watch.files, name
+
+
+def test_the_dns_add_on_is_not_loaded_with_the_repository(repository_config: InfrahubRepositoryConfig) -> None:
+    """`invoke seed-dns` loads the DNS schema, its menu file and its data. The repository import does not."""
+    assert "schemas/dns" not in [path.as_posix() for path in repository_config.schemas]
+    assert "menu_dns.yml" not in [path.as_posix() for path in repository_config.menus]
+    assert not [path for path in repository_config.objects if path.as_posix().startswith("data/dns")]
+
+
+def test_the_dns_retirement_query_is_not_a_stored_query(repository_config: InfrahubRepositoryConfig) -> None:
+    """The check reads `checks/dns_retirement_guard.gql` from disk.
+
+    Infrahub refuses a stored query that names a kind the schema does not have, so a stored DNS
+    query would fail the repository import on every stack without the DNS schema.
+    """
+    assert "checks/dns_retirement_guard.gql" not in [query.file_path.as_posix() for query in repository_config.queries]

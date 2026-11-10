@@ -37,6 +37,7 @@ queries:
 menus:
   - menu.yml
   # - menu_circuit.yml  # with schemas/circuit: the Circuit menu item
+  # - menu_dns.yml  # with schemas/dns, loaded by invoke seed-dns
 
 # SCHEMAS
 schemas:
@@ -45,6 +46,7 @@ schemas:
   - schemas/vlan
   - schemas/service
   # - schemas/circuit
+  # - schemas/dns  # loaded by invoke seed-dns
 
 # OBJECTS
 objects:

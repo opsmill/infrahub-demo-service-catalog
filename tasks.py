@@ -1,10 +1,15 @@
 import os
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import httpx
 from invoke import Context, Exit, task
+
+if TYPE_CHECKING:
+    from infrahub_sdk import InfrahubClientSync
 
 CURRENT_DIRECTORY = Path(__file__).resolve()
 DOCUMENTATION_DIRECTORY = CURRENT_DIRECTORY.parent / "docs"
@@ -213,6 +218,7 @@ PROTOCOL_SCHEMAS = [
     "schemas/vlan",
     "schemas/service",
     "schemas/circuit",
+    "schemas/dns",
 ]
 
 
@@ -470,3 +476,60 @@ def seed(context: Context) -> None:
         except seed_steps.SeedError as exc:
             raise Exit(f"Seed failed. {exc}", code=1) from exc
     print("=== Seed complete ===")
+
+
+# The optional DNS add-on, which `.infrahub.yml` does not load.
+DNS_SCHEMA = "schemas/dns"
+DNS_MENU_FILE = "menu_dns.yml"
+DNS_DATA = "data/dns"
+DNS_RECORD_KIND = "DnsRecord"
+
+
+def _load_dns_add_on(client: "InfrahubClientSync", run: Callable[[str], None], branch: str) -> None:
+    """Load the DNS schema, wait for it and for the repository sync, then load the DNS menu and data."""
+    # Imported here so the other tasks do not load the SDK and the protocols.
+    from service_catalog.business_impact import seed as seed_steps
+
+    print(f"Loading the DNS schema on branch {branch}...")
+    run(f"infrahubctl schema load {DNS_SCHEMA} --branch {branch} --wait {seed_steps.SCHEMA_WAIT_S}")
+    seed_steps.wait_until(
+        lambda: DNS_RECORD_KIND in client.schema.all(branch=branch, refresh=True),
+        seed_steps.REPOSITORY_TIMEOUT_S,
+        f"the DNS schema on branch {branch}",
+        seed_steps.ARTIFACT_POLL_INTERVAL_S,
+    )
+    # A repository import that runs during a schema load can fail, so wait until it is in sync.
+    seed_steps.wait_for_repository_in_sync(client)
+    print(f"Loading the DNS menu on branch {branch}...")
+    run(f"infrahubctl menu load {DNS_MENU_FILE} --branch {branch}")
+    print(f"Loading the DNS records, applications and teams on branch {branch}...")
+    run(f"infrahubctl object load {DNS_DATA} --branch {branch}")
+
+
+@task(name="seed-dns", help={"branch": "The Infrahub branch to load the DNS add-on on (default: main)."})
+def seed_dns(context: Context, branch: str = "main") -> None:
+    """Load the DNS add-on on a branch: the DNS schema, its menu file and the DNS records, applications and teams.
+
+    Steps: load schemas/dns and wait until the branch's schema has DnsRecord, wait until the
+    repository is in sync, load menu_dns.yml, then load data/dns. Run after `invoke init`;
+    `invoke seed` is not required. Safe to run again: the loads update what exists.
+    """
+    # Imported here so the other tasks do not load the SDK and the protocols.
+    from service_catalog.business_impact import seed as seed_steps
+
+    def run(command: str) -> None:
+        result = context.run(f"uv run {command}", warn=True)
+        if result is None or result.exited != 0:
+            exit_code = "unknown" if result is None else result.exited
+            raise seed_steps.SeedError(f"`{command}` exited with code {exit_code}")
+
+    if not os.getenv("INFRAHUB_ADDRESS"):
+        message = "DNS seed failed. Set INFRAHUB_ADDRESS to the Infrahub URL"
+        raise Exit(message, code=1)
+    client = seed_steps.build_client()
+    with context.cd(MAIN_DIRECTORY_PATH):
+        try:
+            _load_dns_add_on(client, run, branch)
+        except seed_steps.SeedError as exc:
+            raise Exit(f"DNS seed failed. {exc}", code=1) from exc
+    print("=== DNS seed complete ===")
