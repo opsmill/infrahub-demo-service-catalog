@@ -1,0 +1,9 @@
+# The stored query that the DNS retirement guard binds. Infrahub requires each check to name a
+# stored query that exists, and refuses a stored query that names a kind the schema does not have.
+# The DNS schema is optional, so this query names no DNS kind. The check reads the DNS records
+# with checks/dns_retirement_guard.gql instead, only on a branch whose schema has DnsRecord.
+query DnsRetirementGuard {
+  InfrahubInfo {
+    version
+  }
+}

@@ -1,4 +1,4 @@
-"""Proposed change steps the integration tests share: wait for the Gold outage guard, then try a merge."""
+"""Proposed change steps the integration tests share: wait for a check validator, then try a merge."""
 
 from __future__ import annotations
 
@@ -21,8 +21,13 @@ mutation MergeProposedChange($id: String!) {
 """
 
 
-def wait_for_guard(client_sync: InfrahubClientSync, proposed_change_id: str, what: str) -> list[seed.ValidatorRow]:
-    """Wait until the Gold outage guard validator of a proposed change has finished; return the validators."""
+def wait_for_guard(
+    client_sync: InfrahubClientSync,
+    proposed_change_id: str,
+    what: str,
+    validator_label: str = seed.GUARD_VALIDATOR_LABEL,
+) -> list[seed.ValidatorRow]:
+    """Wait until a check validator (the Gold outage guard by default) has finished; return the validators."""
     latest: list[seed.ValidatorRow] = []
 
     def finished() -> bool:
@@ -31,14 +36,22 @@ def wait_for_guard(client_sync: InfrahubClientSync, proposed_change_id: str, wha
             seed.ValidatorRow(label=node.label.value, state=node.state.value, conclusion=node.conclusion.value)
             for node in client_sync.filters(kind=CoreValidator, proposed_change__ids=[proposed_change_id])
         ]
-        return seed.validators_finished(latest, required=(seed.GUARD_VALIDATOR_LABEL,))
+        return seed.validators_finished(latest, required=(validator_label,))
 
     seed.wait_until(finished, seed.PIPELINE_TIMEOUT_S, f"the pipeline of {what}")
     return latest
 
 
-def open_change(client_sync: InfrahubClientSync, source_branch: str, name: str) -> InfrahubNodeSync:
-    """Open a proposed change from `source_branch` into main and wait for its Gold outage guard."""
+def open_change(
+    client_sync: InfrahubClientSync,
+    source_branch: str,
+    name: str,
+    validator_label: str = seed.GUARD_VALIDATOR_LABEL,
+) -> InfrahubNodeSync:
+    """Open a proposed change from `source_branch` into main and wait for a check validator to finish.
+
+    The validator is the Gold outage guard's unless `validator_label` names another one.
+    """
     proposed_change = client_sync.create(
         kind=CoreProposedChange,
         branch="main",
@@ -47,7 +60,7 @@ def open_change(client_sync: InfrahubClientSync, source_branch: str, name: str) 
         destination_branch="main",
     )
     proposed_change.save()
-    wait_for_guard(client_sync, proposed_change.id, name)
+    wait_for_guard(client_sync, proposed_change.id, name, validator_label)
     return proposed_change
 
 

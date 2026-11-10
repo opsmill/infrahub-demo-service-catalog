@@ -60,3 +60,28 @@ def test_the_dns_retirement_query_is_not_a_stored_query(repository_config: Infra
     query would fail the repository import on every stack without the DNS schema.
     """
     assert "checks/dns_retirement_guard.gql" not in [query.file_path.as_posix() for query in repository_config.queries]
+
+
+def test_the_dns_retirement_guard_binds_a_stored_query_that_names_no_dns_kind(
+    repository_config: InfrahubRepositoryConfig,
+) -> None:
+    """Infrahub requires each check to bind a stored query, so the guard binds one every stack accepts."""
+    queries = {query.name: query.file_path.as_posix() for query in repository_config.queries}
+
+    assert queries["dns_retirement_guard"] == "checks/dns_retirement_guard_binding.gql"
+    text = (REPO_ROOT / queries["dns_retirement_guard"]).read_text(encoding="utf-8")
+    body = [line for line in text.splitlines() if not line.lstrip().startswith("#")]
+    assert body
+    assert not [line for line in body if "Dns" in line.replace("DnsRetirementGuard", "")]
+
+
+def test_the_dns_retirement_guard_is_a_global_check(repository_config: InfrahubRepositoryConfig) -> None:
+    """The DNS retirement guard runs in every proposed change, next to the unchanged Gold outage guard."""
+    checks = {check.name: check for check in repository_config.check_definitions}
+
+    guard = checks["dns_retirement_guard"]
+    assert guard.file_path.as_posix() == "checks/dns_retirement_guard.py"
+    assert guard.class_name == "DnsRetirementGuard"
+    assert guard.targets is None
+    assert checks["gold_outage_guard"].file_path.as_posix() == "checks/gold_outage_guard.py"
+    assert checks["gold_outage_guard"].class_name == "GoldOutageGuard"

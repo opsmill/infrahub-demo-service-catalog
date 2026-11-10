@@ -21,6 +21,11 @@ check_definitions:
   - name: gold_outage_guard
     file_path: "checks/gold_outage_guard.py"
     class_name: GoldOutageGuard
+  # Global as well. It reads the optional DNS schema (`invoke seed-dns`) and passes with no message
+  # on a branch whose schema has no DnsRecord.
+  - name: dns_retirement_guard
+    file_path: "checks/dns_retirement_guard.py"
+    class_name: DnsRetirementGuard
 
 # QUERIES
 queries:
@@ -32,6 +37,10 @@ queries:
     file_path: "service_catalog/queries/business_impact_services.gql"
   - name: cost_of_service
     file_path: "service_catalog/queries/cost_of_service.gql"
+  # Exists only because Infrahub requires each check to bind a stored query. It names no DNS kind,
+  # so the import succeeds without the DNS schema. The check reads checks/dns_retirement_guard.gql.
+  - name: dns_retirement_guard
+    file_path: "checks/dns_retirement_guard_binding.gql"
 
 # MENU
 menus:

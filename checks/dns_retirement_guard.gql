@@ -1,0 +1,60 @@
+# The DNS read of the DNS retirement guard. It is not a stored query: the check reads this file
+# next to itself and runs it only when the branch's schema has DnsRecord. `retiring` is read on the
+# branch and on main; `cnames` is read on the branch.
+query DnsRetirementRecords {
+  cnames: DnsRecord(record_type__value: "CNAME", status__value: "active") {
+    edges {
+      node {
+        display_label
+        value {
+          value
+        }
+      }
+    }
+  }
+  retiring: DnsRecord(status__value: "retiring") {
+    edges {
+      node {
+        display_label
+        name {
+          value
+        }
+        record_type {
+          value
+        }
+        zone {
+          node {
+            name {
+              value
+            }
+          }
+        }
+        applications {
+          edges {
+            node {
+              name {
+                value
+              }
+              status {
+                value
+              }
+              owner {
+                node {
+                  name {
+                    value
+                  }
+                  contact_email {
+                    value
+                  }
+                  status {
+                    value
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
