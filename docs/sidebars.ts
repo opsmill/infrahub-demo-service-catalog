@@ -25,6 +25,12 @@ const sidebars: SidebarsConfig = {
         'business-impact/cost-of-service',
       ],
     },
+    {
+      type: 'category',
+      label: 'DNS',
+      collapsed: false,
+      items: ['dns/retire-a-dns-record'],
+    },
   ]
 };
 

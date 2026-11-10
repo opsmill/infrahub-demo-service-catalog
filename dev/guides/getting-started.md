@@ -33,7 +33,13 @@
    invoke seed
    ```
 
-5. To stop:
+5. Optional, for the DNS add-on: load the DNS schema, its menu and the DNS demo data, then follow `docs/docs/dns/retire-a-dns-record.mdx`. `invoke seed` is not required:
+
+   ```bash
+   invoke seed-dns
+   ```
+
+6. To stop:
 
    ```bash
    invoke stop
@@ -51,6 +57,7 @@
 - `invoke init` - Initialize demo (seed Semaphore, load repository and permissions)
 - `invoke init-semaphore` - Seed Semaphore only (project, keys, inventory, task template)
 - `invoke seed` - Seed the business impact demo after `invoke init` (twelve services, generator runs, three maintenance proposed changes: Paris router 1 passes the Gold outage guard, Brussels switch 1 is blocked, New York router 1 passes)
+- `invoke seed-dns` - Load the optional DNS add-on (schema, menu, and the zone `example.net` with its records, applications and teams); `--branch` loads it on another branch (default: `main`)
 
 ### Code Quality
 

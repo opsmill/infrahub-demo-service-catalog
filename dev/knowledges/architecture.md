@@ -21,9 +21,13 @@
    - `generators/` - Infrahub generators for automated service provisioning
    - `checks/gold_outage_guard.py` - Proposed change check that fails, and so blocks the merge, when a change leaves an active service with fewer separate paths than its tier's `min_paths` rule, or raises a tier's rule that active services do not meet; it runs the `business_impact_services` query and `service_catalog/business_impact/change_impact.py`, which adds the footprints on the branch and on main, as the two notification transforms do
    - Example: `implement_dedicated_internet.py` allocates VLANs, IP prefixes, ports, and configures gateways
+   - `checks/dns_retirement_guard.py` - Proposed change check for the optional DNS add-on. It fails when a change marks a DNS record for retirement while an active application still uses it, and names the application and its owning team. It gives information messages for a record with no application, for an active CNAME that points at a record the change marks for retirement (one level only), and for a record already marked for retirement on main. It reads `checks/dns_retirement_guard.gql` on the branch and on main. That query is not registered in `.infrahub.yml`, because Infrahub refuses a stored query that names a kind the schema does not have; the check binds the stored query `dns_retirement_guard` (`checks/dns_retirement_guard_binding.gql`, which reads only the Infrahub version). On a branch without the DNS schema it passes with no message
 
 4. **Data Models**
    - `schemas/` - Infrahub schema definitions (DCIM, IPAM, services, and the optional circuit schema, commented out in `.infrahub.yml` and loaded by `invoke seed`)
+   - `schemas/dns` - Optional DNS schema: zones, records, the applications that use each record and the teams that own each application. It is not registered in `.infrahub.yml`; `invoke seed-dns` loads it
+   - `menu_dns.yml` - The **DNS** menu for the DNS schema, apart from `menu.yml` and not registered in `.infrahub.yml`; `invoke seed-dns` loads it after the schema
+   - `data/dns/` - DNS demo data loaded by `invoke seed-dns`: the zone `example.net`, eight records, four applications and three teams
    - `protocols_*.py` - Type definitions for Infrahub objects
    - Initial data in `data/` - YAML fixtures for demo environment (locations, devices, providers, profiles, resource pools)
    - `bootstrap/permissions.yml` - RBAC configuration (operator role/group, `john` user account)

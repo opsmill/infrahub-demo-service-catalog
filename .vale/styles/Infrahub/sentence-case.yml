@@ -15,6 +15,7 @@ exceptions:
   - CAPEX
   - OPEX
   - CRM
+  - DNS
   - Paris
   - "Method 1: Direct in Settings (Not Recommended)"
   - "Method 2: Environment Variables (Recommended)"

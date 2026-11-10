@@ -1,0 +1,106 @@
+---
+title: Retire a DNS record without breaking an application
+sidebar_label: Retire a DNS record
+description: Load the DNS add-on, view which applications use a DNS record and which team owns each one, view the record's change history, and view the DNS retirement guard block the retirement of a record that an active application still uses.
+---
+
+# Retire a DNS record without breaking an application
+
+Before you remove a DNS record, you need to know which applications still resolve it and who to ask about each one. That knowledge is usually in a spreadsheet, a ticket or someone's memory, so a record that looks unused gets removed and an application stops working. In this walk-through, each DNS record in Infrahub lists the applications that use it, and each application has an owning team with a contact email. When you mark a record for retirement on a branch, the proposed change runs the DNS retirement guard. The guard fails while an active application still uses the record, and its message names the application and the team to contact.
+
+The DNS data in this demo is typed in for the demo. It is not synced from a DNS server or an IPAM.
+
+## Before you begin
+
+Install the demo and run `invoke init`, as described in the [installation guide](../getting-started/installation.mdx). The business impact seed step is not required. The repository import on `main` must include the DNS retirement guard check.
+
+## Load the DNS add-on
+
+The DNS add-on is optional, so the repository does not load it. Load it on `main`:
+
+```bash
+uv run invoke seed-dns
+```
+
+The command loads the DNS schema, then the **DNS** menu, then the demo data:
+
+- the zone `example.net` with eight records;
+- four applications: Customer portal, Invoice archive, Legacy intranet and Single sign-on;
+- three teams: Web Platform, Billing Systems and Identity.
+
+To load the add-on on another branch, add `--branch <name>`. You can run the command again; it updates what already exists.
+
+## Step 1: view the applications that use a record
+
+Open Infrahub at `http://localhost:8000` and sign in as `admin` / `infrahub`. In the menu, select **DNS**, then **DNS records**. The list shows the eight records of `example.net`.
+
+Open `portal.example.net A`. The record page lists its application, Customer portal. The record `old-ftp.example.net A` lists no application.
+
+## Step 2: view the team that owns the application
+
+On `portal.example.net A`, select Customer portal. The application page shows its status, Active, and its owning team, Web Platform (active).
+
+Select Web Platform. The team page shows the contact email `web-platform@example.net`.
+
+The application Invoice archive is owned by Billing Systems, which has the status Disbanded. Nobody owns Invoice archive today.
+
+## Step 3: view the history of the record
+
+Open `portal.example.net A` again. The **Activities** panel on the right of the **Details** tab, under **Groups**, lists the changes to the record, newest first. Each entry shows the account, the action, the time and the branch. **View more** on an entry shows the event and the nodes it changed.
+
+After `invoke seed-dns`, the panel shows "Admin created - portal.example.net A", with each value set at load. Two "Admin updated" entries follow. They record that the zone `example.net` and the application Customer portal each gained the record as a peer.
+
+Select **View all activities** under the panel to open the **Activities** page, filtered to this record and branch.
+
+## Step 4: mark the record for retirement and view the guard fail
+
+1. Create a branch, for example `retire-portal`.
+2. On that branch, open `portal.example.net A` and set **Status** to "Marked for retirement".
+3. Go to **Proposed Changes** and create a proposed change from `retire-portal` to `main`.
+
+The **Activities** panel of the record now has an entry "Admin updated - portal.example.net A" with the line `status active > retiring`. The panel shows the stored value `retiring`, not the label "Marked for retirement".
+
+When the pipeline finishes, the DNS retirement guard, listed as `dns_retirement_guard` on the **Checks** tab, has failed with this message:
+
+```text
+portal.example.net (A) is marked for retirement but still serves 1 active
+application: Customer portal (owned by Web Platform, web-platform@example.net).
+Move the application off this record before you retire it.
+```
+
+Infrahub does not merge a proposed change with a failing check, so the record stays active on `main`.
+
+The check also shows an information message for the CNAME that points at the record:
+
+```text
+www.example.net (CNAME) points at portal.example.net, which this change
+marks for retirement. The CNAME stops resolving when the record is retired,
+so retire or repoint it too.
+```
+
+### Mark a record that only a retired application uses
+
+On the same branch, set `portal.example.net A` back to "Active" and set `intranet.example.net A` to "Marked for retirement". Its only application, Legacy intranet, has the status Retired. Run the checks of the proposed change again. The DNS retirement guard passes.
+
+### Mark a record with no application
+
+Set `old-ftp.example.net A` to "Marked for retirement" as well and run the checks again. The guard passes and shows this information message:
+
+```text
+old-ftp.example.net (A) is marked for retirement and has no application in
+Infrahub. Nothing in Infrahub shows that it is unused, so confirm with the
+zone owner before you merge.
+```
+
+Close the proposed change without merging when you are done.
+
+## What the DNS retirement guard compares
+
+The guard reads the records marked for retirement on the branch of the proposed change and on `main`:
+
+- A record that this change marks for retirement fails the check when at least one active application uses it. The message names each active application and its team. When the team is disbanded, the message says that nobody owns the application today.
+- A record that this change marks for retirement and that no application uses gives an information message. The check passes.
+- A record that is already marked for retirement on `main` gives an information message when an active application still uses it. The check passes, because this change does not cause it.
+- An active CNAME on the branch that points at a record this change marks for retirement gives an information message. The guard follows one level of CNAME: it does not follow a CNAME that points at another CNAME.
+
+On a branch without the DNS schema, the guard passes with no message.
