@@ -1,0 +1,64 @@
+installed:
+- checkpoint
+- critique
+- infrahub-speckit
+- opsmill
+settings:
+  auto_execute_hooks: true
+hooks:
+  after_taskstoissues:
+  - extension: opsmill
+    command: speckit.opsmill.summary
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Produce a session summary in the feature directory?
+    description: Flow-level timeline next to spec.md/plan.md, capturing the handoff
+      to the issue tracker.
+    condition: null
+  after_plan:
+  - extension: critique
+    command: speckit.critique.run
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Run spec critique before proceeding to tasks?
+    description: Challenges the spec and plan through product and engineering lenses
+    condition: null
+  before_specify:
+  - extension: infrahub-speckit
+    command: speckit.infrahub-speckit.route-specify
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.infrahub-speckit.route-specify?
+    description: Infrahub artifact routing before specification
+    condition: null
+  before_plan:
+  - extension: infrahub-speckit
+    command: speckit.infrahub-speckit.route-plan
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.infrahub-speckit.route-plan?
+    description: Infrahub artifact routing before planning
+    condition: null
+  before_implement:
+  - extension: infrahub-speckit
+    command: speckit.infrahub-speckit.route-implement
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.infrahub-speckit.route-implement?
+    description: Infrahub artifact routing before implementation
+    condition: null
+  after_implement:
+  - extension: infrahub-speckit
+    command: speckit.infrahub-speckit.route-friction
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Check this cycle for Infrahub skill-guidance friction?
+    description: Detect Infrahub skill friction after implementation and offer to
+      report it
+    condition: null

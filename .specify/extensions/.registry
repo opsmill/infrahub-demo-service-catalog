@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0",
+  "extensions": {
+    "opsmill": {
+      "version": "1.4.1",
+      "source": "local",
+      "manifest_hash": "sha256:8d2d95bcc835b1febff8aef37dc6065e0dc4ad7bbea132adfbdbf4dce17ceabf",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.opsmill.extract",
+          "speckit.opsmill.retrospect",
+          "speckit.opsmill.summary",
+          "speckit.opsmill.qa",
+          "speckit.opsmill.auto",
+          "speckit.opsmill.prep",
+          "speckit.opsmill.implement"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-11-10T14:17:26.195382+00:00"
+    },
+    "checkpoint": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:f1f8587fcfee109d13e5fd2837df498439695218b32d00083f6e98095fca64c0",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.checkpoint.commit"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-11-10T14:17:34.921851+00:00"
+    },
+    "critique": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:0b63a1835415df730cbd487c90c1252b294980176c10c14a3fa9c31a7cb882e0",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.critique.run"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-11-10T14:17:40.862550+00:00"
+    },
+    "infrahub-speckit": {
+      "version": "3.1.0",
+      "source": "local",
+      "manifest_hash": "sha256:7505b230f473a5eb3fa74174650fb64909dad7654c5585f2cd7cea6728e91af2",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.infrahub-speckit.route-specify",
+          "speckit.infrahub-speckit.route-plan",
+          "speckit.infrahub-speckit.route-implement",
+          "speckit.infrahub-speckit.route-friction"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-11-10T14:17:47.984817+00:00"
+    }
+  }
+}
