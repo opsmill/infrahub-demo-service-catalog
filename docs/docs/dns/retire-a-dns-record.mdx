@@ -54,42 +54,47 @@ Select **View all activities** under the panel to open the **Activities** page, 
 
 ## Step 4: mark the record for retirement and view the guard fail
 
-1. Create a branch, for example `retire-portal`.
-2. On that branch, open `portal.example.net A` and set **Status** to "Marked for retirement".
-3. Go to **Proposed Changes** and create a proposed change from `retire-portal` to `main`.
+1. Create a branch, for example `retire-portal`: open the branch selector at the top left, select **+** next to the search field, and enter the name.
+2. On that branch, open `portal.example.net A` and select **Edit**. The edit form opens in a panel on the right. Set **Status** to "Marked for retirement" and select **Save**.
+3. Go to **Proposed Changes** and create a proposed change: set **Source Branch** to `retire-portal`, leave **Destination Branch** on `main`, enter a **Name** and select **Open**.
 
 The **Activities** panel of the record now has an entry "Admin updated - portal.example.net A" with the line `status active > retiring`. The panel shows the stored value `retiring`, not the label "Marked for retirement".
 
-When the pipeline finishes, the DNS retirement guard, listed as `dns_retirement_guard` on the **Checks** tab, has failed with this message:
+Open the **Checks** tab of the proposed change. The checks take less than a minute. The tab does not refresh by itself, so reload the page to view the result. When the run is done, the row `Check: dns_retirement_guard` has a red icon. Expand the row, then **Message**. The guard has failed with this message:
 
 ```text
-portal.example.net (A) is marked for retirement but still serves 1 active
-application: Customer portal (owned by Web Platform, web-platform@example.net).
-Move the application off this record before you retire it.
+portal.example.net (A) is marked for retirement but still serves 1
+active application: Customer portal (owned by Web Platform,
+web-platform@example.net). Move the application off this record before
+you retire it.
 ```
 
 Infrahub does not merge a proposed change with a failing check, so the record stays active on `main`.
 
-The check also shows an information message for the CNAME that points at the record:
+Under the same **Message**, the check also shows an information message for the CNAME that points at the record:
 
 ```text
 www.example.net (CNAME) points at portal.example.net, which this change
-marks for retirement. The CNAME stops resolving when the record is retired,
-so retire or repoint it too.
+marks for retirement. The CNAME stops resolving when the record is
+retired, so retire or repoint it too.
 ```
+
+Each message ends with a line that gives its level: `Level: ERROR` for the failure and `Level: INFO` for the information message.
+
+Infrahub does not run the checks again when you change a record on the branch. To run them again, select **Retry all** on the **Checks** tab, then reload the page after about half a minute.
 
 ### Mark a record that only a retired application uses
 
-On the same branch, set `portal.example.net A` back to "Active" and set `intranet.example.net A` to "Marked for retirement". Its only application, Legacy intranet, has the status Retired. Run the checks of the proposed change again. The DNS retirement guard passes.
+On the same branch, set `portal.example.net A` back to "Active" and set `intranet.example.net A` to "Marked for retirement". Its only application, Legacy intranet, has the status Retired. Select **Retry all** on the **Checks** tab. The DNS retirement guard passes, with no message about a record.
 
 ### Mark a record with no application
 
-Set `old-ftp.example.net A` to "Marked for retirement" as well and run the checks again. The guard passes and shows this information message:
+Set `old-ftp.example.net A` to "Marked for retirement" as well and select **Retry all** again. The guard passes, with a green icon, and shows this information message:
 
 ```text
-old-ftp.example.net (A) is marked for retirement and has no application in
-Infrahub. Nothing in Infrahub shows that it is unused, so confirm with the
-zone owner before you merge.
+old-ftp.example.net (A) is marked for retirement and has no application
+in Infrahub. Nothing in Infrahub shows that it is unused, so confirm
+with the zone owner before you merge.
 ```
 
 Close the proposed change without merging when you are done.
