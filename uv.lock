@@ -443,11 +443,11 @@ wheels = [
 
 [[package]]
 name = "graphql-core"
-version = "3.2.7"
+version = "3.2.14"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ac/9b/037a640a2983b09aed4a823f9cf1729e6d780b0671f854efa4727a7affbe/graphql_core-3.2.7.tar.gz", hash = "sha256:27b6904bdd3b43f2a0556dad5d579bdfdeab1f38e8e8788e555bdcb586a6f62c", size = 513484, upload-time = "2025-11-01T22:30:40.436Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9f/55/3f86cc857125e0a9d4ddf7a85a54c69d8c6436cd3c4e360ab6c4686140b8/graphql_core-3.2.14.tar.gz", hash = "sha256:efec124d951f2997e8f28bb9f056d0a3b4b11dce720e2225723ec20fac570af5", size = 610310, upload-time = "2026-11-06T21:41:59.878Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0a/14/933037032608787fb92e365883ad6a741c235e0ff992865ec5d904a38f1e/graphql_core-3.2.7-py3-none-any.whl", hash = "sha256:17fc8f3ca4a42913d8e24d9ac9f08deddf0a0b2483076575757f6c412ead2ec0", size = 207262, upload-time = "2025-11-01T22:30:38.912Z" },
+    { url = "https://files.pythonhosted.org/packages/5d/b8/c45a999940326178a32cc3ba7c88f7c661d0cff9399e78cb3898f9e96387/graphql_core-3.2.14-py3-none-any.whl", hash = "sha256:fb0eaaad81c558325f037a79dab7c6dd568cd17196030fb5c46fc4996948cc42", size = 279946, upload-time = "2026-11-06T21:41:58.085Z" },
 ]
 
 [[package]]
@@ -609,7 +609,7 @@ requires-dist = [
     { name = "altair", specifier = ">=6.0.0,<7.0.0" },
     { name = "fast-depends", specifier = ">=3.0.3,<4.0.0" },
     { name = "httpx", specifier = ">=0.27.2" },
-    { name = "infrahub-sdk", extras = ["all"], specifier = ">=1.23.2" },
+    { name = "infrahub-sdk", extras = ["all"], specifier = ">=1.24.0" },
     { name = "invoke", specifier = ">=2.2.1,<3.0.0" },
     { name = "streamlit", specifier = ">=1.51.0,<2.0.0" },
     { name = "watchdog", specifier = ">=6.0.0,<8.0.0" },
@@ -633,34 +633,37 @@ dev = [
 
 [[package]]
 name = "infrahub-sdk"
-version = "1.23.2"
+version = "1.24.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "anyio" },
     { name = "dulwich" },
     { name = "graphql-core" },
     { name = "httpx" },
+    { name = "jinja2" },
     { name = "netutils" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
+    { name = "pyyaml" },
+    { name = "rich" },
+    { name = "typing-extensions" },
     { name = "ujson" },
     { name = "whenever" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/75/db/daf79ea8beeab2cc942746f0651e5d0b86af9f7b801d4f605553ca2b57c0/infrahub_sdk-1.23.2.tar.gz", hash = "sha256:7c7bbc99d37cc234b6bf944606919505efc7aef98ec07482b773202b336088ca", size = 1490189, upload-time = "2026-09-09T07:34:30.573Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/eb/b3/46058d587f5e3f2d5a10e516d82fb046f22b2f2e7047cbd1c4b6fd1e53e4/infrahub_sdk-1.24.0.tar.gz", hash = "sha256:fea3095290ed0383f47df24651619e66c84f442a77136ed97ab14f9d1061ea27", size = 1835376, upload-time = "2026-11-10T08:08:58.41Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7e/6a/f76f98bfca198cb022d5778b847cb4c2c6597ab2cb40f8cf2551f8060e4a/infrahub_sdk-1.23.2-py3-none-any.whl", hash = "sha256:d132286033183dd9783f432938e27ca65e3c836405e002d95154059aa78d3e7d", size = 320353, upload-time = "2026-09-09T07:34:29.205Z" },
+    { url = "https://files.pythonhosted.org/packages/5d/ca/f72cce48538de5810d1cfc74ac0ffdd23a657328c2e799f4d7628fb3f4f1/infrahub_sdk-1.24.0-py3-none-any.whl", hash = "sha256:44c0f67f9051e020632bee2c1fc6a0d0babc003698bfff03d45f43c128a0e965", size = 365492, upload-time = "2026-11-10T08:08:56.569Z" },
 ]
 
 [package.optional-dependencies]
 all = [
     { name = "ariadne-codegen" },
     { name = "click" },
-    { name = "jinja2" },
-    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
-    { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "infrahub-testcontainers" },
+    { name = "opentelemetry-api" },
+    { name = "packaging" },
     { name = "pyarrow" },
     { name = "pytest" },
-    { name = "pyyaml" },
-    { name = "rich" },
     { name = "ruamel-yaml" },
     { name = "typer" },
 ]
@@ -1310,8 +1313,8 @@ name = "pendulum"
 version = "3.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "python-dateutil" },
-    { name = "tzdata" },
+    { name = "python-dateutil", marker = "python_full_version < '3.13'" },
+    { name = "tzdata", marker = "python_full_version < '3.13'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/23/7c/009c12b86c7cc6c403aec80f8a4308598dfc5995e5c523a5491faaa3952e/pendulum-3.1.0.tar.gz", hash = "sha256:66f96303560f41d097bee7d2dc98ffca716fbb3a832c4b3062034c2d45865015", size = 85930, upload-time = "2025-04-19T14:30:01.675Z" }
 wheels = [
