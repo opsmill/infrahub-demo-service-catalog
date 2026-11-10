@@ -1,0 +1,114 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/python-sdk/object/latest.json
+#
+# DNS records of the zone example.net, the applications that use them and the teams that own
+# those applications. `invoke seed-dns` loads this file after schemas/dns and menu_dns.yml.
+# Every record is active: a proposed change marks one for retirement.
+# The documents are in load order: zone, teams, applications, records.
+# Addresses come from the documentation ranges 192.0.2.0/24 and 2001:db8::/32.
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: DnsZone
+  data:
+    - name: example.net
+      description: Zone of the demo records
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: DnsTeam
+  data:
+    - name: Web Platform
+      status: active
+      contact_email: web-platform@example.net
+    - name: Billing Systems
+      status: disbanded
+      contact_email: billing-systems@example.net
+    - name: Identity
+      status: active
+      contact_email: identity@example.net
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: DnsApplication
+  data:
+    - name: Customer portal
+      status: active
+      owner: Web Platform
+    - name: Invoice archive
+      status: active
+      owner: Billing Systems
+    - name: Legacy intranet
+      status: retired
+      owner: Web Platform
+    - name: Single sign-on
+      status: active
+      owner: Identity
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: DnsRecord
+  data:
+    - name: portal
+      record_type: A
+      value: 192.0.2.10
+      status: active
+      zone: example.net
+      applications:
+        - Customer portal
+    - name: portal
+      record_type: AAAA
+      value: "2001:db8::10"
+      status: active
+      zone: example.net
+      applications:
+        - Customer portal
+    # A CNAME that points at the portal records above.
+    - name: www
+      record_type: CNAME
+      value: portal.example.net.
+      status: active
+      zone: example.net
+      applications:
+        - Customer portal
+    # Used by an active application whose team is disbanded.
+    - name: invoices
+      record_type: A
+      value: 192.0.2.20
+      status: active
+      zone: example.net
+      applications:
+        - Invoice archive
+    # Used only by a retired application.
+    - name: intranet
+      record_type: A
+      value: 192.0.2.30
+      status: active
+      zone: example.net
+      applications:
+        - Legacy intranet
+    # Used by no application.
+    - name: old-ftp
+      record_type: A
+      value: 192.0.2.40
+      status: active
+      zone: example.net
+    - name: sso
+      record_type: A
+      value: 192.0.2.50
+      status: active
+      zone: example.net
+      applications:
+        - Single sign-on
+    # Used by one active and one retired application.
+    - name: mail
+      record_type: A
+      value: 192.0.2.60
+      status: active
+      zone: example.net
+      applications:
+        - Single sign-on
+        - Legacy intranet
