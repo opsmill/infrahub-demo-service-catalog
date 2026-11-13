@@ -276,9 +276,9 @@ class TestServiceCatalog(TestInfrahubDockerClient):
         assert proposed_changes[0].destination_branch.value == default_branch
 
     def test_portal_order_merges(self, client_sync: InfrahubClientSync, default_branch: str) -> None:
-        """The order placed by test_portal passes its pipeline, including the Gold outage guard, and merges.
+        """The order placed by test_portal passes its pipeline, including the redundancy check, and merges.
 
-        Every proposed change pipeline runs the Gold outage guard check, so the requester flow must
+        Every proposed change pipeline runs the redundancy check, so the requester flow must
         still reach main. This test reuses the
         proposed change that test_portal opened (pytest runs the tests of this class in file order),
         waits for its pipeline, merges it and reads the provisioned service on main.

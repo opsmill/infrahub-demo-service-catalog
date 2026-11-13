@@ -1,4 +1,4 @@
-"""Unit tests for the Gold outage guard rule.
+"""Unit tests for the redundancy check rule.
 
 Runs `evaluate` on the seed-shaped query fixture of `builders.py`: the
 same twelve services and sixteen devices, with every device active unless a
@@ -18,14 +18,14 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from checks.gold_outage_guard import MESSAGE_WIDTH, GoldOutageGuard
+from checks.service_redundancy import MESSAGE_WIDTH, ServiceRedundancy
 from service_catalog.business_impact.blast_radius import (
     DeviceRow,
     parse_devices,
     paths,
     paths_up,
 )
-from service_catalog.business_impact.gold_outage_guard import GuardResult, evaluate, move_to_device
+from service_catalog.business_impact.redundancy_rule import GuardResult, evaluate, move_to_device
 from tests.unit.builders import (
     BRUSSELS,
     BRUSSELS_MESSAGE,
@@ -540,8 +540,8 @@ def _text(log: dict) -> str:
     return str(log["message"]).replace("\n", " ")
 
 
-def _run_check(client: QueryClient, branch: str) -> GoldOutageGuard:
-    check = GoldOutageGuard(branch=branch, client=cast("InfrahubClient", client))
+def _run_check(client: QueryClient, branch: str) -> ServiceRedundancy:
+    check = ServiceRedundancy(branch=branch, client=cast("InfrahubClient", client))
     asyncio.run(check.run())
     return check
 
@@ -630,12 +630,12 @@ def test_check_fails_when_the_branch_query_returns_errors_next_to_partial_data()
 
     assert not check.passed
     assert [_text(log) for log in check.errors] == [
-        "Gold outage guard could not read the proposed change: DcimDevice could not be read"
+        "The redundancy check could not read the proposed change: DcimDevice could not be read"
     ]
 
 
 def test_worker_imports_the_rule_from_the_commit_worktree(commit_worktree: Path) -> None:
-    """Infrahub 1.11.4 imports `commits.<sha>.checks.gold_outage_guard` with only the repository directory on
+    """Infrahub 1.11.4 imports `commits.<sha>.checks.service_redundancy` with only the repository directory on
     sys.path (git/integrator.py `execute_python_check`, git/base.py `extract_repo_file_information`), so the
     check must reach `service_catalog` inside the same worktree, not an installed copy.
     """
@@ -650,12 +650,12 @@ def test_worker_imports_the_rule_from_the_commit_worktree(commit_worktree: Path)
     )
     for name in ("network.py", "protocols_async.py"):
         shutil.copy(REPO_ROOT / "service_catalog" / name, worktree / "service_catalog" / name)
-    module = importlib.import_module(f"{package}.checks.gold_outage_guard")
+    module = importlib.import_module(f"{package}.checks.service_redundancy")
     impact = module.load_impact()
 
     assert impact.__name__ == f"{package}.service_catalog.business_impact.change_impact"
     assert impact.__file__.startswith(str(worktree))
-    for name in ("gold_outage_guard", "blast_radius", "footprint"):
+    for name in ("redundancy_rule", "blast_radius", "footprint"):
         loaded = sys.modules[f"{package}.service_catalog.business_impact.{name}"]
         assert str(loaded.__file__).startswith(str(worktree))
     assert str(sys.modules[f"{package}.service_catalog.network"].__file__).startswith(str(worktree))

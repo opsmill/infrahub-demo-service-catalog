@@ -1,10 +1,10 @@
-"""The Gold outage guard run on a proposed change, as the check and the transforms run it.
+"""The redundancy check run on a proposed change, as the check and the transforms run it.
 
-`checks/gold_outage_guard.py`, `transforms/affected_customers.py` and
+`checks/service_redundancy.py`, `transforms/affected_customers.py` and
 `transforms/outreach_payload.py` read the stored query `business_impact_services`
 on the change's branch and on main with `read_branch`, which adds the footprint
 of each active service (`footprint.service_footprints`), then apply the guard
-rule (`gold_outage_guard.evaluate`). The transforms hand the result to
+rule (`redundancy_rule.evaluate`). The transforms hand the result to
 `notification`.
 
 The imports are relative on purpose: the Infrahub task worker imports this
@@ -21,16 +21,16 @@ from typing import TYPE_CHECKING, Any
 from ..network import QueryError, query_data, query_errors  # noqa: TID252 - the commit worktree import
 from .blast_radius import MAIN_BRANCH
 from .footprint import service_footprints, with_footprints
-from .gold_outage_guard import evaluate
 from .notification import affected_customers, affected_customers_report
+from .redundancy_rule import evaluate
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from infrahub_sdk import InfrahubClient
 
-    from .gold_outage_guard import GuardResult
     from .notification import AffectedCustomer
+    from .redundancy_rule import GuardResult
 
 QUERY_NAME = "business_impact_services"
 FALLBACK_CHANGE_NAME = "This change"

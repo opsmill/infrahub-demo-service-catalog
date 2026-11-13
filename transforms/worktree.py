@@ -1,4 +1,4 @@
-"""The worktree import the transforms and the Gold outage guard check share.
+"""The worktree import the transforms and the redundancy check share.
 
 Infrahub 1.11.4 imports a Python transform file as
 `commits.<sha>.transforms.<name>`, with only the repository directory on
@@ -7,8 +7,8 @@ in the stock Infrahub image. `load` imports a module from the same commit
 worktree as this file, and falls back to the absolute name when this file is
 imported on its own (unit tests, `infrahubctl transform`).
 
-The check (`checks/gold_outage_guard.py`), the affected customers transform and
-the outreach transform run the Gold outage guard through
+The check (`checks/service_redundancy.py`), the affected customers transform and
+the outreach transform run the redundancy check through
 `service_catalog.business_impact.change_impact`, and take the name of their
 stored query, `QUERY_NAME`, from it. Every transform reads its stored query result
 through `service_catalog.network.query_data`.

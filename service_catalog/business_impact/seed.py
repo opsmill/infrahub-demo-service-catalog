@@ -27,7 +27,7 @@ error messages match the steps the installation guide lists:
    the CRM.
 3-4. `seed_maintenance`: create or rebase the three maintenance branches, set
    the device to maintenance on each, open the proposed changes and wait for
-   their pipelines. The Gold outage guard is expected to pass on the Paris
+   their pipelines. The redundancy check is expected to pass on the Paris
    and New York changes and to fail on the Brussels change; the wait reports
    each as an expected result.
 
@@ -85,7 +85,7 @@ OPEN_STATE = "open"
 VALIDATOR_COMPLETED = "completed"
 VALIDATOR_FAILURE = "failure"
 # Infrahub labels a check definition's validator "Check: <definition name>" (git/tasks.py in 1.11.4).
-GUARD_VALIDATOR_LABEL = "Check: gold_outage_guard"
+GUARD_VALIDATOR_LABEL = "Check: service_redundancy"
 
 POLL_INTERVAL_S = 5.0
 # The artifact waits poll every second: Infrahub renders the CSV in a few seconds.
@@ -177,7 +177,7 @@ class MaintenanceChange:
     device: str
     proposed_change_name: str
     description: str
-    # True when the change leaves a Gold service with no path, so the Gold outage guard must fail it.
+    # True when the change leaves a Gold service with no path, so the redundancy check must fail it.
     guard_blocks: bool
 
 
@@ -502,7 +502,7 @@ def validators_finished(validators: Sequence[ValidatorRow], required: Iterable[s
     Infrahub creates validators after the proposed change, so an empty list
     means the pipeline has not started, not that it finished. The user check
     validators appear later than the data integrity validator, so the seed
-    names the Gold outage guard in `required`.
+    names the redundancy check in `required`.
     """
     labels = {row.label for row in validators}
     return (
@@ -518,7 +518,7 @@ def failed_validators(validators: Iterable[ValidatorRow]) -> list[str]:
 
 
 def pipeline_report(change: MaintenanceChange, validators: Sequence[ValidatorRow]) -> list[str]:
-    """Lines that describe a finished pipeline; a failure of the Gold outage guard is expected on a blocking change.
+    """Lines that describe a finished pipeline; a failure of the redundancy check is expected on a blocking change.
 
     The seed never fails on a validator's conclusion: these lines only say whether each result is the expected one.
     """
@@ -659,7 +659,7 @@ def _wait_for_node(client: InfrahubClientSync, kind: type, name: str, what: str,
 # The description Infrahub shows for each repository item that `.infrahub.yml` has no `description` key for.
 # A repository import does not change these descriptions, so the seed sets them once the import has run.
 REPOSITORY_DESCRIPTIONS: dict[tuple[type, str], str] = {
-    (CoreCheckDefinition, "gold_outage_guard"): (
+    (CoreCheckDefinition, "service_redundancy"): (
         "Fails a proposed change that leaves an active service with fewer separate paths than its tier requires."
     ),
     (CoreGeneratorDefinition, GENERATOR_NAME): (

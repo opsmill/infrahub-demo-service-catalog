@@ -1,6 +1,6 @@
 """Readers for stored query results, and the rule that pairs a service's devices into paths.
 
-The business impact code (Planned maintenance page, Gold outage guard, notification) and
+The business impact code (Planned maintenance page, redundancy check, notification) and
 the cost of service code read the same query shapes and pair the same devices into paths,
 so they count the same paths.
 

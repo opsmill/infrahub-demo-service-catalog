@@ -1,4 +1,4 @@
-"""Proposed change steps the integration tests share: wait for the Gold outage guard, then try a merge."""
+"""Proposed change steps the integration tests share: wait for the redundancy check, then try a merge."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ mutation MergeProposedChange($id: String!) {
 
 
 def wait_for_guard(client_sync: InfrahubClientSync, proposed_change_id: str, what: str) -> list[seed.ValidatorRow]:
-    """Wait until the Gold outage guard validator of a proposed change has finished; return the validators."""
+    """Wait until the redundancy check validator of a proposed change has finished; return the validators."""
     latest: list[seed.ValidatorRow] = []
 
     def finished() -> bool:
@@ -38,7 +38,7 @@ def wait_for_guard(client_sync: InfrahubClientSync, proposed_change_id: str, wha
 
 
 def open_change(client_sync: InfrahubClientSync, source_branch: str, name: str) -> InfrahubNodeSync:
-    """Open a proposed change from `source_branch` into main and wait for its Gold outage guard."""
+    """Open a proposed change from `source_branch` into main and wait for its redundancy check."""
     proposed_change = client_sync.create(
         kind=CoreProposedChange,
         branch="main",

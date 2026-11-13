@@ -332,7 +332,7 @@ FORBIDDEN_COPY = re.compile(
 ALLOWED_CAPTION = "Not calculated: outage cost, time saved, ROI, churn."
 
 
-# The Gold outage guard
+# The redundancy check
 
 BRUSSELS_MESSAGE = (
     "Brussels switch 1 maintenance leaves 1 Gold service for Helix Health with no other path (DI-2001). "

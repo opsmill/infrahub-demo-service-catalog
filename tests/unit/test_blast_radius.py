@@ -440,14 +440,14 @@ def test_write_scan_detects_writes() -> None:
 
 
 # Copy scan. It reads every string literal of the business impact pages and of the modules whose strings they
-# show, and of the Gold outage guard, whose messages appear in the proposed change's check results. A forbidden
+# show, and of the redundancy check, whose messages appear in the proposed change's check results. A forbidden
 # word fails the test even on a code path the AppTest copy tests do not render. Docstrings are not scanned: they
 # never reach the screen.
 
 PACKAGE = Path(blast_radius.__file__).parent
 # The home page carries the cards that link to these pages, so its copy follows the same rules.
 HOME_FILE = REPO_ROOT / "service_catalog" / "🏠_Home_Page.py"
-CHECK_FILE = REPO_ROOT / "checks" / "gold_outage_guard.py"
+CHECK_FILE = REPO_ROOT / "checks" / "service_redundancy.py"
 NOTIFICATION_PAGE = REPO_ROOT / "service_catalog" / "views" / "4_📣_Customer_Notification.py"
 COPY_FILES = (
     *PAGE_FILES,
@@ -457,7 +457,7 @@ COPY_FILES = (
     PACKAGE / "blast_radius.py",
     PACKAGE / "single_points.py",
     PACKAGE / "notification_view.py",
-    PACKAGE / "gold_outage_guard.py",
+    PACKAGE / "redundancy_rule.py",
     CHECK_FILE,
 )
 

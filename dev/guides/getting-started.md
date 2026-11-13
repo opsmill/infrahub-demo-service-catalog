@@ -50,7 +50,7 @@
 - `invoke restart` - Restart containers
 - `invoke init` - Initialize demo (seed Semaphore, load repository and permissions)
 - `invoke init-semaphore` - Seed Semaphore only (project, keys, inventory, task template)
-- `invoke seed` - Seed the business impact demo after `invoke init` (twelve services, generator runs, three maintenance proposed changes: Paris router 1 passes the Gold outage guard, Brussels switch 1 is blocked, New York router 1 passes)
+- `invoke seed` - Seed the business impact demo after `invoke init` (twelve services, generator runs, three maintenance proposed changes: Paris router 1 passes the redundancy check, Brussels switch 1 is blocked, New York router 1 passes)
 
 ### Code Quality
 

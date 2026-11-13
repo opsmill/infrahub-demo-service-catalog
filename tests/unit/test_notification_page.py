@@ -16,7 +16,6 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from service_catalog.artifact_view import REGENERATE, REGENERATE_FAILED, STALE
-from service_catalog.business_impact.gold_outage_guard import evaluate
 from service_catalog.business_impact.notification import affected_customers, affected_customers_report
 from service_catalog.business_impact.notification_view import (
     ARTIFACT_NAME,
@@ -34,6 +33,7 @@ from service_catalog.business_impact.notification_view import (
     parse_artifact,
     status_heading,
 )
+from service_catalog.business_impact.redundancy_rule import evaluate
 from service_catalog.infrahub import ARTIFACT_ERROR, ARTIFACT_READY, Generation, StoredArtifact
 
 from .builders import (

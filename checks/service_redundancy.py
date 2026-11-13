@@ -1,4 +1,4 @@
-"""Gold outage guard: fails a proposed change that leaves a service short of its tier's rule or raises an unmet rule.
+"""Redundancy check: fails a proposed change that leaves a service short of its tier's rule or raises an unmet rule.
 
 The check fails when the proposed change leaves an active service with fewer separate paths than its
 tier's rule, or raises a tier's rule that the network does not meet.
@@ -10,13 +10,13 @@ change's branch (the SDK's `collect_data`), reads the same query on main through
 `self.client`, and finds the proposed change's name by its source branch. On each
 side it adds the footprint of each active service: the core and edge devices that
 Infrahub's path traversal (`traverse_paths`) reaches from the service through its
-interfaces (`service_catalog.business_impact.footprint`). Then it applies the guard
-rule (`service_catalog.business_impact.gold_outage_guard.evaluate`). A traversal
+interfaces (`service_catalog.business_impact.footprint`). Then it applies the redundancy
+rule (`service_catalog.business_impact.redundancy_rule.evaluate`). A traversal
 that fails is logged as an error, so the check fails. The two transforms that
-reuse the guard run the same module.
+reuse the rule run the same module.
 
 How the rule is imported: Infrahub 1.11.4 imports a check file as
-`commits.<sha>.checks.gold_outage_guard`, with only the repository directory on
+`commits.<sha>.checks.service_redundancy`, with only the repository directory on
 `sys.path` (`infrahub/git/integrator.py`, `execute_python_check`). An absolute
 `import service_catalog` therefore fails in the stock Infrahub image, where the
 package is not installed. `load_impact` imports the module with `worktree.load`,
@@ -36,10 +36,10 @@ from infrahub_sdk.exceptions import Error as SdkError
 from infrahub_sdk.protocols import CoreProposedChange
 
 try:
-    # Infrahub imports this file as `commits.<sha>.checks.gold_outage_guard`.
+    # Infrahub imports this file as `commits.<sha>.checks.service_redundancy`.
     from ..transforms.worktree import IMPACT_MODULE, load  # noqa: TID252 - the commit worktree import
 except ImportError:
-    # Imported on its own, as `checks.gold_outage_guard`.
+    # Imported on its own, as `checks.service_redundancy`.
     from transforms.worktree import IMPACT_MODULE, load
 
 if TYPE_CHECKING:
@@ -57,12 +57,12 @@ def lines(message: str) -> str:
 
 
 def load_impact() -> ModuleType:
-    """The module that runs the guard, from this file's commit worktree."""
+    """The module that applies the redundancy rule, from this file's commit worktree."""
     module: ModuleType = load(IMPACT_MODULE)
     return module
 
 
-class GoldOutageGuard(InfrahubCheck):
+class ServiceRedundancy(InfrahubCheck):
     query = load_impact().QUERY_NAME
     # Errors of the branch query. `InfrahubCheck.run` hands `validate` only the `data` part of the
     # response when it is not empty, so errors next to partial data are kept here.
@@ -88,17 +88,19 @@ class GoldOutageGuard(InfrahubCheck):
         impact = load_impact()
         # A rejected query must fail the check, not read as "no Gold service affected".
         if errors := [*self._branch_errors, *impact.query_errors(data)]:
-            self.log_error(message=lines(f"Gold outage guard could not read the proposed change: {'; '.join(errors)}"))
+            self.log_error(
+                message=lines(f"The redundancy check could not read the proposed change: {'; '.join(errors)}")
+            )
             return
         try:
             main_data, branch_data = await impact.read_main_and_branch(self.client, data, self.branch_name)
         except impact.QueryError as exc:
             self.log_error(
-                message=lines(f"Gold outage guard could not read the current network: {'; '.join(exc.messages)}")
+                message=lines(f"The redundancy check could not read the current network: {'; '.join(exc.messages)}")
             )
             return
         except SdkError as exc:
-            self.log_error(message=lines(f"Gold outage guard could not trace the service paths: {exc}"))
+            self.log_error(message=lines(f"The redundancy check could not trace the service paths: {exc}"))
             return
 
         result = impact.evaluate(branch_data, main_data, await self._change_name())

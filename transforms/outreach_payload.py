@@ -13,8 +13,8 @@ The transform reads the source branch and the name of the proposed change
 from the changelog, and fetches the proposed change from main by its ID when
 the changelog has no source branch. It runs the stored query
 `business_impact_services` on the source branch and on main at the same time, with the
-footprint of each active service on each (Infrahub's path traversal), runs the Gold
-outage guard as the check does, and returns `notification.outreach_payload`.
+footprint of each active service on each (Infrahub's path traversal), applies the
+redundancy rule as the check does, and returns `notification.outreach_payload`.
 """
 
 from __future__ import annotations

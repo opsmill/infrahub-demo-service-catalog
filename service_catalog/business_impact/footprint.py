@@ -4,7 +4,7 @@
 service's site a path reaches: service, interface, device. With `circuits`, it also asks which
 upstream circuits at the site the service's traffic leaves through: service, gateway interface,
 edge router, upstream interface, circuit endpoint, circuit. `with_footprints` adds the result to
-a query result, where the Gold outage guard, the business impact pages and the cost of service read it.
+a query result, where the redundancy check, the business impact pages and the cost of service read it.
 
 The imports are relative so the Infrahub task worker can import this module from the commit worktree.
 """

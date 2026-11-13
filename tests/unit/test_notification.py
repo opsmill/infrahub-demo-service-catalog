@@ -20,7 +20,6 @@ from typing import TYPE_CHECKING, Any, cast
 import pytest
 
 from infrahub_sdk.node import InfrahubNode
-from service_catalog.business_impact.gold_outage_guard import GuardResult, evaluate
 from service_catalog.business_impact.notification import (
     STATUS_AT_RISK_CHANGE_BLOCKED,
     STATUS_AT_RISK_NOT_NOTIFIED,
@@ -32,6 +31,7 @@ from service_catalog.business_impact.notification import (
     affected_customers_report,
     outreach_payload,
 )
+from service_catalog.business_impact.redundancy_rule import GuardResult, evaluate
 from service_catalog.network import QueryError
 from tests.unit.builders import (
     BRUSSELS,

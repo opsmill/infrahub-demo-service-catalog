@@ -18,9 +18,9 @@ generator_definitions:
 # CHECKS
 # Global (no targets): runs once in every proposed change pipeline. The query is bound by the class.
 check_definitions:
-  - name: gold_outage_guard
-    file_path: "checks/gold_outage_guard.py"
-    class_name: GoldOutageGuard
+  - name: service_redundancy
+    file_path: "checks/service_redundancy.py"
+    class_name: ServiceRedundancy
 
 # QUERIES
 queries:
@@ -84,7 +84,7 @@ python_transforms:
         - service_catalog/business_impact/change_impact.py
         - service_catalog/business_impact/footprint.py
         - service_catalog/business_impact/blast_radius.py
-        - service_catalog/business_impact/gold_outage_guard.py
+        - service_catalog/business_impact/redundancy_rule.py
         - service_catalog/business_impact/notification.py
   - name: cost_of_service
     description: Writes one CSV row for each part of each path of each active service, with its share of the cost.
@@ -111,7 +111,7 @@ python_transforms:
         - service_catalog/business_impact/change_impact.py
         - service_catalog/business_impact/footprint.py
         - service_catalog/business_impact/blast_radius.py
-        - service_catalog/business_impact/gold_outage_guard.py
+        - service_catalog/business_impact/redundancy_rule.py
         - service_catalog/business_impact/notification.py
 
 # ARTIFACTS

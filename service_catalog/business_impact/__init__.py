@@ -1,1 +1,1 @@
-"""Business impact demo: the figures of the business impact pages, the Gold outage guard rule, the seed task."""
+"""Business impact demo: the figures of the business impact pages, the redundancy check rule, the seed task."""
