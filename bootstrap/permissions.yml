@@ -31,6 +31,18 @@ spec:
             name: "ProposedChange"
             action: "any"
             decision: 6
+          - namespace: "Core"
+            name: "ChangeComment"
+            action: "any"
+            decision: 6
+          - namespace: "Core"
+            name: "ChangeThread"
+            action: "any"
+            decision: 6
+          - namespace: "Core"
+            name: "ThreadComment"
+            action: "any"
+            decision: 6
     - name: "operator-role-global"
       permissions:
         kind: CoreGlobalPermission
@@ -45,10 +57,10 @@ spec:
             action: "manage_repositories"
           # - decision: 6
           #   action: "manage_schema"
-          - decision: 6
-            action: "merge_branch"
-          - decision: 6
-            action: "merge_proposed_change"
+          # - decision: 6
+          #   action: "merge_branch"
+          # - decision: 6
+          #   action: "merge_proposed_change"
           - decision: 6
             action: "review_proposed_change"
 ---
