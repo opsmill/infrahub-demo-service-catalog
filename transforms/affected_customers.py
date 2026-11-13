@@ -9,7 +9,7 @@ customer.
 Infrahub runs the stored query `business_impact_services` on the branch and
 hands its result to `transform`. The transform reads the same query on main
 through `self.client`, adds the footprint of each active service on the branch
-and on main (Infrahub's path traversal), runs the Gold outage guard as the check
+and on main (Infrahub's path traversal), runs the redundancy check rule as the check
 does, and returns `change_impact.affected_report`.
 
 Infrahub generates the artifact again when a node of the branch's query result

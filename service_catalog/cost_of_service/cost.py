@@ -4,7 +4,7 @@ Plain functions over the result of the stored query `cost_of_service` with the
 footprint of each active service added (`footprint.with_footprints`), so the
 page and the CSV artifact compute the same figures. A service's footprint holds
 the devices and the upstream circuits that Infrahub's path traversal reaches
-from the service, as the Gold outage guard check reads them.
+from the service, as the redundancy check reads them.
 
 The circuit schema is optional, so the stored query reads no circuit type. When the
 circuit schema is loaded, `with_circuits` merges the result of the circuit query
@@ -16,7 +16,7 @@ no circuit lines and no circuit inputs, only the hardware figures.
   business impact pages.
 - A path is the route through a switch and the edge router with the same
   number at the same site, both in the service's footprint (`network.pair_paths`, the rule the business
-  impact pages and the Gold outage guard use). The primary
+  impact pages and the redundancy check use). The primary
   path is the one on the switch with the lower index; the other one is the
   backup.
 - A device's share for one path is its device type's list price divided by the

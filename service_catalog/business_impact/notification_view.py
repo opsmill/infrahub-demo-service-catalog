@@ -36,7 +36,7 @@ GENERATION_FAILED = (
 UNREADABLE = "The affected customers file in Infrahub could not be read"
 NO_OPEN_CHANGE = "No proposed change is open"
 NO_CUSTOMER_AFFECTED = "No customer is affected by this change"
-BLOCKED_CAPTION = "The Gold outage guard blocks this change, so no customer is notified."
+BLOCKED_CAPTION = "The redundancy check blocks this change, so no customer is notified."
 
 
 @dataclass(frozen=True)

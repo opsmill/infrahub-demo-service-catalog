@@ -2,7 +2,7 @@
 
 Plain functions over the `data` dict that the stored query
 `business_impact_services` returns, on the proposed change's branch and on
-main, and the Gold outage guard's result for that change. The affected
+main, and the redundancy check's result for that change. The affected
 customers transform (`transforms/affected_customers.py`) turns them into the
 "Affected customers" artifact, and the outreach transform
 (`transforms/outreach_payload.py`) into the body the webhook sends to the CRM.

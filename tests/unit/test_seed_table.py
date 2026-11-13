@@ -149,7 +149,7 @@ def test_maintenance_changes() -> None:
         ("maint-rb01-par01", "rb01-par01", "Paris router 1 maintenance", False),
         # DI-2001 has a single path through sw01-bru01, so the guard fails.
         ("maint-sw01-bru01", "sw01-bru01", "Brussels switch 1 maintenance", True),
-        # A site with no active service, so the Gold outage guard passes.
+        # A site with no active service, so the redundancy check passes.
         ("maint-rb01-nyc01", "rb01-nyc01", "New York router 1 maintenance", False),
     ]
     assert all(change.description for change in MAINTENANCE_CHANGES)
@@ -649,7 +649,7 @@ def test_describe_repository_items_names_the_check_generator_artifacts_and_queri
     names = {(kind.__name__, name) for kind, name in seed.REPOSITORY_DESCRIPTIONS}
 
     assert names == {
-        ("CoreCheckDefinition", "gold_outage_guard"),
+        ("CoreCheckDefinition", "service_redundancy"),
         ("CoreGeneratorDefinition", "dedicated_internet_generator"),
         ("CoreArtifactDefinition", "Affected customers"),
         ("CoreArtifactDefinition", "Cost of service"),
@@ -704,10 +704,10 @@ def test_describe_repository_items_rewrites_only_a_different_description() -> No
 
 def test_describe_repository_items_names_step_1_when_an_item_never_loads(clock: dict[str, float]) -> None:
     descriptions: dict[tuple[type, str], str | None] = dict(seed.REPOSITORY_DESCRIPTIONS)
-    del descriptions[seed.CoreCheckDefinition, "gold_outage_guard"]
+    del descriptions[seed.CoreCheckDefinition, "service_redundancy"]
     client, _ = _describe_client(descriptions)
 
-    with pytest.raises(SeedError, match=r"Step 1: .*CoreCheckDefinition gold_outage_guard"):
+    with pytest.raises(SeedError, match=r"Step 1: .*CoreCheckDefinition service_redundancy"):
         seed.describe_repository_items(cast("Any", client))
 
 

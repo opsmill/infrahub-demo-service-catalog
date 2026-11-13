@@ -1,6 +1,6 @@
-"""The Gold outage guard rule.
+"""The redundancy check rule.
 
-`checks/gold_outage_guard.py` runs the stored query `business_impact_services`
+`checks/service_redundancy.py` runs the stored query `business_impact_services`
 on the proposed change's branch and on main, adds the footprint of each active
 service on each side (`footprint.service_footprints`, Infrahub's path traversal
 from the service through its interfaces to the core and edge devices at its

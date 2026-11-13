@@ -1,6 +1,6 @@
-"""The Gold outage guard run on a proposed change, as the check and the transforms run it.
+"""The redundancy check run on a proposed change, as the check and the transforms run it.
 
-`checks/gold_outage_guard.py`, `transforms/affected_customers.py` and
+`checks/service_redundancy.py`, `transforms/affected_customers.py` and
 `transforms/outreach_payload.py` read the stored query `business_impact_services`
 on the change's branch and on main with `read_branch`, which adds the footprint
 of each active service (`footprint.service_footprints`), then apply the guard

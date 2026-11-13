@@ -8,7 +8,7 @@ changes read (`read_proposed_changes`) and the picker copy (`PICKER_HELP`,
 Layout and copy only. Every figure comes from `blast_radius` and `single_points`;
 every Infrahub read sits in a `st.cache_data(ttl=10)` wrapper keyed by branch that returns
 plain data. The services read adds the footprint of each active service, the devices
-Infrahub's path traversal reaches from it, as the Gold outage guard check does, so the pages and
+Infrahub's path traversal reaches from it, as the redundancy check does, so the pages and
 the check agree. The pages write nothing to Infrahub. No on-screen string uses the word "branch".
 """
 

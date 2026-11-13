@@ -9,7 +9,7 @@
    - `infrahub.py` - Infrahub SDK client wrapper with caching and dependency injection
    - `views/3_📊_Planned_Maintenance.py` and `views/6_📍_Single_Points_of_Failure.py` - Read-only pages for the business impact demo, from the stored query `queries/business_impact_services.gql`. Planned maintenance: services with fewer separate paths during a selected proposed change, and their customers. Single points of failure: on main, the Gold services that depend on a single device and what would have no path if a selected device failed now. Both pages render through `business_impact/page_views.py`
    - `business_impact/` - Pure functions behind the pages (`blast_radius.py`, `single_points.py`), the Streamlit reads and rendering both pages share (`page_views.py`), the guard run the check and the transforms share (`change_impact.py`) and the `invoke seed` steps (`seed.py`)
-   - `business_impact/footprint.py` - The one way the demo finds a service's paths: Infrahub path traversal (`traverse_paths`) from each active service to the switches and edge routers at its site (two relationships deep) and, when the circuit schema is loaded, to the upstream circuits at its site (five relationships deep). `with_footprints` adds the result to a query result, where the Gold outage guard, the business impact pages, the transforms and `cost_of_service/` read each service's devices and circuits
+   - `business_impact/footprint.py` - The one way the demo finds a service's paths: Infrahub path traversal (`traverse_paths`) from each active service to the switches and edge routers at its site (two relationships deep) and, when the circuit schema is loaded, to the upstream circuits at its site (five relationships deep). `with_footprints` adds the result to a query result, where the redundancy check, the business impact pages, the transforms and `cost_of_service/` read each service's devices and circuits
    - `network.py` - Readers for stored query results and the rule that pairs a switch and the edge router of the same index at the same site into a path, shared by `business_impact/` and `cost_of_service/`
 
 2. **Infrahub Integration**
@@ -19,7 +19,7 @@
 
 3. **Service Implementation**
    - `generators/` - Infrahub generators for automated service provisioning
-   - `checks/gold_outage_guard.py` - Proposed change check that fails, and so blocks the merge, when a change leaves an active service with fewer separate paths than its tier's `min_paths` rule, or raises a tier's rule that active services do not meet; it runs the `business_impact_services` query and `service_catalog/business_impact/change_impact.py`, which adds the footprints on the branch and on main, as the two notification transforms do
+   - `checks/service_redundancy.py` - Proposed change check that fails, and so blocks the merge, when a change leaves an active service with fewer separate paths than its tier's `min_paths` rule, or raises a tier's rule that active services do not meet; it runs the `business_impact_services` query and `service_catalog/business_impact/change_impact.py`, which adds the footprints on the branch and on main, as the two notification transforms do
    - Example: `implement_dedicated_internet.py` allocates VLANs, IP prefixes, ports, and configures gateways
 
 4. **Data Models**
@@ -45,7 +45,7 @@
 - **Type Safety**: Comprehensive type hints with mypy validation
 - **Configuration Deployment**: Semaphore runs Ansible playbooks that pull generated artifacts from Infrahub and deploy them to devices
 - **Demo Initialization**: `invoke init` seeds Semaphore and loads repository configuration + permissions into Infrahub
-- **Business Impact Demo Seed**: `invoke seed` runs after `invoke init`. It describes the repository items in Infrahub, loads the circuit schema (optional in `.infrahub.yml`) and the upstream circuits of `data/business_impact/upstream_circuits.yml`, creates twelve services on `main`, runs the generator for each one, gives the three Paris Gold services a second path, and opens three maintenance proposed changes (Paris router 1, which the Gold outage guard passes; Brussels switch 1, which it blocks; New York router 1, which it passes). The Planned maintenance and Customer notification pages and the Gold outage guard check read those changes; the Single points of failure and Cost of service pages read the services on `main`
+- **Business Impact Demo Seed**: `invoke seed` runs after `invoke init`. It describes the repository items in Infrahub, loads the circuit schema (optional in `.infrahub.yml`) and the upstream circuits of `data/business_impact/upstream_circuits.yml`, creates twelve services on `main`, runs the generator for each one, gives the three Paris Gold services a second path, and opens three maintenance proposed changes (Paris router 1, which the redundancy check passes; Brussels switch 1, which it blocks; New York router 1, which it passes). The Planned maintenance and Customer notification pages and the redundancy check read those changes; the Single points of failure and Cost of service pages read the services on `main`
 
 ## Environment Configuration
 

@@ -1,4 +1,4 @@
-# Stored query for the Planned maintenance page, the Single points of failure page and the Gold outage guard.
+# Stored query for the Planned maintenance page, the Single points of failure page and the redundancy check.
 # Ships as service_catalog/queries/business_impact_services.gql and is registered under
 # `queries` in .infrahub.yml as `business_impact_services`. Run on the selected branch,
 # and on main to compare the paths each service has on the current network.

@@ -14,7 +14,7 @@ before the first test and removes after the last one:
 
 - Planned maintenance: the stored query on main and on the maintenance branches, with the footprint of
   each active service from Infrahub's path traversal, feeds `blast_radius.py`.
-- Gold outage guard: its validator passes on the Paris and New York proposed changes and fails on
+- Redundancy check: its validator passes on the Paris and New York proposed changes and fails on
   Brussels with the message the docs show, it fails on a proposed change that deletes Brussels edge
   router 1, it fails on a proposed change that raises the Silver rule to 2 separate paths, and Infrahub
   refuses to merge the Brussels proposed change and the Silver rule change. No guard message and no
@@ -345,14 +345,14 @@ class TestBusinessImpact(TestInfrahubDockerClient):  # noqa: PLR0904 - one test 
         await repo.add_to_infrahub(client=client)
         assert await repo.wait_for_sync_to_complete(client=client, retries=24)
 
-    def test_gold_outage_guard_definition_imported(self, client_sync: InfrahubClientSync) -> None:
+    def test_service_redundancy_definition_imported(self, client_sync: InfrahubClientSync) -> None:
         """The repository import registers the check definition."""
         names = sorted(str(definition.name.value) for definition in client_sync.all(kind=CoreCheckDefinition))
         OPEN_CHECKS["check definitions on main"] = ", ".join(names)
 
-        assert "gold_outage_guard" in names
-        # The check runs the Planned maintenance page's stored query: Infrahub links it from `GoldOutageGuard.query`.
-        guard = client_sync.get(kind=CoreCheckDefinition, name__value="gold_outage_guard", prefetch_relationships=True)
+        assert "service_redundancy" in names
+        # The check runs the Planned maintenance page's stored query: Infrahub links it from `ServiceRedundancy.query`.
+        guard = client_sync.get(kind=CoreCheckDefinition, name__value="service_redundancy", prefetch_relationships=True)
         assert guard.query.peer.name.value == QUERY_NAME
 
     def test_repository_items_are_described(self, client_sync: InfrahubClientSync) -> None:
@@ -489,10 +489,10 @@ class TestBusinessImpact(TestInfrahubDockerClient):  # noqa: PLR0904 - one test 
             )
             _assert_fields_survive(client_sync, change.branch)
 
-    # Gold outage guard
+    # Redundancy check
 
     def _guard(self, client_sync: InfrahubClientSync, name: str) -> tuple[str | None, str]:
-        """Conclusion of the Gold outage guard validator on a proposed change, and its check messages.
+        """Conclusion of the redundancy check validator on a proposed change, and its check messages.
 
         The check breaks each message into short lines, so the line breaks become spaces here.
         """
@@ -504,19 +504,19 @@ class TestBusinessImpact(TestInfrahubDockerClient):  # noqa: PLR0904 - one test 
         messages = " ".join(str(check.message.value or "") for check in checks)
         return guard[0].conclusion.value, messages.replace("\n", " ")
 
-    def test_gold_outage_guard_passes_on_paris(self, client_sync: InfrahubClientSync) -> None:
+    def test_service_redundancy_passes_on_paris(self, client_sync: InfrahubClientSync) -> None:
         """Each Paris Gold service keeps its second path while Paris edge router 1 is in maintenance."""
         conclusion, messages = self._guard(client_sync, "Paris router 1 maintenance")
-        OPEN_CHECKS["Gold outage guard on Paris router 1 maintenance"] = f"{conclusion}: {messages.strip()!r}"
+        OPEN_CHECKS["Redundancy check on Paris router 1 maintenance"] = f"{conclusion}: {messages.strip()!r}"
 
         assert conclusion == "success"
         assert "Paris router 1 maintenance leaves every active Gold service with at least 1 separate path." in messages
         assert not [word for word in MONEY_WORDS if word in messages]
 
-    def test_gold_outage_guard_fails_on_brussels(self, client_sync: InfrahubClientSync) -> None:
+    def test_service_redundancy_fails_on_brussels(self, client_sync: InfrahubClientSync) -> None:
         """The guard fails with the message the docs show: Helix Health, Gold, DI-2001, 1 path then 0."""
         conclusion, messages = self._guard(client_sync, "Brussels switch 1 maintenance")
-        OPEN_CHECKS["Gold outage guard on Brussels switch 1 maintenance"] = f"{conclusion}: {messages.strip()!r}"
+        OPEN_CHECKS["Redundancy check on Brussels switch 1 maintenance"] = f"{conclusion}: {messages.strip()!r}"
 
         assert conclusion == "failure"
         assert BRUSSELS_MESSAGE in messages
@@ -525,10 +525,10 @@ class TestBusinessImpact(TestInfrahubDockerClient):  # noqa: PLR0904 - one test 
         # The rule lives in service_catalog.business_impact, so its message proves the worker imported it.
         OPEN_CHECKS["task worker imports service_catalog.business_impact (stock image)"] = "True"
 
-    def test_gold_outage_guard_passes_on_new_york(self, client_sync: InfrahubClientSync) -> None:
+    def test_service_redundancy_passes_on_new_york(self, client_sync: InfrahubClientSync) -> None:
         """No active service runs through `rb01-nyc01`."""
         conclusion, messages = self._guard(client_sync, "New York router 1 maintenance")
-        OPEN_CHECKS["Gold outage guard on New York router 1 maintenance"] = f"{conclusion}: {messages.strip()!r}"
+        OPEN_CHECKS["Redundancy check on New York router 1 maintenance"] = f"{conclusion}: {messages.strip()!r}"
 
         assert conclusion == "success"
         assert "Check succesfully completed" in messages
@@ -536,7 +536,7 @@ class TestBusinessImpact(TestInfrahubDockerClient):  # noqa: PLR0904 - one test 
             "New York router 1 maintenance leaves every active Gold service with at least 1 separate path." in messages
         )
 
-    def test_gold_outage_guard_fails_when_a_device_is_deleted(self, client_sync: InfrahubClientSync) -> None:
+    def test_service_redundancy_fails_when_a_device_is_deleted(self, client_sync: InfrahubClientSync) -> None:
         """Deleting Brussels edge router 1 removes DI-2001's gateway with it: no device is left with a status
         to check, and the guard still fails because DI-2001 has no edge router on the branch.
         """
@@ -547,7 +547,7 @@ class TestBusinessImpact(TestInfrahubDockerClient):  # noqa: PLR0904 - one test 
         open_change(client_sync, DELETED, DELETED_NAME)
 
         conclusion, messages = self._guard(client_sync, DELETED_NAME)
-        OPEN_CHECKS[f"Gold outage guard on {DELETED_NAME}"] = f"{conclusion}: {messages.strip()!r}"
+        OPEN_CHECKS[f"Redundancy check on {DELETED_NAME}"] = f"{conclusion}: {messages.strip()!r}"
 
         assert conclusion == "failure"
         assert DELETED_MESSAGE in messages
@@ -566,7 +566,7 @@ class TestBusinessImpact(TestInfrahubDockerClient):  # noqa: PLR0904 - one test 
         proposed_change = open_change(client_sync, RAISED, RAISE_SILVER)
 
         conclusion, messages = self._guard(client_sync, RAISE_SILVER)
-        OPEN_CHECKS[f"Gold outage guard on {RAISE_SILVER}"] = f"{conclusion}: {messages.strip()!r}"
+        OPEN_CHECKS[f"Redundancy check on {RAISE_SILVER}"] = f"{conclusion}: {messages.strip()!r}"
 
         assert conclusion == "failure"
         assert RAISE_SILVER_MESSAGE in messages
@@ -586,7 +586,7 @@ class TestBusinessImpact(TestInfrahubDockerClient):  # noqa: PLR0904 - one test 
         """Infrahub refuses to merge a proposed change whose guard failed."""
         proposed_change = client_sync.get(kind=CoreProposedChange, name__value="Brussels switch 1 maintenance")
         # Infrahub refuses a merge when any validator other than data integrity did not succeed, so first show
-        # that the Gold outage guard is the only one that failed: the refusal is then the guard's.
+        # that the redundancy check is the only one that failed: the refusal is then the guard's.
         validators = client_sync.filters(kind=CoreValidator, proposed_change__ids=[proposed_change.id])
         conclusions = {str(validator.label.value): validator.conclusion.value for validator in validators}
         OPEN_CHECKS["validator conclusions on Brussels switch 1 maintenance"] = str(conclusions)
