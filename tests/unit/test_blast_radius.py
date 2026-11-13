@@ -457,7 +457,7 @@ COPY_FILES = (
     PACKAGE / "blast_radius.py",
     PACKAGE / "single_points.py",
     PACKAGE / "notification_view.py",
-    PACKAGE / "gold_outage_guard.py",
+    PACKAGE / "redundancy_rule.py",
     CHECK_FILE,
 )
 

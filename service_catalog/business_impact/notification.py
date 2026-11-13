@@ -9,7 +9,7 @@ customers transform (`transforms/affected_customers.py`) turns them into the
 
 Which services are at risk or down comes from `blast_radius.service_impacts`,
 and whether the change is blocked comes from the guard's result
-(`gold_outage_guard.evaluate`). Nothing here counts paths or applies the rule
+(`redundancy_rule.evaluate`). Nothing here counts paths or applies the rule
 again.
 
 Each affected service gets a status:
@@ -40,7 +40,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
     from .blast_radius import ImpactStatus
-    from .gold_outage_guard import GuardResult
+    from .redundancy_rule import GuardResult
 
 # Each status is the service's status during the change, then whether its customer is notified.
 NotificationStatus = Literal[

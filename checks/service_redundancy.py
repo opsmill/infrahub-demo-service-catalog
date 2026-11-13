@@ -10,10 +10,10 @@ change's branch (the SDK's `collect_data`), reads the same query on main through
 `self.client`, and finds the proposed change's name by its source branch. On each
 side it adds the footprint of each active service: the core and edge devices that
 Infrahub's path traversal (`traverse_paths`) reaches from the service through its
-interfaces (`service_catalog.business_impact.footprint`). Then it applies the guard
-rule (`service_catalog.business_impact.gold_outage_guard.evaluate`). A traversal
+interfaces (`service_catalog.business_impact.footprint`). Then it applies the redundancy
+rule (`service_catalog.business_impact.redundancy_rule.evaluate`). A traversal
 that fails is logged as an error, so the check fails. The two transforms that
-reuse the guard run the same module.
+reuse the rule run the same module.
 
 How the rule is imported: Infrahub 1.11.4 imports a check file as
 `commits.<sha>.checks.service_redundancy`, with only the repository directory on
@@ -57,7 +57,7 @@ def lines(message: str) -> str:
 
 
 def load_impact() -> ModuleType:
-    """The module that runs the guard, from this file's commit worktree."""
+    """The module that applies the redundancy rule, from this file's commit worktree."""
     module: ModuleType = load(IMPACT_MODULE)
     return module
 

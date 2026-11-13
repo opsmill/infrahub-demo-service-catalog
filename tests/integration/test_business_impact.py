@@ -77,8 +77,8 @@ from service_catalog.business_impact.blast_radius import (
     paths,
 )
 from service_catalog.business_impact.change_impact import add_footprints
-from service_catalog.business_impact.gold_outage_guard import tier_rules
 from service_catalog.business_impact.notification_view import NotificationList, notification_state
+from service_catalog.business_impact.redundancy_rule import tier_rules
 from service_catalog.cost_of_service.circuits import add_footprints as add_cost_footprints
 from service_catalog.cost_of_service.circuits import read_circuits
 from service_catalog.cost_of_service.cost import (

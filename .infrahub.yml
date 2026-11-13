@@ -84,7 +84,7 @@ python_transforms:
         - service_catalog/business_impact/change_impact.py
         - service_catalog/business_impact/footprint.py
         - service_catalog/business_impact/blast_radius.py
-        - service_catalog/business_impact/gold_outage_guard.py
+        - service_catalog/business_impact/redundancy_rule.py
         - service_catalog/business_impact/notification.py
   - name: cost_of_service
     description: Writes one CSV row for each part of each path of each active service, with its share of the cost.
@@ -111,7 +111,7 @@ python_transforms:
         - service_catalog/business_impact/change_impact.py
         - service_catalog/business_impact/footprint.py
         - service_catalog/business_impact/blast_radius.py
-        - service_catalog/business_impact/gold_outage_guard.py
+        - service_catalog/business_impact/redundancy_rule.py
         - service_catalog/business_impact/notification.py
 
 # ARTIFACTS

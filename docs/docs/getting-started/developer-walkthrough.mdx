@@ -1007,7 +1007,7 @@ except ImportError:
 
 
 def load_impact() -> ModuleType:
-    """The module that runs the guard, from this file's commit worktree."""
+    """The module that applies the redundancy rule, from this file's commit worktree."""
     module: ModuleType = load(IMPACT_MODULE)
     return module
 

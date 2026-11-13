@@ -68,7 +68,7 @@ Select "Brussels switch 1 maintenance". The headline shows "1 Gold service for H
 
 Select "New York router 1 maintenance". The headline shows "No service is affected", as on the current network.
 
-## Step 4: read the guard result on the Paris plan
+## Step 4: read the redundancy check result on the Paris plan
 
 Open Infrahub at `http://localhost:8000` and sign in as `admin` / `infrahub`. Go to **Proposed Changes** and open "Paris router 1 maintenance". On the **Checks** tab, the redundancy check, listed as `service_redundancy`, has passed with this message:
 
@@ -154,12 +154,12 @@ during a change"]
   paris["Paris router 1
 maintenance
 Gold on 1 path"]
-  pass["Guard passes
+  pass["Redundancy check passes
 merge allowed"]
   brussels["Brussels switch 1
 maintenance
 DI-2001 on 0 paths"]
-  block["Guard fails
+  block["Redundancy check fails
 merge refused"]
   intent --> paris --> pass
   intent --> brussels --> block

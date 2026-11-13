@@ -47,7 +47,7 @@ SERVICE_REQUEST_TAG = "service_request"
 
 ACTIVE = "active"
 # The tier names of data/10_customers_tiers.yml. The rule of each tier (`min_paths`) comes from the data,
-# but the order of the lists and the Gold-only behavior (notification, the outage guard, single points of
+# but the order of the lists and the Gold-only behavior (notification, the redundancy check, single points of
 # failure) follow these names. A unit test fails when the names here and in the data differ.
 GOLD = "Gold"
 # Tiers in the order lists show them: Gold, Silver, Bronze, then any other tier by name.

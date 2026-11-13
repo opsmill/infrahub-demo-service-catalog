@@ -25,7 +25,7 @@ from service_catalog.business_impact.blast_radius import (
     paths,
     paths_up,
 )
-from service_catalog.business_impact.gold_outage_guard import GuardResult, evaluate, move_to_device
+from service_catalog.business_impact.redundancy_rule import GuardResult, evaluate, move_to_device
 from tests.unit.builders import (
     BRUSSELS,
     BRUSSELS_MESSAGE,
@@ -655,7 +655,7 @@ def test_worker_imports_the_rule_from_the_commit_worktree(commit_worktree: Path)
 
     assert impact.__name__ == f"{package}.service_catalog.business_impact.change_impact"
     assert impact.__file__.startswith(str(worktree))
-    for name in ("gold_outage_guard", "blast_radius", "footprint"):
+    for name in ("redundancy_rule", "blast_radius", "footprint"):
         loaded = sys.modules[f"{package}.service_catalog.business_impact.{name}"]
         assert str(loaded.__file__).startswith(str(worktree))
     assert str(sys.modules[f"{package}.service_catalog.network"].__file__).startswith(str(worktree))
