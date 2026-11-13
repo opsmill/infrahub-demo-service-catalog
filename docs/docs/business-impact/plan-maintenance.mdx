@@ -1,20 +1,20 @@
 ---
 title: Plan maintenance that keeps Gold services in service
 sidebar_label: Plan maintenance around Gold services
-description: Plan maintenance on Paris edge router 1, view the Gold services at risk on one path and the Silver and Bronze services down, view the redundancy check block maintenance on Brussels switch 1, view the guard fail when a tier rule is raised above what the network provides, and view the record Infrahub keeps of each proposed change.
+description: Plan maintenance on Paris edge router 1, view the Gold services at risk on one path and the Silver and Bronze services down, view the redundancy check block maintenance on Brussels switch 1, view the redundancy check fail when a tier rule is raised above what the network provides, and view the record Infrahub keeps of each proposed change.
 ---
 
 # Plan maintenance that keeps Gold services in service
 
-You plan maintenance on Paris edge router 1 (`rb01-par01`). The goal is that no Gold service loses its last path during the window, and that you know which customers the plan affects before anyone approves it. Gold customers have a second path so that maintenance on one router does not stop their service. Before the window is scheduled, you check which services depend on this router and how many separate paths each one keeps.
+You plan maintenance on Paris edge router 1 (`rb01-par01`). Your goal is to prevent any Gold service from losing its last path during the window and to identify the affected customers before anyone approves the plan. Gold services have a second path so that maintenance on one router does not stop them. Before the window is scheduled, you check which services depend on this router and how many separate paths each one keeps.
 
-The demo data contains this plan as a proposed change named "Paris router 1 maintenance". It sets the router to maintenance on its own branch. Nothing has merged.
+The demo data contains this plan as a proposed change named "Paris router 1 maintenance". It sets the router to maintenance on its own branch. The proposed change has not been merged.
 
 In Paris, the Gold services DI-1001 and DI-1002 (Northbank) and DI-1003 (Helix Health) each have two paths: one through Paris switch 1 and Paris edge router 1, and one through Paris switch 2 and Paris edge router 2. The Silver and Bronze services in Paris have one path. Maintenance on Paris edge router 1 leaves the Gold services on one path, at risk, and takes the Silver and Bronze services behind the router down.
 
 ## Why a maintenance plan needs a check on Gold services
 
-Maintenance is usually reviewed device by device. The review shows the router, not the customers behind it, so the question "which customers lose service?" is answered manually, if at all, and often after the window is scheduled. Gold services have a second path so that maintenance on one router leaves them in service. The check matters where the network does not match that commitment: a plan that takes the only path of a Gold service out of service breaks it. In this tutorial, the proposed change shows the affected customers and their tiers before approval, and the redundancy check blocks the merge of a plan that leaves a Gold service with no path. For the reasoning behind storing business context in the same graph as the network, see the [business impact overview](overview.mdx#why-business-context-belongs-in-the-source-of-truth).
+Maintenance is usually reviewed device by device. The review shows the router, not the customers behind it, so someone must determine which customers will lose service. This may not happen until after the window is scheduled. Gold services have a second path so that maintenance on one router leaves them in service. The check matters when the network does not match that commitment: a plan that takes the only path of a Gold service out of service breaks the commitment. In this tutorial, the proposed change shows the affected customers and their tiers before approval, and the redundancy check blocks the merge of a plan that leaves a Gold service with no path. For the reasoning behind storing business context in the same graph as the network, see the [business impact overview](overview.mdx#why-business-context-belongs-in-the-source-of-truth).
 
 ## Before you begin
 
@@ -48,7 +48,7 @@ The three tiles below it show:
 
 ## Step 2: read which services are at risk and which are down
 
-Open **Affected services** to view each service with its customer, tier, separate paths on the current network and during the change, status and tier rule.
+Open **Affected services** to view each service with its customer, tier, status, tier rule, and number of separate paths on the current network and during the change.
 
 ![The Affected services table: three Gold services at risk on one path, and one Silver and one Bronze service down](../media/business-impact/paris-affected-services.png)
 
@@ -76,7 +76,7 @@ Open Infrahub at `http://localhost:8000` and sign in as `admin` / `infrahub`. Go
 
 ![The Checks tab of Paris router 1 maintenance, with the redundancy check passed](../media/business-impact/checks-paris-passed.png)
 
-The check reads the same data as the Planned maintenance page. It counts the separate paths each active service keeps during the change and compares that number with the rule of the service's tier. The three Paris Gold services keep 1 path each, so the plan keeps the Gold rule and can merge.
+The check reads the same data as the Planned maintenance page. It counts the separate paths each active service keeps during the change and compares that number with the rule of the service's tier. The three Paris Gold services keep 1 path each, so the plan meets the Gold rule and can merge.
 
 ## Step 5: read why the Brussels plan is blocked
 
@@ -102,9 +102,9 @@ Open "New York router 1 maintenance". No active service runs through `rb01-nyc01
 
 ![The Checks tab of New York router 1 maintenance, with the redundancy check passed](../media/business-impact/checks-new-york-passed.png)
 
-## Step 8: raise a tier rule and view the guard fail
+## Step 8: raise a tier rule and view the redundancy check fail
 
-Each service tier carries a rule: the minimum number of separate paths each of its active services keeps during a change. On the current network, Gold has 1, Silver 0 and Bronze 0. A change to a tier's rule is a change to a customer commitment, and you plan it in a proposed change in the same way as maintenance. In this step, you promise Silver customers two separate paths during a change, and the guard compares that promise with the network.
+Each service tier records a rule: the minimum number of separate paths each of its active services keeps during a change. On the current network, Gold has 1, Silver 0 and Bronze 0. A change to a tier's rule is a change to a customer commitment, and you plan it in a proposed change in the same way as maintenance. In this step, you set a commitment of two separate paths for Silver customers during a change. The redundancy check compares that commitment with the network.
 
 ![The Silver service tier on the current network: minimum separate paths during a change is 0](../media/business-impact/silver-tier-rule.png)
 
@@ -122,7 +122,7 @@ The redundancy check applies the rule of every tier, not only Gold.
 
 ## Step 9: view the record of the proposed change
 
-Infrahub keeps the record an auditor needs for each proposed change: the plan, the guard result, the affected customers, and who approved and merged it, and when.
+Infrahub keeps an audit record for each proposed change: the plan, the redundancy check result, the affected customers, who approved and merged the change, and when they did so.
 
 In the menu, select **Activity**, then **Activities**. Select **Related Node**, choose the kind **Proposed Change**, select "Paris router 1 maintenance" and select **Apply**. The list shows each event with its date, account and branch: the proposed change created by Admin, and each validator that started and passed, including the redundancy check and the "Affected customers" artifact.
 
@@ -142,9 +142,9 @@ On the branch of a proposed change, set another device to maintenance in the Inf
 
 ## What you did
 
-You planned maintenance on Paris edge router 1. The Planned maintenance page showed that the three Paris Gold services keep one path each during the window, at risk, and that one Silver and one Bronze service go down. The redundancy check passed the Paris plan, because every Gold service keeps at least 1 separate path. It blocked the Brussels switch 1 plan, because DI-2001 has no other path, and Infrahub refused the merge. When you raised the Silver rule to 2 separate paths, the guard failed that proposed change too, because no Silver service has a second path. Infrahub keeps the record of each proposed change, with its checks, its validators and its approval.
+You planned maintenance on Paris edge router 1. The Planned maintenance page showed that the three Paris Gold services keep one path each during the window, at risk, and that one Silver and one Bronze service go down. The redundancy check passed the Paris plan because every Gold service keeps at least 1 separate path. It blocked the Brussels switch 1 plan because DI-2001 has no other path, and Infrahub refused the merge. When you raised the Silver rule to 2 separate paths, the redundancy check failed that proposed change too because no Silver service has a second path. Infrahub keeps the record of each proposed change, with its checks, validators and approval.
 
-The same chain, from the customer's commitment to the guard result:
+The same sequence, from the customer's commitment to the redundancy check result:
 
 ```mermaid
 flowchart LR
